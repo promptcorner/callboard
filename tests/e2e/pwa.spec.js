@@ -91,7 +91,7 @@ test.describe( 'PWA and previews', () => {
 			await expect( icon ).toHaveCount( 1 ); // core's own site icon tags are not printed as well
 			await expect( icon ).toHaveAttribute(
 				'href',
-				/\/uploads\/.*callboard-e2e-site-icon/
+				/\/uploads\/.*\/cover(?:-\d+x\d+)?\.png$/
 			);
 
 			const manifest = await (
