@@ -356,6 +356,16 @@ body.now-playing .lyrics{z-index:21;inset:0 0 auto 0;height:calc(100% - 190px - 
 .repeat-toggle .repeat-one{opacity:0}
 .repeat-toggle[data-mode="set"],.repeat-toggle[data-mode="one"]{color:var(--accent-text)}
 .repeat-toggle[data-mode="one"] .repeat-one{opacity:1}
+/* shared cue (callboard/cue): Lead and Follow on their own row under the transport in Now Playing */
+.deck.is-expanded .deck-controls:has(.cue>:not([hidden])){flex-wrap:wrap;row-gap:var(--s2)}
+.cue{display:flex;justify-content:center;gap:var(--s2)}
+.deck.is-expanded .cue{order:1;flex-basis:100%}
+.cue:not(:has(>:not([hidden]))){display:none}
+.cue::after{content:none} /* the wrapper is not a control; each button gets the 44px target instead */
+.cue-toggle::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+.cue-toggle{position:relative;appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink-2);font:inherit;font-size:.8125rem;padding:5px 14px;border-radius:999px;cursor:pointer;transition:color var(--t),border-color var(--t)}
+.cue-toggle:hover,.cue-toggle:focus-visible{color:var(--ink);border-color:var(--line-strong)}
+.cue-toggle[aria-pressed="true"]{color:var(--accent-text);border-color:currentColor}
 .track .bpm{font-size:.8125rem;color:var(--ink-3);margin-right:4px}
 /* notes and the count-in on the title line */
 .deck-title small{font-size:.8125rem;color:var(--ink-3);margin-left:8px}

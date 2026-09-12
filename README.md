@@ -20,7 +20,7 @@ A WordPress plugin for a cast's rehearsal tracks. The stage manager posts the ca
 
 - **Board.** The home page shows the next call: time, place, note, and the numbers being worked. Each number is a tap that starts the track. A call is a post under Sets. Publishing one sends a push notification.
 - **Sets.** A set is a post; its tracks are audio attachments. Fetch a playlist with WP-CLI, or import a folder of audio.
-- **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, an A/B loop (two fingers on the wave, or the bracket keys), count-in, lyrics and director's notes in time with the track, AirPlay, and lock-screen controls. The tab title carries the track as well, for whoever has the board open behind a rehearsal PDF.
+- **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, an A/B loop (two fingers on the wave, or the bracket keys), count-in, lyrics and director's notes in time with the track, Lead and Follow buttons so phones that follow open whatever track the director opens, AirPlay, and lock-screen controls. The tab title carries the track as well, for whoever has the board open behind a rehearsal PDF.
 - **Offline.** Save a set once. It plays from the phone with no connection, or load it from a file when there is no signal to save it with.
 - **Settings.** Site name, accent colour, badge, confetti behind a triple tap on the title. Hooks and template overrides for developers.
 
@@ -200,6 +200,7 @@ Features are extensions: an id, a version, and named contribution points shared 
 | `callboard.commands` | object | `play`, `pause`, `seek`, `next`, `prev`, `goTo`, `display` |
 | `callboard.data( id )`, `callboard.run( command )`, `callboard.emit( event )`, `callboard.invalidate( point )` | functions | App data, extension commands and events, re-rendering |
 | `callboard.ready`, `.view`, `.viewTeardown`, `.track`, `.play`, `.pause`, `.ended`, `.seek`, `.loop`, `.save`, `.unsave`, `.online`, `.offline` | `wp.hooks` actions | Also fired as `callboard:<event>` on `document`, which is how `callboard:track` and `callboard:view` have always arrived |
+| `callboard.cue.changed` | `wp.hooks` action | The shared cue changed: `{ seq, set, track, position, at }`. See [The shared cue](docs/extending.md#the-shared-cue) |
 | `callboard.slot.trackBadges`, `.slot.trackMeta`, `.slot.nowPlayingMeta`, `callboard.badge`, `callboard.beforePlay` | `wp.hooks` filters | The contribution points underneath the registry |
 
 </details>
@@ -249,7 +250,7 @@ Links go to the specifications.
 <summary>WordPress and PHP</summary>
 
 - [Custom post types](https://developer.wordpress.org/plugins/post-types/), [meta boxes](https://developer.wordpress.org/plugins/metadata/custom-meta-boxes/), [Settings API](https://developer.wordpress.org/plugins/settings/settings-api/), [Transients](https://developer.wordpress.org/apis/transients/), [Filesystem API](https://developer.wordpress.org/apis/filesystem/), [nonces](https://developer.wordpress.org/apis/security/nonces/), [admin-post actions](https://developer.wordpress.org/reference/hooks/admin_post_action/)
-- [REST API](https://developer.wordpress.org/rest-api/) for push subscriptions, [WP-CLI](https://make.wordpress.org/cli/handbook/guides/commands-cookbook/), [template_redirect](https://developer.wordpress.org/reference/hooks/template_redirect/), [wp_robots](https://developer.wordpress.org/reference/functions/wp_robots/)
+- [REST API](https://developer.wordpress.org/rest-api/) for push subscriptions and the shared cue (`callboard/v1/cue/`), [WP-CLI](https://make.wordpress.org/cli/handbook/guides/commands-cookbook/), [template_redirect](https://developer.wordpress.org/reference/hooks/template_redirect/), [wp_robots](https://developer.wordpress.org/reference/functions/wp_robots/)
 - [GD](https://www.php.net/manual/en/book.image.php) for artwork, [proc_open](https://www.php.net/manual/en/function.proc_open.php) for the fetch tools, [OpenSSL](https://www.php.net/manual/en/book.openssl.php) with [GMP](https://www.php.net/manual/en/book.gmp.php) or [BCMath](https://www.php.net/manual/en/book.bc.php) for VAPID keys, [web-push-php](https://github.com/web-push-libs/web-push-php)
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp#usage-and-options), [ffmpeg](https://ffmpeg.org/ffmpeg.html), [Playground blueprints](https://wordpress.github.io/wordpress-playground/blueprints/)
 

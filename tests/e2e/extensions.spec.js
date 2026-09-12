@@ -224,6 +224,92 @@ test.describe( 'Extensions', () => {
 		expect( await page.evaluate( () => window.__exampleXss ) ).toBeFalsy();
 	} );
 
+	test( 'a transport control is bound by its script in setup, and goes when the extension is switched off', async ( {
+		page,
+	} ) => {
+		await useExample( page );
+		await page.goto( '/demo-set/' );
+		await page.locator( '.track' ).first().click();
+		await expandDeck( page );
+		const control = page.locator( '#deck .example-transport' );
+		await control.click();
+		await control.click();
+		expect( await body( page, 'exampleTransportClicks' ) ).toBe( '2' );
+		expect( await body( page, 'exampleSetups' ) ).toBe( '1' );
+
+		await useExample( page, { callboard_example_disable: 'example/demo' } );
+		await page.goto( '/demo-set/' );
+		await expect( page.locator( '.example-transport' ) ).toHaveCount( 0 );
+		await page
+			.context()
+			.clearCookies( { name: 'callboard_example_disable' } );
+	} );
+
+	test( 'an event one extension emits reaches another extension’s events listener', async ( {
+		page,
+	} ) => {
+		await useExample( page );
+		await page.goto( '/' );
+		await page.evaluate( () => {
+			document.addEventListener(
+				'callboard:example.demo.pinged',
+				( e ) => {
+					window.__domPing = e.detail.word;
+				}
+			);
+		} );
+		expect(
+			await page.evaluate( () =>
+				window.callboard.run( 'example/demo/ping', 'first' )
+			)
+		).toBe( true );
+		await expect( page.locator( 'body' ) ).toHaveAttribute(
+			'data-example-pinged',
+			'first'
+		);
+		expect( await page.evaluate( () => window.__domPing ) ).toBe( 'first' );
+
+		// Unregistering the listener's extension removes the listener.
+		await page.evaluate( () => {
+			window.callboard.unregisterExtension( 'example/late' );
+			window.callboard.run( 'example/demo/ping', 'second' );
+		} );
+		expect( await body( page, 'examplePinged' ) ).toBe( 'first' );
+		expect( await page.evaluate( () => window.__domPing ) ).toBe(
+			'second'
+		);
+
+		// Only the extension that owns a name can fire it.
+		expect(
+			await page.evaluate( () =>
+				window.callboard.emit( 'example.late.pinged', {} )
+			)
+		).toBe( false );
+	} );
+
+	test( 'app data is built on every request and never cached with set data', async ( {
+		page,
+	} ) => {
+		await useExample( page, { callboard_example_visitor: 'first' } );
+		await page.goto( '/' );
+		expect(
+			await page.evaluate(
+				() => window.callboard.data( 'example/demo' ).visitor
+			)
+		).toBe( 'first' );
+
+		await useExample( page, { callboard_example_visitor: 'second' } );
+		await page.goto( '/demo-set/' );
+		const seen = await page.evaluate( () => ( {
+			visitor: window.callboard.data( 'example/demo' ).visitor,
+			inSets: JSON.stringify( window.CALLBOARD.sets ).includes( 'first' ),
+		} ) );
+		expect( seen ).toEqual( { visitor: 'second', inSets: false } );
+		await page
+			.context()
+			.clearCookies( { name: 'callboard_example_visitor' } );
+	} );
+
 	test( 'a route an extension declares is open to a stranger and still obeys the gate', async ( {
 		playwright,
 	} ) => {
