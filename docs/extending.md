@@ -186,10 +186,11 @@ add_action( 'callboard_register_extensions', function () {
 }, 20 );
 ```
 
-To switch one off for some requests and not others:
+To switch one off from a setting that only changes when you save it:
 
 ```php
-add_filter( 'callboard_extension_enabled', fn( bool $on, string $id ) => $on && ! ( 'callboard/count-in' === $id && is_user_logged_in() ), 10, 2 );
+$disable_count_in = (bool) get_option( 'acme_disable_count_in', false );
+add_filter( 'callboard_extension_enabled', fn( bool $on, string $id ) => $on && ! ( 'callboard/count-in' === $id && $disable_count_in ), 10, 2 );
 ```
 
 More of Callboard's features become extensions in later releases: offline saving, lyrics, director's notes and push.

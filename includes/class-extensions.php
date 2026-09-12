@@ -68,6 +68,20 @@ final class Extensions {
 	private static array $registered = array();
 
 	/**
+	 * Active extensions for the current request and the filter state that produced them.
+	 *
+	 * @var array<string, array<string, mixed>>|null
+	 */
+	private static ?array $active_cache = null;
+
+	/**
+	 * Signature of callboard_extension_enabled callbacks that produced the active cache.
+	 *
+	 * @var string
+	 */
+	private static string $active_cache_key = '';
+
+	/**
 	 * True only while Callboard loads its own extensions, the one moment `callboard/*` is accepted.
 	 *
 	 * @var bool
@@ -179,6 +193,7 @@ final class Extensions {
 		}
 
 		self::$registered[ $id ] = $extension;
+		self::reset_active_cache();
 		return $extension;
 	}
 
@@ -222,6 +237,7 @@ final class Extensions {
 		}
 		$extension = self::$registered[ $id ];
 		unset( self::$registered[ $id ] );
+		self::reset_active_cache();
 		return $extension;
 	}
 
@@ -250,6 +266,10 @@ final class Extensions {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function active(): array {
+		$key = self::active_filter_key();
+		if ( null !== self::$active_cache && self::$active_cache_key === $key ) {
+			return self::$active_cache;
+		}
 		$out = array();
 		foreach ( self::$registered as $id => $extension ) {
 			/**
@@ -266,7 +286,35 @@ final class Extensions {
 				$out[ $id ] = $extension;
 			}
 		}
+		self::$active_cache     = $out;
+		self::$active_cache_key = $key;
 		return $out;
+	}
+
+	/**
+	 * A small shape hash for callboard_extension_enabled so runtime filter changes can invalidate memo.
+	 */
+	private static function active_filter_key(): string {
+		global $wp_filter;
+		$hook = $wp_filter['callboard_extension_enabled'] ?? null;
+		if ( ! ( $hook instanceof \WP_Hook ) || ! is_array( $hook->callbacks ) || ! $hook->callbacks ) {
+			return '';
+		}
+		$parts = array();
+		foreach ( $hook->callbacks as $priority => $callbacks ) {
+			foreach ( $callbacks as $id => $callback ) {
+				$parts[] = $priority . ':' . $id . ':' . (int) ( $callback['accepted_args'] ?? 0 );
+			}
+		}
+		return implode( '|', $parts );
+	}
+
+	/**
+	 * Drop active-extension memoized state.
+	 */
+	private static function reset_active_cache(): void {
+		self::$active_cache     = null;
+		self::$active_cache_key = '';
 	}
 
 	/**

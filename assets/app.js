@@ -1563,7 +1563,7 @@
 		'AudioContext' in window && document.visibilityState === 'visible';
 	const playhead = () => {
 		if ( ! looper?.src || ! loop ) {
-			return audio.currentTime; // a looper still loading has no clock of its own yet
+			return audio.currentTime; // no looper yet, or its audio is still being fetched and decoded
 		}
 		const len = loop.b - loop.a,
 			t =
@@ -1597,16 +1597,16 @@
 			}
 			return;
 		}
+		if ( looper !== ticket ) {
+			return; // the loop changed while this one was decoding, and a newer start is on its way
+		}
 		if (
-			looper !== ticket ||
 			! loop ||
 			audio.paused ||
 			! canLoopGapless() ||
 			looperCtx.state !== 'running' // autoplay policy kept the context shut: never mute the element for a silent looper
 		) {
-			if ( looper === ticket ) {
-				looper = null; // still ours to give up; a later start's ticket is not
-			}
+			looper = null;
 			return;
 		}
 		const src = looperCtx.createBufferSource();
