@@ -124,8 +124,10 @@ jobs:
             echo "Approved run ${RUN}."
           done
 
-  # When the release pull request merges, release-please tags and cuts the
-  # GitHub Release. Build the distribution zip and attach it.
+  # When the release pull request merges, release-please tags the commit and
+  # creates the GitHub release as a draft. Releases here are immutable once
+  # published, so the zip is attached to the draft and the release is published
+  # after that.
   build-release-asset:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
@@ -160,3 +162,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
         run: gh release upload --clobber "$TAG_NAME" build/callboard.zip
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+        run: gh release edit "$TAG_NAME" --draft=false --latest
