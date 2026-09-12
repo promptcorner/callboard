@@ -1689,11 +1689,11 @@
 			doAction( 'callboard.loop', null );
 		}
 		looperStop();
-		if ( ! sheetOpen() ) {
-			letSleep();
-		}
 		loop = null;
 		loopFrom = null;
+		if ( ! stayAwake() ) {
+			letSleep();
+		}
 		if ( loopBand ) {
 			loopBand.classList.remove( 'on' );
 			if ( loopChip ) {
@@ -1973,16 +1973,23 @@
 	}
 	let wake = null;
 	const keepAwake = async () => {
+		if ( wake && ! wake.released ) {
+			return; // one lock is enough; a second request would leave the first held for good
+		}
 		try {
-			wake = await navigator.wakeLock?.request( 'screen' );
+			wake = ( await navigator.wakeLock?.request( 'screen' ) ) || null;
 		} catch {}
 	};
 	const letSleep = () => {
 		wake?.release().catch( () => {} );
 		wake = null;
 	};
+	// The lock follows the open lyrics sheet or a set loop: either one means the phone is on the stand.
+	// The system drops the lock whenever the page hides, so coming back has to take it again.
+	const stayAwake = () =>
+		document.body.classList.contains( 'sheet-open' ) || !! loop;
 	document.addEventListener( 'visibilitychange', () => {
-		if ( document.visibilityState === 'visible' && sheetOpen() ) {
+		if ( document.visibilityState === 'visible' && stayAwake() ) {
 			keepAwake();
 		}
 	} );
@@ -2014,8 +2021,10 @@
 		}
 	};
 	function hideLyrics() {
-		letSleep();
 		document.body.classList.remove( 'sheet-open' );
+		if ( ! stayAwake() ) {
+			letSleep(); // a loop keeps the screen on without the sheet
+		}
 		if ( reduce() || ! sheetOpen() ) {
 			closeSheet();
 		} else {
