@@ -9,6 +9,7 @@
 
 use Callboard\Extensions;
 use Callboard\Privacy;
+use Callboard\Pwa;
 use Callboard\Sets;
 
 /**
@@ -309,19 +310,22 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 	}
 
 	public function test_the_worker_is_rewritten_once_when_extension_assets_change(): void {
-		$sw     = ABSPATH . 'sw.js';
-		$before = file_exists( $sw ) ? (string) file_get_contents( $sw ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$sw      = ABSPATH . 'sw.js';
+		$before  = file_exists( $sw ) ? (string) file_get_contents( $sw ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$on_disk = ! Pwa::serves_files(); // A network site keeps its worker in an option instead.
 		wp_register_script( 'test-asset', 'https://example.org/wp-content/plugins/test/asset.js', array(), '3', true );
 		$this->register( 'test/asset', array( 'script' => 'test-asset' ) );
 
 		try {
 			$this->assertContains( '/wp-content/plugins/test/asset.js?ver=3', Extensions::precache_urls() );
 			$this->assertTrue( Extensions::maybe_refresh_worker(), 'a new asset rewrites the worker' );
-			$this->assertStringContainsString( '/wp-content/plugins/test/asset.js?ver=3', (string) file_get_contents( $sw ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$this->assertStringContainsString( '/wp-content/plugins/test/asset.js?ver=3', Pwa::contents( 'sw.js' ) );
 			$this->assertFalse( Extensions::maybe_refresh_worker(), 'and the next request leaves it alone' );
 		} finally {
 			// The tests container serves the end-to-end site from this ABSPATH: put its worker back.
-			if ( null === $before ) {
+			if ( ! $on_disk ) {
+				$this->assertSame( $before, file_exists( $sw ) ? (string) file_get_contents( $sw ) : null, 'a network site leaves the root worker alone' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			} elseif ( null === $before ) {
 				wp_delete_file( $sw );
 			} else {
 				file_put_contents( $sw, $before ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
