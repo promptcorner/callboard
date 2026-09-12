@@ -1,8 +1,6 @@
 /**
  * Installable app: manifest, service worker, head tags, link previews.
  */
-const fs = require( 'fs' );
-const path = require( 'path' );
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
 test.describe( 'PWA and previews', () => {
@@ -76,13 +74,15 @@ test.describe( 'PWA and previews', () => {
 		request,
 		requestUtils,
 	} ) => {
-		const media = await requestUtils.uploadMedia( {
-			name: 'callboard-e2e-site-icon.png',
-			mimeType: 'image/png',
-			buffer: fs.readFileSync(
-				path.join( __dirname, '../../assets/icon-512.png' )
-			),
-		} );
+		const media = (
+			await requestUtils.rest( {
+				path: '/wp/v2/media?search=cover&per_page=100',
+			} )
+		).find( ( item ) =>
+			item?.source_url?.includes( '/uploads/callboard/demo-set/cover' )
+		);
+		expect( media ).toBeTruthy();
+
 		try {
 			await requestUtils.updateSiteSettings( { site_icon: media.id } );
 
@@ -102,7 +102,6 @@ test.describe( 'PWA and previews', () => {
 			}
 		} finally {
 			await requestUtils.updateSiteSettings( { site_icon: 0 } );
-			await requestUtils.deleteMedia( media.id );
 		}
 
 		await page.goto( '/demo-set/' );
