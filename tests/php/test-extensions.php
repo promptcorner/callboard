@@ -63,6 +63,21 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Run a callback while the registry accepts `callboard/*`, the way it does while Callboard loads its own.
+	 *
+	 * @param callable $callback What to run.
+	 */
+	private function as_callboard( callable $callback ): void {
+		$flag = new ReflectionProperty( Extensions::class, 'first_party' );
+		$flag->setValue( null, true );
+		try {
+			$callback();
+		} finally {
+			$flag->setValue( null, false );
+		}
+	}
+
+	/**
 	 * A published set with one audio track whose file exists, which is what Sets::build() needs.
 	 *
 	 * @return array{0: int, 1: int} Set and track ids.
@@ -139,6 +154,42 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 
 		$this->assertFalse( $this->register( 'callboard/impostor' ) );
 		$this->assertNull( callboard_get_extension( 'callboard/impostor' ) );
+	}
+
+	/**
+	 * @dataProvider reserved_namespaces
+	 */
+	public function test_a_reserved_namespace_is_refused( string $reserved ): void {
+		$this->setExpectedIncorrectUsage( 'callboard_register_extension' );
+
+		$this->assertFalse( $this->register( $reserved . '/thing' ) );
+		$this->assertNull( callboard_get_extension( $reserved . '/thing' ) );
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public function reserved_namespaces(): array {
+		$out = array();
+		foreach ( Extensions::RESERVED_NAMESPACES as $reserved ) {
+			$out[ $reserved ] = array( $reserved );
+		}
+		return $out;
+	}
+
+	public function test_the_reserved_list_is_the_published_one_and_a_longer_word_is_not_reserved(): void {
+		$this->assertSame(
+			array( 'callboard', 'cb', 'wp', 'core', 'ext', 'deck', 'set', 'seek', 'loop', 'track', 'lyrics', 'dl', 'wave', 'remote', 'sheet', 'quality' ),
+			Extensions::RESERVED_NAMESPACES
+		);
+		$this->assertIsArray( $this->register( 'decks/thing' ), 'only the exact namespace is reserved' );
+	}
+
+	public function test_callboard_cannot_name_an_extension_of_its_own_ext(): void {
+		$this->setExpectedIncorrectUsage( 'callboard_register_extension' );
+
+		$this->as_callboard( fn() => $this->assertFalse( $this->register( 'callboard/ext' ) ) );
+		$this->assertNull( callboard_get_extension( 'callboard/ext' ) );
 	}
 
 	public function test_registering_the_same_id_twice_is_refused(): void {
@@ -362,17 +413,119 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 		rest_get_server();
 		wp_set_current_user( 0 );
 
-		$GLOBALS['wp']->query_vars['rest_route'] = '/callboard/v1/test/route/ping';
+		$GLOBALS['wp']->query_vars['rest_route'] = '/callboard/v1/ext/test/route/ping';
 		$this->assertNull( Privacy::require_auth_for_rest( null ), 'a declared route is let past the signed-in rule' );
 		$GLOBALS['wp']->query_vars['rest_route'] = '/wp/v2/posts';
 		$this->assertWPError( Privacy::require_auth_for_rest( null ), 'and nothing else is' );
 		unset( $GLOBALS['wp']->query_vars['rest_route'] );
 
-		$request = new WP_REST_Request( 'GET', '/callboard/v1/test/route/ping' );
+		$request = new WP_REST_Request( 'GET', '/callboard/v1/ext/test/route/ping' );
 		$this->assertSame( 200, rest_get_server()->dispatch( $request )->get_status() );
 
 		add_filter( 'callboard_can_view', '__return_false' );
 		$this->assertSame( 401, rest_get_server()->dispatch( $request )->get_status() );
+	}
+
+	public function test_a_third_party_route_never_shares_a_path_with_one_of_callboards_own(): void {
+		$this->assertNotNull( callboard_get_extension( 'callboard/cue' ), 'this test needs Callboard\'s own cue extension, which answers under /callboard/v1/cue/' );
+		// In 2.3.0, a plugin registered as cue/sync answered under /callboard/v1/cue/sync/, inside Callboard's /cue/.
+		$this->register(
+			'cue/sync',
+			array(
+				'rest' => array(
+					array(
+						'/state',
+						array(
+							'methods'  => 'GET',
+							'callback' => static fn() => array( 'from' => 'cue/sync' ),
+						),
+					),
+				),
+			)
+		);
+		$GLOBALS['wp_rest_server'] = null;
+		rest_get_server();
+		wp_set_current_user( 0 );
+
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/callboard/v1/ext/cue/sync/state' ) );
+		$this->assertSame( array( 'from' => 'cue/sync' ), $response->get_data() );
+		$this->assertArrayNotHasKey( '/callboard/v1/cue/sync/state', rest_get_server()->get_routes(), 'the deprecated 2.3.0 path of cue/sync is not added under callboard/cue' );
+		$this->assertNull( Extensions::legacy_rest_base( 'cue/sync' ) );
+		$this->assertTrue( Extensions::is_extension_route( '/callboard/v1/ext/cue/sync/state' ) );
+	}
+
+	public function test_a_third_party_route_still_answers_at_its_2_3_0_path_with_a_deprecation_notice(): void {
+		$this->register(
+			'test/legacy',
+			array(
+				'rest' => array(
+					array(
+						'/ping',
+						array(
+							'methods'  => 'GET',
+							'callback' => static fn( WP_REST_Request $request ) => array( 'pong' => $request->get_route() ),
+						),
+					),
+				),
+			)
+		);
+		$GLOBALS['wp_rest_server'] = null;
+		rest_get_server();
+		wp_set_current_user( 0 );
+		$this->setExpectedDeprecated( 'callboard/v1/test/legacy/ping' );
+
+		$old = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/callboard/v1/test/legacy/ping' ) );
+		$this->assertSame( 200, $old->get_status() );
+		$this->assertSame( array( 'pong' => '/callboard/v1/test/legacy/ping' ), $old->get_data() );
+
+		$GLOBALS['wp']->query_vars['rest_route'] = '/callboard/v1/test/legacy/ping';
+		$this->assertNull( Privacy::require_auth_for_rest( null ), 'the old path is let past the signed-in rule too' );
+		unset( $GLOBALS['wp']->query_vars['rest_route'] );
+
+		add_filter( 'callboard_can_view', '__return_false' );
+		$this->assertSame( 401, rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/callboard/v1/test/legacy/ping' ) )->get_status(), 'and still obeys the gate' );
+	}
+
+	public function test_the_new_path_raises_no_deprecation_notice(): void {
+		$this->register(
+			'test/current',
+			array(
+				'rest' => array(
+					array(
+						'/ping',
+						array(
+							'methods'  => 'GET',
+							'callback' => static fn() => array( 'pong' => true ),
+						),
+					),
+				),
+			)
+		);
+		$GLOBALS['wp_rest_server'] = null;
+		rest_get_server();
+		wp_set_current_user( 0 );
+		$deprecated = array();
+		add_action(
+			'deprecated_function_run',
+			static function ( string $name ) use ( &$deprecated ) {
+				$deprecated[] = $name;
+			}
+		);
+
+		$this->assertSame( 200, rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/callboard/v1/ext/test/current/ping' ) )->get_status() );
+		$this->assertSame( array(), $deprecated );
+	}
+
+	public function test_a_signed_in_user_gets_the_rest_root_and_a_nonce_in_app_data_and_nobody_else_does(): void {
+		wp_set_current_user( 0 );
+		$this->assertArrayHasKey( 'rest', Extensions::filter_app_data( array() ) );
+		$this->assertNull( Extensions::filter_app_data( array() )['rest'] );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		$rest = Extensions::filter_app_data( array() )['rest'];
+
+		$this->assertSame( rest_url(), $rest['root'] );
+		$this->assertSame( 1, wp_verify_nonce( $rest['nonce'], 'wp_rest' ) );
 	}
 
 	public function test_the_worker_is_rewritten_once_when_extension_assets_change(): void {

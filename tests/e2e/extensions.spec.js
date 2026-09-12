@@ -310,7 +310,7 @@ test.describe( 'Extensions', () => {
 			.clearCookies( { name: 'callboard_example_visitor' } );
 	} );
 
-	test( 'a route an extension declares is open to a stranger and still obeys the gate', async ( {
+	test( 'a route an extension declares is open to a stranger at its new and 2.3.0 paths, and still obeys the gate', async ( {
 		playwright,
 	} ) => {
 		const stranger = async ( cookie ) =>
@@ -321,10 +321,14 @@ test.describe( 'Extensions', () => {
 			} );
 		const open = await stranger( 'callboard_example=1' );
 		const ping = await open.get(
-			'/wp-json/callboard/v1/example/demo/ping'
+			'/wp-json/callboard/v1/ext/example/demo/ping'
 		);
 		expect( ping.status() ).toBe( 200 );
 		expect( await ping.json() ).toEqual( { pong: true } );
+		// The 2.3.0 path, without ext/, still answers. PHPUnit checks its deprecation notice, since the tests site runs without WP_DEBUG.
+		const old = await open.get( '/wp-json/callboard/v1/example/demo/ping' );
+		expect( old.status() ).toBe( 200 );
+		expect( await old.json() ).toEqual( { pong: true } );
 		// Declaring a route does not open the rest of the API.
 		expect( ( await open.get( '/wp-json/wp/v2/posts' ) ).status() ).toBe(
 			401
@@ -336,11 +340,221 @@ test.describe( 'Extensions', () => {
 		);
 		expect(
 			(
+				await gated.get( '/wp-json/callboard/v1/ext/example/demo/ping' )
+			).status()
+		).toBe( 401 );
+		expect(
+			(
 				await gated.get( '/wp-json/callboard/v1/example/demo/ping' )
 			).status()
 		).toBe( 401 );
 		await gated.dispose();
 	} );
+
+	test( 'a signed-in user reaches an extension route on a site that requires sign-in only with the REST nonce', async ( {
+		page,
+		browser,
+	} ) => {
+		// The page fixture is signed in as the admin.
+		await useExample( page, { callboard_example_signin: '1' } );
+		await page.goto( '/' );
+		const rest = await page.evaluate( () => window.CALLBOARD.rest );
+		expect( rest?.root ).toBeTruthy();
+		expect( rest?.nonce ).toBeTruthy();
+		const statuses = await page.evaluate( async ( { root, nonce } ) => {
+			const url = new URL( 'callboard/v1/ext/example/demo/ping', root );
+			const inQuery = new URL( url );
+			inQuery.searchParams.set( '_wpnonce', nonce );
+			const status = async ( target, init = {} ) =>
+				( await fetch( target, init ) ).status;
+			return {
+				header: await status( url, {
+					headers: { 'X-WP-Nonce': nonce },
+				} ),
+				query: await status( inQuery ),
+				none: await status( url ),
+			};
+		}, rest );
+		expect( statuses ).toEqual( { header: 200, query: 200, none: 401 } );
+
+		// Somebody who is not signed in gets no nonce.
+		const context = await browser.newContext( {
+			baseURL: base.href,
+			storageState: { cookies: [], origins: [] },
+		} );
+		const signedOut = await context.newPage();
+		await useExample( signedOut );
+		await signedOut.goto( '/' );
+		expect(
+			await signedOut.evaluate( () => window.CALLBOARD.rest )
+		).toBeNull();
+		await context.close();
+	} );
+
+	test( 'the page refuses a reserved namespace, even one app data says is active', async ( {
+		page,
+	} ) => {
+		const warnings = [];
+		page.on( 'console', ( msg ) => {
+			if ( msg.type() === 'warning' ) {
+				warnings.push( msg.text() );
+			}
+		} );
+		await useExample( page, { callboard_example_reserved: '1' } );
+		await page.goto( '/' );
+		expect(
+			await page.evaluate( () =>
+				window.callboard.isActive( 'deck/meta' )
+			)
+		).toBe( true );
+
+		const ids = [
+			'cb',
+			'wp',
+			'core',
+			'ext',
+			'deck',
+			'set',
+			'seek',
+			'loop',
+			'track',
+			'lyrics',
+			'dl',
+			'wave',
+			'remote',
+			'sheet',
+			'quality',
+		]
+			.map( ( namespace ) => `${ namespace }/meta` )
+			.concat( 'callboard/ext' );
+		const accepted = await page.evaluate(
+			( list ) =>
+				list.filter( ( id ) =>
+					window.callboard.registerExtension( id, { apiVersion: 1 } )
+				),
+			ids
+		);
+		expect( accepted ).toEqual( [] );
+		await expect
+			.poll( () =>
+				ids.filter( ( id ) =>
+					warnings.some(
+						( w ) => w.includes( id ) && w.includes( 'reserved' )
+					)
+				)
+			)
+			.toEqual( ids );
+		expect(
+			await page.evaluate( () => window.callboard.extensions() )
+		).not.toContain( 'deck/meta' );
+	} );
+
+	test( 'extension data is an object even when an extension returned an empty array', async ( {
+		page,
+	} ) => {
+		await useExample( page );
+		await page.goto( '/demo-set/' );
+		const shapes = await page.evaluate( async () => {
+			const shape = ( v ) => {
+				if ( Array.isArray( v ) ) {
+					return 'array';
+				}
+				return v === null ? 'null' : typeof v;
+			};
+			await window.callboard.commands.goTo( 'demo-set', 0, {
+				play: false,
+			} );
+			const { set, track } = window.callboard.state;
+			const app = window.callboard.data( 'example/empty' );
+			return {
+				app: shape( app ),
+				appKeys: Object.keys( app || {} ).length,
+				set: shape( set.ext[ 'example/empty' ] ),
+				track: shape( track.ext[ 'example/empty' ] ),
+			};
+		} );
+		expect( shapes ).toEqual( {
+			app: 'object',
+			appKeys: 0,
+			set: 'object',
+			track: 'object',
+		} );
+	} );
+
+	for ( const debug of [ true, false ] ) {
+		test( `a copy of a track keeps bpm and quality with debugging ${
+			debug ? 'on' : 'off'
+		}, and only warns with it on`, async ( { page } ) => {
+			const warnings = [];
+			page.on( 'console', ( msg ) => {
+				if ( msg.type() === 'warning' ) {
+					warnings.push( msg.text() );
+				}
+			} );
+			await useExample( page, {
+				callboard_example_debug: debug ? '1' : '0',
+			} );
+			await page.goto( '/demo-set/' );
+			const result = await page.evaluate( async () => {
+				const set = window.CALLBOARD.sets.find(
+					( s ) => s.slug === 'demo-set'
+				);
+				const index = set.tracks.findIndex(
+					( t ) => t.ext[ 'callboard/count-in' ]?.bpm
+				);
+				const player = set.tracks[ index ];
+				await window.callboard.commands.goTo( 'demo-set', index, {
+					play: false,
+				} );
+				const copy = window.callboard.state.track;
+				const keys = Object.keys( copy );
+				return {
+					debug: !! window.CALLBOARD.debug,
+					keys: [ 'bpm', 'quality' ].filter( ( k ) =>
+						keys.includes( k )
+					),
+					inJson: Object.keys(
+						JSON.parse(
+							JSON.stringify( window.callboard.state.set )
+						).tracks[ index ]
+					).includes( 'bpm' ),
+					bpm: copy.bpm,
+					expected: player.ext[ 'callboard/count-in' ].bpm,
+					quality:
+						copy.quality ===
+						player.ext[ 'callboard/quality' ].quality,
+					// The player's own track is plain data in both modes.
+					plain: [ 'bpm', 'quality' ].every(
+						( k ) =>
+							'value' in
+							Object.getOwnPropertyDescriptor( player, k )
+					),
+				};
+			} );
+			expect( result ).toEqual( {
+				debug,
+				keys: [ 'bpm', 'quality' ],
+				inJson: true,
+				bpm: result.expected,
+				expected: expect.any( Number ),
+				quality: true,
+				plain: true,
+			} );
+			// A marker, so every warning the page logged before it has arrived.
+			await page.evaluate( () =>
+				// eslint-disable-next-line no-console
+				console.warn( 'callboard-test-marker' )
+			);
+			await expect
+				.poll( () => warnings.includes( 'callboard-test-marker' ) )
+				.toBe( true );
+			expect(
+				warnings.filter( ( w ) =>
+					w.includes( 'track.bpm is deprecated' )
+				)
+			).toHaveLength( debug ? 1 : 0 );
+		} );
+	}
 
 	test( 'the service worker keeps core’s hooks script for an offline start', async ( {
 		admin,

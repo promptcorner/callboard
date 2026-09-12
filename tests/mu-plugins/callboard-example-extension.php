@@ -13,8 +13,11 @@
  *   callboard_example_replace=1        with them, unregister callboard/quality and register example/quality
  *   callboard_example_disable=callboard/count-in,callboard/badging   switch those off by id
  *   callboard_example_count_in=1       the count-in setting, on for this request only
- *   callboard_example_gate=1           the front-end gate, closed for this request only
+ *   callboard_example_gate=1           the front end closed to everyone, for this request only
  *   callboard_example_visitor=<text>   a value example/demo returns from app_data
+ *   callboard_example_signin=1         the "require sign-in" setting, on for this request only
+ *   callboard_example_debug=1|0        app data says SCRIPT_DEBUG is on (1) or off (0), whatever the site says
+ *   callboard_example_reserved=1       app data claims deck/meta is active, which the page must still refuse
  *
  * Mapped in by .wp-env.json and kept under tests/, which the plugin zip excludes.
  *
@@ -83,6 +86,18 @@ add_action(
 			)
 		);
 
+		// Returns empty data everywhere, which PHP encodes as [] and the page must still read as {}.
+		callboard_register_extension(
+			'example/empty',
+			array(
+				'version'     => '1.0.0',
+				'api_version' => 1,
+				'track_data'  => static fn() => array(),
+				'set_data'    => static fn() => array(),
+				'app_data'    => static fn() => array(),
+			)
+		);
+
 		// After the count-in's ♩ badge.
 		callboard_register_extension(
 			'example/late',
@@ -138,4 +153,29 @@ add_filter( 'default_option_callboard_settings', $callboard_example_count_in );
 add_filter(
 	'callboard_can_view',
 	static fn( $allowed ) => '1' === callboard_example_cookie( 'callboard_example_gate' ) ? false : $allowed
+);
+
+$callboard_example_signin = static function ( $settings ) {
+	if ( '1' === callboard_example_cookie( 'callboard_example_signin' ) ) {
+		$settings                   = is_array( $settings ) ? $settings : array();
+		$settings['require_signin'] = true;
+	}
+	return $settings;
+};
+add_filter( 'option_callboard_settings', $callboard_example_signin );
+add_filter( 'default_option_callboard_settings', $callboard_example_signin );
+
+add_filter(
+	'callboard_app_data',
+	static function ( array $data ): array {
+		$debug = callboard_example_cookie( 'callboard_example_debug' );
+		if ( '' !== $debug ) {
+			$data['debug'] = '1' === $debug;
+		}
+		if ( '1' === callboard_example_cookie( 'callboard_example_reserved' ) ) {
+			$data['extensions']['deck/meta'] = '1.0.0';
+		}
+		return $data;
+	},
+	20
 );

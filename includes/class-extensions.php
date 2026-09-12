@@ -32,6 +32,15 @@ final class Extensions {
 	public const ID_PATTERN = '#^[a-z0-9-]+/[a-z0-9-]+$#';
 
 	/**
+	 * Namespaces an extension outside Callboard cannot use. An extension's CSS classes start with its
+	 * namespace, and Callboard's own classes start with most of these words. `ext` is where
+	 * third-party REST routes live, and `callboard` is only for the plugin's own extensions.
+	 *
+	 * @since 2.4.0
+	 */
+	public const RESERVED_NAMESPACES = array( 'callboard', 'cb', 'wp', 'core', 'ext', 'deck', 'set', 'seek', 'loop', 'track', 'lyrics', 'dl', 'wave', 'remote', 'sheet', 'quality' );
+
+	/**
 	 * Contract versions this build of the plugin can run.
 	 */
 	public const SUPPORTED_API_VERSIONS = array( 1 );
@@ -132,7 +141,7 @@ final class Extensions {
 	/**
 	 * Add an extension.
 	 *
-	 * @param string               $id   `namespace/name`. `callboard/*` is reserved.
+	 * @param string               $id   `namespace/name`. The namespaces in RESERVED_NAMESPACES are refused.
 	 * @param array<string, mixed> $args See docs/extending.md.
 	 * @return array<string, mixed>|false The registered extension, or false when refused.
 	 */
@@ -141,8 +150,17 @@ final class Extensions {
 			_doing_it_wrong( 'callboard_register_extension', esc_html( sprintf( 'Extension ids are "namespace/name" in lowercase letters, digits and hyphens. "%s" is not.', $id ) ), '2.3.0' );
 			return false;
 		}
-		if ( str_starts_with( $id, 'callboard/' ) && ! self::$first_party ) {
+		$namespace = strstr( $id, '/', true );
+		if ( 'callboard' === $namespace && ! self::$first_party ) {
 			_doing_it_wrong( 'callboard_register_extension', esc_html( sprintf( 'The callboard namespace is reserved for the plugin\'s own extensions. Register "%s" under your own.', $id ) ), '2.3.0' );
+			return false;
+		}
+		if ( 'callboard/ext' === $id ) {
+			_doing_it_wrong( 'callboard_register_extension', esc_html( 'The name "ext" is reserved: third-party REST routes live under callboard/v1/ext/.' ), '2.4.0' );
+			return false;
+		}
+		if ( 'callboard' !== $namespace && in_array( $namespace, self::RESERVED_NAMESPACES, true ) ) {
+			_doing_it_wrong( 'callboard_register_extension', esc_html( sprintf( 'The "%1$s" namespace is reserved, because Callboard uses it for its own class names or routes. Register "%2$s" under a namespace of your own.', $namespace, $id ) ), '2.4.0' );
 			return false;
 		}
 		if ( isset( self::$registered[ $id ] ) ) {
@@ -414,7 +432,28 @@ final class Extensions {
 		$data['extensions'] = $active;
 		$data['ext']        = $ext;
 		$data['debug']      = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG;
+		$data['rest']       = self::rest_auth();
 		return $data;
+	}
+
+	/**
+	 * The REST root and a `wp_rest` nonce for a signed-in user, or null for anyone else.
+	 *
+	 * WordPress ignores the login cookie on a REST request that carries no nonce, so without this a
+	 * signed-in user's request to an extension route arrives signed out.
+	 *
+	 * @since 2.4.0
+	 *
+	 * @return array{root: string, nonce: string}|null
+	 */
+	public static function rest_auth(): ?array {
+		if ( ! is_user_logged_in() ) {
+			return null;
+		}
+		return array(
+			'root'  => esc_url_raw( rest_url() ),
+			'nonce' => wp_create_nonce( 'wp_rest' ),
+		);
 	}
 
 	/**
@@ -583,8 +622,9 @@ final class Extensions {
 	 * REST routes extensions declare, under callboard/v1.
 	 *
 	 * Callboard's own extensions get `/<name>/`, which is where the plugin's routes have always
-	 * lived. Anybody else gets `/<namespace>/<name>/`, so two plugins that both call a thing "notes"
-	 * cannot land on the same URL.
+	 * lived. Anybody else gets `/ext/<namespace>/<name>/`. `ext` cannot be the name of one of
+	 * Callboard's extensions, so the two groups of routes never share a path. A third-party route is
+	 * also registered at its 2.3.0 path, `/<namespace>/<name>/`, as a deprecated copy.
 	 */
 	public static function register_routes(): void {
 		foreach ( self::active() as $id => $extension ) {
@@ -601,33 +641,72 @@ final class Extensions {
 				};
 				/**
 				 * A route an extension declared in its `rest` argument, under callboard/v1/<name>/ for
-				 * Callboard's own and callboard/v1/<namespace>/<name>/ for anybody else's.
+				 * Callboard's own and callboard/v1/ext/<namespace>/<name>/ for anybody else's.
 				 */
 				register_rest_route( 'callboard/v1', self::rest_base( $id ) . $route[0], $args );
+
+				$legacy = self::legacy_rest_base( $id );
+				if ( null === $legacy || ! isset( $args['callback'] ) || ! is_callable( $args['callback'] ) ) {
+					continue;
+				}
+				$old              = 'callboard/v1' . $legacy . $route[0];
+				$new              = 'callboard/v1' . self::rest_base( $id ) . $route[0];
+				$callback         = $args['callback'];
+				$args['callback'] = static function ( WP_REST_Request $request ) use ( $callback, $old, $new ) {
+					_deprecated_function( esc_html( $old ), '2.4.0', esc_html( $new ) );
+					return call_user_func( $callback, $request );
+				};
+				/**
+				 * The same route at its 2.3.0 path, callboard/v1/<namespace>/<name>/. Deprecated since 2.4.0.
+				 */
+				register_rest_route( 'callboard/v1', $legacy . $route[0], $args );
 			}
 		}
 	}
 
 	/**
-	 * `/push` for callboard/push, `/example/demo` for example/demo.
+	 * `/push` for callboard/push, `/ext/example/demo` for example/demo.
 	 *
 	 * @param string $id Extension id.
 	 */
 	public static function rest_base( string $id ): string {
 		list( $namespace, $name ) = explode( '/', $id, 2 );
-		return 'callboard' === $namespace ? '/' . $name : '/' . $namespace . '/' . $name;
+		return 'callboard' === $namespace ? '/' . $name : '/ext/' . $namespace . '/' . $name;
+	}
+
+	/**
+	 * Where a third-party extension's routes were in 2.3.0, `/example/demo` for example/demo.
+	 *
+	 * Null for Callboard's own extensions, and for a namespace that one of Callboard's active
+	 * extensions uses as its name, since that path belongs to Callboard's route.
+	 *
+	 * @since 2.4.0
+	 *
+	 * @param string $id Extension id.
+	 */
+	public static function legacy_rest_base( string $id ): ?string {
+		list( $namespace, $name ) = explode( '/', $id, 2 );
+		if ( 'callboard' === $namespace || isset( self::active()[ 'callboard/' . $namespace ] ) ) {
+			return null;
+		}
+		return '/' . $namespace . '/' . $name;
 	}
 
 	/**
 	 * Whether a REST route belongs to an extension that declared it. Privacy lets these through for
 	 * signed-out visitors; the route's own permission callback still applies the gate.
 	 *
-	 * @param string $route Route path, such as /callboard/v1/example/demo/ping.
+	 * @param string $route Route path, such as /callboard/v1/ext/example/demo/ping.
 	 */
 	public static function is_extension_route( string $route ): bool {
 		foreach ( self::active() as $id => $extension ) {
-			if ( $extension['rest'] && str_starts_with( $route, '/callboard/v1' . self::rest_base( $id ) . '/' ) ) {
-				return true;
+			if ( ! $extension['rest'] ) {
+				continue;
+			}
+			foreach ( array( self::rest_base( $id ), self::legacy_rest_base( $id ) ) as $base ) {
+				if ( null !== $base && str_starts_with( $route, '/callboard/v1' . $base . '/' ) ) {
+					return true;
+				}
 			}
 		}
 		return false;
