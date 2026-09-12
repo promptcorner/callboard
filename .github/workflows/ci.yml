@@ -61,6 +61,7 @@ jobs:
               - '**.css'
               - '**.json'
               - 'templates/**'
+              - 'site/**'
               - 'pwa/**'
               - 'readme.txt'
               - '.distignore'

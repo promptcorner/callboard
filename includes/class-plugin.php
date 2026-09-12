@@ -42,9 +42,13 @@ final class Plugin {
 	}
 
 	/**
-	 * After an update: drop cached data shaped by the old version and refresh the app files.
+	 * After an update: add any missing roles, drop cached data shaped by the old version and refresh the app files.
 	 */
 	public static function maybe_upgrade(): void {
+		// Checked apart from the plugin version, so a site that already has this version still gets the roles.
+		if ( (int) get_option( Roles::OPTION ) < Roles::VERSION ) {
+			Roles::install();
+		}
 		if ( get_option( 'callboard_version' ) === CALLBOARD_VERSION ) {
 			return;
 		}
@@ -55,13 +59,14 @@ final class Plugin {
 	}
 
 	/**
-	 * Activation: register types, write PWA files, import anything waiting.
+	 * Activation: add roles, register types, write PWA files, import anything waiting.
 	 *
 	 * @since 2.3.0 Accepts `$network_wide`, and sets up every site of a network.
 	 *
 	 * @param bool $network_wide Whether the plugin is being activated for the whole network.
 	 */
 	public static function activate( bool $network_wide = false ): void {
+		Roles::install();
 		Post_Types::register();
 		if ( is_multisite() && $network_wide ) {
 			foreach ( get_sites(
@@ -141,6 +146,7 @@ final class Plugin {
 	 * Remove the current site's options, cached data and generated files.
 	 */
 	private static function uninstall_site(): void {
+		Roles::uninstall();
 		if ( ! Pwa::serves_files() ) {
 			foreach ( array( 'sw.js', 'manifest.json' ) as $file ) {
 				// Only the copies Callboard wrote: another plugin may own a file with the same name.

@@ -64,7 +64,7 @@ final class Calls {
 				'supports'            => array( 'title', 'editor' ),
 				'rewrite'             => false,
 				'has_archive'         => false,
-				'capability_type'     => 'post',
+				'capability_type'     => Roles::CAPABILITY_TYPES[ self::TYPE ],
 				'map_meta_cap'        => true,
 			)
 		);
