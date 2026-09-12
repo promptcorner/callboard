@@ -197,11 +197,15 @@ Features are extensions: an id, a version, and named contribution points shared 
 
 | Name | Kind | What it does |
 | --- | --- | --- |
+| `callboard.apiVersion` | number | The extension contract's version: 1 |
 | `callboard.registerExtension( id, args )` | function | Register the page half of an extension PHP registered |
 | `callboard.unregisterExtension( id )` | function | Remove its client contributions |
-| `callboard.state` | object | The view, the set and track in the deck, position, duration, paused, loop, online |
+| `callboard.state` | object | The view, the playlist and track in the player bar, position, duration, paused, loop, online |
 | `callboard.commands` | object | `play`, `pause`, `seek`, `next`, `prev`, `goTo`, `display` |
-| `callboard.data( id )`, `callboard.run( command )`, `callboard.emit( event )`, `callboard.invalidate( point )` | functions | App data, extension commands and events, re-rendering |
+| `callboard.registerCommand( name, fn )` | function | Add a command named `namespace/name/command` for a registered extension |
+| `callboard.run( name, ...args )` | function | Run a command with arguments and return what it returns |
+| `callboard.data( id )`, `callboard.emit( name, detail )`, `callboard.invalidate( ...points )` | functions | An extension's app data, its own events, re-rendering |
+| `callboard.deprecated( name, { since, alternative, hint } )` | function | Log a deprecation warning once per name, in the shape of `@wordpress/deprecated` |
 | `callboard.ready`, `.view`, `.viewTeardown`, `.track`, `.play`, `.pause`, `.ended`, `.seek`, `.loop`, `.save`, `.unsave`, `.online`, `.offline` | `wp.hooks` actions | Also fired as `callboard:<event>` on `document`, which is how `callboard:track` and `callboard:view` have always arrived |
 | `callboard.slot.trackBadges`, `.slot.trackMeta`, `.slot.nowPlayingMeta`, `callboard.badge`, `callboard.beforePlay` | `wp.hooks` filters | The contribution points underneath the registry |
 
