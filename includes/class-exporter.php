@@ -125,7 +125,7 @@ final class Exporter {
 			$key    = self::track_key( $track->ID, $file );
 			$levels = (string) get_post_meta( $track->ID, '_callboard_levels', true );
 			$lyrics = get_post_meta( $track->ID, '_callboard_lyrics', true );
-			$notes  = get_post_meta( $track->ID, '_callboard_notes', true );
+			$notes  = Notes::get( (int) $track->ID );
 			$bpm    = (int) get_post_meta( $track->ID, '_callboard_bpm', true );
 
 			if ( '' !== $levels ) {
@@ -134,8 +134,16 @@ final class Exporter {
 			if ( is_array( $lyrics ) && $lyrics ) {
 				$out['lyrics'][ $key ] = array_values( $lyrics );
 			}
-			if ( is_array( $notes ) && $notes ) {
-				$out['notes'][ $key ] = array_values( $notes );
+			if ( $notes ) {
+				// Export keeps the portable {t,text,date} shape; author is site-local.
+				$out['notes'][ $key ] = array_map(
+					static fn( array $n ): array => array(
+						't'    => $n['t'],
+						'text' => $n['text'],
+						'date' => $n['date'],
+					),
+					$notes
+				);
 			}
 			if ( $bpm > 0 ) {
 				$out['tempo'][ $key ] = $bpm;

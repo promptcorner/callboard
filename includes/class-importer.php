@@ -187,8 +187,8 @@ final class Importer {
 			if ( isset( $tempo[ $video_id ] ) && is_numeric( $tempo[ $video_id ] ) ) {
 				update_post_meta( $track_id, '_callboard_bpm', self::clamp_bpm( (int) $tempo[ $video_id ] ) );
 			}
-			if ( ! empty( $notes[ $video_id ] ) && is_array( $notes[ $video_id ] ) && ! get_post_meta( $track_id, '_callboard_notes', true ) ) {
-				update_post_meta( $track_id, '_callboard_notes', self::sanitize_notes( $notes[ $video_id ] ) ); // Notes are edited in the admin; a folder only seeds them.
+			if ( ! empty( $notes[ $video_id ] ) && is_array( $notes[ $video_id ] ) && ! Notes::get( $track_id ) ) {
+				Notes::set( $track_id, $notes[ $video_id ] ); // Notes are edited in the admin; a folder only seeds them.
 			}
 		}
 

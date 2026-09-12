@@ -73,7 +73,7 @@ Design rules: animate only transform and opacity, never use font weight for stat
 | `_callboard_duration` | Seconds |
 | `_callboard_levels` | Loudness envelope, digits 0–9, ten per second. Drives the waveform and the filament, which auto-ranges to its own recent peak — rising at once, forgotten over ~6s — so a quiet reading lights it as fully as a loud mix. iPhones cannot analyse audio live |
 | `_callboard_lyrics`, `_callboard_lyrics_approved` | Timed lines from captions, shown after approval |
-| `_callboard_notes` | Director's notes with a time and date |
+| `callboard_note` comments on the track | Director's notes. Text is the comment body, the time into the track is `_callboard_at` comment meta, and author and date come from the comment. Legacy `_callboard_notes` post meta is still read as a fallback; `wp callboard migrate-notes` turns those arrays into comments |
 | `_callboard_bpm` | Tempo, for the count-in |
 | `_callboard_practice` | Anonymous practice counts per hour, written only while **Count practice** is on |
 | `_callboard_video_id`, `_callboard_source_url`, `_callboard_uploader` | Source. The uploader is also sent per track as `artist` — right for one playlist by one uploader, wrong for a set where every track differs |

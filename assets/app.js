@@ -864,7 +864,10 @@
 		noteShown = n;
 		nowTitle.classList.toggle( 'is-note', !! n );
 		if ( n ) {
-			setTitle( n.text, fmtDate( n.date ) );
+			const detail = [ n.author, fmtDate( n.date ) ]
+				.filter( Boolean )
+				.join( ' · ' );
+			setTitle( n.text, detail );
 		} else if ( i >= 0 ) {
 			setTitle( queue.tracks[ i ].title );
 		}
@@ -1940,7 +1943,12 @@
 		};
 		cueEls = cues.length
 			? cues.map( ( [ s, , text ] ) => item( s, text ) )
-			: notes.map( ( n ) => item( n.t, n.text, fmtDate( n.date ) ) );
+			: notes.map( ( n ) => {
+					const detail = [ n.author, fmtDate( n.date ) ]
+						.filter( Boolean )
+						.join( ' · ' );
+					return item( n.t, n.text, detail );
+			  } );
 		loadCues();
 	}
 	function syncLyrics( t ) {
