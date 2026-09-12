@@ -95,6 +95,21 @@ class Test_Callboard_Cue extends WP_UnitTestCase {
 	public function test_cue_is_registered_as_a_first_party_extension(): void {
 		$this->assertNotNull( callboard_get_extension( 'callboard/cue' ) );
 		$this->assertArrayHasKey( '/callboard/v1/cue', rest_get_server()->get_routes() );
+		$this->assertArrayHasKey( '/callboard/v1/cue/time', rest_get_server()->get_routes() );
+	}
+
+	public function test_the_clock_is_the_servers_own_and_anyone_who_can_view_the_site_reads_it(): void {
+		wp_set_current_user( 0 );
+		$request  = new WP_REST_Request( 'GET', '/callboard/v1/cue/time' );
+		$before   = (int) round( microtime( true ) * 1000 );
+		$response = rest_get_server()->dispatch( $request );
+		$after    = (int) round( microtime( true ) * 1000 );
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'no-store', $response->get_headers()['Cache-Control'] );
+		$now = $response->get_data()['now'];
+		$this->assertGreaterThanOrEqual( $before, $now );
+		$this->assertLessThanOrEqual( $after, $now );
 	}
 
 	public function test_setting_the_cue_needs_edit_posts(): void {
@@ -134,10 +149,54 @@ class Test_Callboard_Cue extends WP_UnitTestCase {
 		$this->assertSame( 200, $response->get_status() );
 		$this->assertSame( 'no-store', $response->get_headers()['Cache-Control'] );
 		$cue = $response->get_data();
-		$this->assertSame( array( 'seq', 'set', 'track', 'position', 'at' ), array_keys( $cue ) );
+		$this->assertSame( array( 'seq', 'set', 'track', 'position', 'at', 'start' ), array_keys( $cue ) );
 		$this->assertSame( $slug, $cue['set'] );
 		$this->assertSame( 2, $cue['track'] );
 		$this->assertSame( 12.3, $cue['position'] );
+		$this->assertNull( $cue['start'], 'a cue nobody asked to start has no start' );
+	}
+
+	public function test_a_start_is_kept_and_has_to_land_in_the_next_minute(): void {
+		$slug = $this->playlist();
+		$this->sign_in( 'editor' );
+		$now   = (int) round( microtime( true ) * 1000 );
+		$start = $now + 3000;
+
+		$cue = $this->post(
+			array(
+				'set'      => $slug,
+				'track'    => 0,
+				'position' => 30,
+				'start'    => $start,
+			)
+		);
+		$this->assertSame( 200, $cue->get_status() );
+		$this->assertSame( $start, $cue->get_data()['start'] );
+
+		wp_set_current_user( 0 );
+		$this->assertSame( $start, $this->get()->get_data()['start'], 'every phone reads the same moment' );
+
+		$this->sign_in( 'editor' );
+		foreach ( array( $now - 1000, $now + ( Cue::LEAD_IN + 1 ) * 1000 ) as $drifted ) {
+			$refused = $this->post(
+				array(
+					'set'   => $slug,
+					'track' => 0,
+					'start' => $drifted,
+				)
+			);
+			$this->assertSame( 400, $refused->get_status() );
+		}
+		$this->assertSame( $start, Cue::current()['start'], 'a refused start leaves the cue alone' );
+
+		// The next cue without one clears it: opening another track is not a start.
+		$this->post(
+			array(
+				'set'   => $slug,
+				'track' => 1,
+			)
+		);
+		$this->assertNull( Cue::current()['start'] );
 	}
 
 	public function test_each_change_increments_seq(): void {
@@ -195,6 +254,7 @@ class Test_Callboard_Cue extends WP_UnitTestCase {
 				'track'    => null,
 				'position' => 0.0,
 				'at'       => null,
+				'start'    => null,
 			),
 			$expired
 		);
@@ -266,11 +326,13 @@ class Test_Callboard_Cue extends WP_UnitTestCase {
 		wp_set_current_user( 0 );
 		$controls = callboard_get_slot( 'transport' );
 		$this->assertStringNotContainsString( 'id="cue-lead"', $controls );
+		$this->assertStringNotContainsString( 'id="cue-start"', $controls );
 		$this->assertStringContainsString( 'id="cue-follow"', $controls );
 		$data = Cue::app_data();
 		$this->assertFalse( $data['canLead'] );
 		$this->assertArrayNotHasKey( 'nonce', $data );
 		$this->assertStringEndsWith( '/callboard/v1/cue/', $data['api'] );
+		$this->assertStringEndsWith( '/callboard/v1/cue/time', $data['time'] );
 
 		$this->sign_in( 'subscriber' );
 		$this->assertStringNotContainsString( 'id="cue-lead"', callboard_get_slot( 'transport' ) );
@@ -278,6 +340,7 @@ class Test_Callboard_Cue extends WP_UnitTestCase {
 
 		$this->sign_in( 'editor' );
 		$this->assertStringContainsString( 'id="cue-lead"', callboard_get_slot( 'transport' ) );
+		$this->assertStringContainsString( 'id="cue-start"', callboard_get_slot( 'transport' ) );
 		$this->assertTrue( Cue::app_data()['canLead'] );
 	}
 }

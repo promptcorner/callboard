@@ -356,7 +356,7 @@ body.now-playing .lyrics{z-index:21;inset:0 0 auto 0;height:calc(100% - 190px - 
 .repeat-toggle .repeat-one{opacity:0}
 .repeat-toggle[data-mode="set"],.repeat-toggle[data-mode="one"]{color:var(--accent-text)}
 .repeat-toggle[data-mode="one"] .repeat-one{opacity:1}
-/* shared cue (callboard/cue): Lead and Follow on their own row under the transport in Now Playing */
+/* shared cue (callboard/cue): Lead, Together and Follow on their own row under the transport in Now Playing */
 .deck.is-expanded .deck-controls:has(.cue>:not([hidden])){flex-wrap:wrap;row-gap:var(--s2)}
 .cue{display:flex;justify-content:center;gap:var(--s2)}
 .deck.is-expanded .cue{order:1;flex-basis:100%}

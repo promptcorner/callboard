@@ -381,6 +381,9 @@
 	let looper = null, // the gapless loop, when one is running (see the A-B loop section)
 		looperCtx = null,
 		looperBuf = null; // { url, buffer }
+	let sked = null, // a scheduled start, when one is booked (see Scheduled start)
+		skedTimer = 0,
+		skedPause = false;
 	let played = false; // true once this session has played anything; before that the set button reads "Play all"
 	let queue = null,
 		i = -1,
@@ -811,8 +814,8 @@
 		if ( ! seeking && d ) {
 			setProgress( Math.min( playhead() / d, 1 ) );
 		}
-		if ( looper && ! audio.paused ) {
-			paint(); // the element's clock is not the ear's while the looper runs
+		if ( ( looper || sked ) && ! audio.paused ) {
+			paint(); // the element's clock is not the ear's while a buffer plays
 		}
 		progressRaf = audio.paused ? 0 : requestAnimationFrame( follow );
 	};
@@ -913,6 +916,7 @@
 		if ( ! queue?.tracks.length ) {
 			return;
 		}
+		skedStop();
 		i = ( n + queue.tracks.length ) % queue.tracks.length;
 		const t = queue.tracks[ i ];
 		audio.src = t.url;
@@ -1326,6 +1330,11 @@
 		releaseLock?.();
 		releaseLock = null;
 		looperStop();
+		if ( skedPause ) {
+			skedPause = false;
+			return; // a scheduled start pausing the element before it takes the sound over
+		}
+		skedStop();
 	} );
 	audio.addEventListener( 'play', () => {
 		if ( loop ) {
@@ -1564,6 +1573,13 @@
 	const canLoopGapless = () =>
 		'AudioContext' in window && document.visibilityState === 'visible';
 	const playhead = () => {
+		if ( sked?.src ) {
+			// a start still to come reads as the position it will start from
+			return (
+				sked.offset +
+				Math.max( 0, sked.ctx.currentTime - sked.startedAt )
+			);
+		}
 		if ( ! looper?.src || ! loop ) {
 			return audio.currentTime; // no looper yet, or its audio is still being fetched and decoded
 		}
@@ -1651,6 +1667,106 @@
 			looperStop();
 		}
 	} );
+
+	// ---- Scheduled start. Calling play() lands wherever the element gets to, tens of milliseconds
+	// either way, which between two phones is an audible flam. A buffer source started against the
+	// audio clock lands on the sample, so phones that agree on the time sound together with no link
+	// between them. As with the gapless loop, the element plays muted underneath for the lock screen,
+	// what plays next and the progress line, and takes the sound back where the ear left off.
+	async function skedStart( inSeconds, from ) {
+		if ( i < 0 || ! ( 'AudioContext' in window ) ) {
+			return false;
+		}
+		const url = audio.currentSrc || audio.src;
+		const asked = performance.now();
+		const ticket = { pending: true };
+		skedStop();
+		looperStop();
+		if ( ! audio.paused ) {
+			skedPause = true; // our own pause, not the listener's business
+			audio.pause();
+		}
+		audio.muted = true;
+		sked = ticket;
+		try {
+			looperCtx = looperCtx || new AudioContext();
+			if ( looperCtx.state === 'suspended' ) {
+				await looperCtx.resume();
+			}
+			if ( looperBuf?.url !== url ) {
+				const bytes = await ( await fetch( url ) ).arrayBuffer();
+				looperBuf = {
+					url,
+					buffer: await looperCtx.decodeAudioData( bytes ),
+				};
+			}
+		} catch {
+			return skedGiveUp( ticket );
+		}
+		if (
+			sked !== ticket ||
+			looperCtx.state !== 'running' // autoplay policy kept the context shut: never mute the element for a silent start
+		) {
+			return skedGiveUp( ticket );
+		}
+		// Fetching and decoding took time, so the moment asked for is that much nearer. A phone that
+		// is late to it does not start late: it comes in where everyone else already is.
+		const wait = inSeconds - ( performance.now() - asked ) / 1000;
+		const offset = from + Math.max( 0, -wait );
+		if ( offset >= looperBuf.buffer.duration ) {
+			return skedGiveUp( ticket ); // the track would already be over
+		}
+		const src = looperCtx.createBufferSource();
+		src.buffer = looperBuf.buffer;
+		src.connect( analyser || looperCtx.destination );
+		const when = looperCtx.currentTime + Math.max( 0, wait );
+		src.start( when, offset );
+		src.addEventListener( 'ended', () => {
+			if ( sked?.src === src ) {
+				skedStop();
+			}
+		} );
+		sked = { ctx: looperCtx, src, startedAt: when, offset };
+		audio.currentTime = offset;
+		clearTimeout( skedTimer );
+		skedTimer = setTimeout(
+			() => audio.play().catch( () => {} ),
+			Math.max( 0, wait * 1000 )
+		);
+		return true;
+	}
+	// Drop a start that cannot be made, leaving the element exactly as it was found.
+	function skedGiveUp( ticket ) {
+		if ( sked === ticket ) {
+			sked = null;
+			audio.muted = false;
+		}
+		return false;
+	}
+	function skedStop() {
+		if ( ! sked ) {
+			return;
+		}
+		const pos = sked.src ? playhead() : null;
+		try {
+			sked.src?.stop();
+		} catch {}
+		sked = null; // before the seek below, which would otherwise come straight back here
+		clearTimeout( skedTimer );
+		skedTimer = 0;
+		audio.muted = false;
+		if ( pos !== null && isFinite( pos ) ) {
+			audio.currentTime = pos;
+		}
+	}
+	// A seek is someone leaving the moment everyone else is in. Putting the element where the
+	// scheduled sound already is, which this does itself, is not one.
+	audio.addEventListener( 'seeking', () => {
+		if ( sked && Math.abs( audio.currentTime - playhead() ) > 1 ) {
+			skedStop();
+		}
+	} );
+
 	const loopBand = $( 'loop-band' ),
 		loopChip = $( 'loop' );
 	const trackDur = () => audio.duration || queue?.tracks[ i ]?.duration || 0;
@@ -3775,6 +3891,18 @@
 			startSet( set, index, { at, play } );
 			return true;
 		},
+		// Start the track in the deck at a moment rather than now: `inSeconds` from this call,
+		// `from` seconds in. Phones that agree on the time sound together.
+		startAt( inSeconds, from = 0 ) {
+			if (
+				i < 0 ||
+				! Number.isFinite( +inSeconds ) ||
+				! Number.isFinite( +from )
+			) {
+				return Promise.resolve( false );
+			}
+			return skedStart( +inSeconds, Math.max( 0, +from ) );
+		},
 		display,
 	} );
 
@@ -4093,7 +4221,9 @@
 
 // ---- callboard/cue. The shared cue. With Lead on, each track the director opens, and each seek, is sent
 // to the site. With Follow on, the page reads the cue every 2 seconds while it is visible and opens that
-// track, paused. The PHP half is includes/extensions/class-cue.php.
+// track, paused. Together sends a cue with a start: a moment on the site's clock, which every phone turns
+// into its own by sampling callboard/v1/cue/time, and plays. Nothing connects the phones to each other, as
+// nothing connects the cars in a light show. The PHP half is includes/extensions/class-cue.php.
 ( () => {
 	const cb = window.callboard;
 	const config = cb?.data( 'callboard/cue' );
@@ -4102,7 +4232,10 @@
 	}
 	const POLL = 2000; // how often a following page reads the cue
 	const RECHECK = 15000; // the shortest gap between reads while not following
-	let cue = null; // the last cue read or sent: { seq, set, track, position, at }
+	const SAMPLES = 5; // round trips to the clock, of which the quickest is kept
+	const CLOCK_LIFE = 10 * 60 * 1000; // how long a reading of the clock is trusted for
+	const IN = 3000; // the lead-in Together gives every phone to fetch, decode and be ready
+	let cue = null; // the last cue read or sent: { seq, set, track, position, at, start }
 	let leading = false;
 	let following = false;
 	let timer = 0;
@@ -4110,12 +4243,119 @@
 	let checked = 0;
 	let busy = null;
 	let leadButton = null;
+	let startButton = null;
 	let followButton = null;
+	let offset = 0; // milliseconds this phone's clock is behind the site's
+	let spread = Infinity; // the quickest round trip the offset came from
+	let clockAt = 0;
+	let clocking = null;
+	let started = 0; // the sequence number of the last cue this phone started on
 
 	const live = () => !! cue?.set;
 	const visible = () => document.visibilityState === 'visible';
 	const headers = ( extra = {} ) =>
 		config.nonce ? { ...extra, 'X-WP-Nonce': config.nonce } : extra;
+
+	// The site's clock, read the way NTP reads one: several round trips, and the offset kept is the one
+	// from the quickest, since a slow trip is the one the network has stretched.
+	async function clock() {
+		for ( let n = 0; n < SAMPLES; n++ ) {
+			const sent = Date.now();
+			let now = 0;
+			try {
+				const res = await fetch( config.time, {
+					headers: headers(),
+					credentials: 'same-origin',
+					cache: 'no-store',
+				} );
+				if ( ! res.ok ) {
+					break;
+				}
+				now = ( await res.json() )?.now;
+			} catch {
+				break;
+			}
+			const back = Date.now();
+			const trip = back - sent;
+			if ( Number.isFinite( now ) && trip < spread ) {
+				spread = trip;
+				offset = now + trip / 2 - back; // the site's clock, where this phone's hands are now
+				clockAt = back;
+			}
+		}
+		clocking = null;
+		return clockAt > 0;
+	}
+	function clocked() {
+		if ( clockAt && Date.now() - clockAt < CLOCK_LIFE ) {
+			return Promise.resolve( true );
+		}
+		spread = Infinity; // a reading this old is worth less than a fresh slow one
+		clocking = clocking || clock();
+		return clocking;
+	}
+	const siteNow = () => Date.now() + offset;
+	// Whether a start this phone knows about is still to come, or has only just gone by.
+	const waiting = () => !! cue?.start && siteNow() < cue.start + 1000;
+
+	// Play the cue at the moment it names. A phone that arrives after that moment does not start late: it
+	// comes in where the others already are.
+	async function begin() {
+		if ( ! cue?.start || cue.seq === started ) {
+			return false;
+		}
+		started = cue.seq;
+		const wanted = cue.seq;
+		if ( ! ( await clocked() ) ) {
+			return false;
+		}
+		const state = cb.state;
+		if ( state.set?.slug !== cue.set || state.index !== cue.track ) {
+			const opened = await cb.commands.goTo( cue.set, cue.track, {
+				at: cue.position,
+				play: false,
+			} );
+			if ( ! opened ) {
+				return false;
+			}
+		}
+		if ( cue.seq !== wanted ) {
+			return false; // a newer cue arrived while this one was being opened
+		}
+		const wait = ( cue.start - siteNow() ) / 1000;
+		return cb.commands.startAt( wait, cue.position + Math.max( 0, -wait ) );
+	}
+
+	// Together: the track in the deck, from where it stands, on every phone following, IN from now.
+	async function together() {
+		const set = cb.state.set;
+		if ( ! config.canLead || ! set || cb.state.index < 0 ) {
+			return false;
+		}
+		if ( ! ( await clocked() ) ) {
+			return false;
+		}
+		try {
+			const res = await fetch( config.api, {
+				method: 'POST',
+				headers: headers( { 'Content-Type': 'application/json' } ),
+				credentials: 'same-origin',
+				body: JSON.stringify( {
+					set: set.slug,
+					track: cb.state.index,
+					position: cb.state.position,
+					start: Math.round( siteNow() ) + IN,
+				} ),
+			} );
+			if ( ! res.ok ) {
+				return false;
+			}
+			received( await res.json() );
+		} catch {
+			return false;
+		}
+		return begin(); // the director's own phone is one of the phones
+	}
 
 	function paint() {
 		leadButton?.setAttribute( 'aria-pressed', String( leading ) );
@@ -4125,8 +4365,12 @@
 		}
 	}
 
-	// Open the cued track, or only seek when that track is already in the player.
+	// Open the cued track, or only seek when that track is already in the player. A cue with a start
+	// plays it at that moment instead.
 	function move() {
+		if ( cue.start && cue.seq !== started ) {
+			return begin();
+		}
 		const state = cb.state;
 		if ( state.set?.slug === cue.set && state.index === cue.track ) {
 			cb.commands.seek( cue.position );
@@ -4145,7 +4389,7 @@
 		}
 		paint();
 		/**
-		 * The page read or sent a cue it had not seen. Detail: { seq, set, track, position, at }.
+		 * The page read or sent a cue it had not seen. Detail: { seq, set, track, position, at, start }.
 		 */
 		cb.emit( 'callboard.cue.changed', Object.freeze( { ...cue } ) );
 	}
@@ -4211,7 +4455,9 @@
 		// Loading a track fires a seek straight after it; send once for both.
 		sendTimer = setTimeout( async () => {
 			const set = cb.state.set;
-			if ( ! leading || ! set || cb.state.index < 0 ) {
+			// Opening the track a start names, and starting it, move this phone's own playhead. Those
+			// are the cue being obeyed, not a new one.
+			if ( ! leading || ! set || cb.state.index < 0 || waiting() ) {
 				return;
 			}
 			try {
@@ -4236,27 +4482,32 @@
 	}
 
 	/**
-	 * Shared cue, as an extension: Lead and Follow in the transport controls, and a poll while following.
+	 * Shared cue, as an extension: Lead, Together and Follow in the transport controls, and a poll while
+	 * following.
 	 */
 	cb.registerExtension( 'callboard/cue', {
 		version: '1.0.0',
 		apiVersion: 1,
 		setup() {
 			leadButton = document.getElementById( 'cue-lead' );
+			startButton = document.getElementById( 'cue-start' );
 			followButton = document.getElementById( 'cue-follow' );
 			leadButton?.addEventListener( 'click', () => {
 				leading = !! config.canLead && ! leading;
 				if ( leading ) {
 					following = false;
+					clocked(); // the clock is wanted before Together is pressed, not after
 					schedule();
 					send();
 				}
 				paint();
 			} );
+			startButton?.addEventListener( 'click', together );
 			followButton?.addEventListener( 'click', async () => {
 				following = ! following;
 				paint();
 				if ( following ) {
+					clocked();
 					await check();
 					if ( following && live() ) {
 						move();

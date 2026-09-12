@@ -3,9 +3,11 @@
  * Shared cue: the director opens a track and every phone with Follow on opens the same one.
  *
  * The cue is stored in one option: the playlist slug, the track's position in the playlist, a
- * playhead position in seconds, a sequence number and the time it was set. Anyone who can view the
- * site reads it from `GET callboard/v1/cue/`. Users who can edit calls change it with a POST. The
- * page side is the callboard/cue section of assets/app.js.
+ * playhead position in seconds, a sequence number, the time it was set and, when the director asked
+ * for it, the moment the track starts. Anyone who can view the site reads it from
+ * `GET callboard/v1/cue/`. Users who can edit calls change it with a POST. `GET
+ * callboard/v1/cue/time` answers with the server's clock, which every phone samples so it can turn
+ * that moment into its own. The page side is the callboard/cue section of assets/app.js.
  *
  * @package Callboard
  * @since 2.4.0
@@ -36,6 +38,12 @@ final class Cue {
 	public const LIFETIME = 2 * HOUR_IN_SECONDS;
 
 	/**
+	 * Seconds ahead of now that a scheduled start may be set. Long enough for the slowest phone to
+	 * read the cue and decode the track, short enough that a stale clock cannot book tomorrow.
+	 */
+	public const LEAD_IN = 60;
+
+	/**
 	 * Register with the extension registry.
 	 *
 	 * @since 2.4.0
@@ -54,7 +62,8 @@ final class Cue {
 				'slots'       => array(
 					'transport' => array( self::class, 'controls' ),
 				),
-				// Two entries for one route, so the registry wraps each method's permission check.
+				// Two entries for one route, so the registry wraps each method's permission check, and
+				// the clock alongside them.
 				'rest'        => array(
 					array(
 						'/',
@@ -90,7 +99,19 @@ final class Cue {
 									'minimum' => 0,
 									'default' => 0,
 								),
+								'start'    => array(
+									'type'    => 'number',
+									'minimum' => 0,
+									'default' => 0,
+								),
 							),
+						),
+					),
+					array(
+						'/time',
+						array(
+							'methods'  => 'GET',
+							'callback' => array( self::class, 'time' ),
 						),
 					),
 				),
@@ -133,16 +154,17 @@ final class Cue {
 	}
 
 	/**
-	 * What the page needs: whether this user can lead, the route, and a REST nonce for signed-in users.
+	 * What the page needs: whether this user can lead, the routes, and a REST nonce for signed-in users.
 	 *
 	 * @since 2.4.0
 	 *
-	 * @return array{canLead: bool, api: string, nonce?: string}
+	 * @return array{canLead: bool, api: string, time: string, nonce?: string}
 	 */
 	public static function app_data(): array {
 		$data = array(
 			'canLead' => self::can_lead(),
 			'api'     => rest_url( 'callboard/v1/cue/' ),
+			'time'    => rest_url( 'callboard/v1/cue/time' ),
 		);
 		// @todo Use the core REST nonce from app data once #145 adds it.
 		if ( is_user_logged_in() ) {
@@ -152,10 +174,10 @@ final class Cue {
 	}
 
 	/**
-	 * The Lead and Follow buttons in the player's transport controls.
+	 * The Lead, Together and Follow buttons in the player's transport controls.
 	 *
-	 * Lead is only rendered for users who can set the cue. Follow starts hidden; the script shows it
-	 * while a cue is set.
+	 * Lead and Together are only rendered for users who can set the cue. Follow starts hidden; the
+	 * script shows it while a cue is set.
 	 *
 	 * @since 2.4.0
 	 */
@@ -163,18 +185,20 @@ final class Cue {
 		$html = '<div class="cue">';
 		if ( self::can_lead() ) {
 			$html .= '<button type="button" class="cue-toggle" id="cue-lead" aria-pressed="false" title="' . esc_attr__( 'Send the track you open to everyone following', 'callboard' ) . '">' . esc_html__( 'Lead', 'callboard' ) . '</button>';
+			$html .= '<button type="button" class="cue-toggle" id="cue-start" title="' . esc_attr__( 'Start this track on every phone following, at the same moment', 'callboard' ) . '">' . esc_html__( 'Together', 'callboard' ) . '</button>';
 		}
 		$html .= '<button type="button" class="cue-toggle" id="cue-follow" aria-pressed="false" hidden title="' . esc_attr__( 'Open the track the director opens', 'callboard' ) . '">' . esc_html__( 'Follow', 'callboard' ) . '</button>';
 		return $html . '</div>';
 	}
 
 	/**
-	 * The current cue. Once LIFETIME has passed since it was set, `set`, `track` and `at` are null.
+	 * The current cue. Once LIFETIME has passed since it was set, `set`, `track`, `at` and `start`
+	 * are null.
 	 *
 	 * @since 2.4.0
 	 *
 	 * @param int|null $now Current Unix time in milliseconds, for tests.
-	 * @return array{seq: int, set: string|null, track: int|null, position: float, at: int|null}
+	 * @return array{seq: int, set: string|null, track: int|null, position: float, at: int|null, start: int|null}
 	 */
 	public static function current( ?int $now = null ): array {
 		$now    = $now ?? self::now();
@@ -186,6 +210,7 @@ final class Cue {
 			'track'    => null,
 			'position' => 0.0,
 			'at'       => null,
+			'start'    => null,
 		);
 		$at     = (int) ( $stored['at'] ?? 0 );
 		if ( ! empty( $stored['set'] ) && $at > 0 && $now - $at < self::LIFETIME * 1000 ) {
@@ -193,8 +218,23 @@ final class Cue {
 			$cue['track']    = (int) ( $stored['track'] ?? 0 );
 			$cue['position'] = (float) ( $stored['position'] ?? 0 );
 			$cue['at']       = $at;
+			$cue['start']    = empty( $stored['start'] ) ? null : (int) $stored['start'];
 		}
 		return $cue;
+	}
+
+	/**
+	 * REST callback for GET time: the server's clock, in milliseconds.
+	 *
+	 * A phone asks several times, keeps the round trip that came back quickest and takes its own
+	 * distance from this clock from that one, the way NTP does. Nothing here is cached or stored.
+	 *
+	 * @since 2.4.0
+	 */
+	public static function time(): WP_REST_Response {
+		$response = new WP_REST_Response( array( 'now' => self::now() ), 200 );
+		$response->header( 'Cache-Control', 'no-store' );
+		return $response;
 	}
 
 	/**
@@ -219,9 +259,13 @@ final class Cue {
 	/**
 	 * REST callback for POST: set the cue to a track in a published playlist.
 	 *
+	 * `start` is the moment the track begins, in milliseconds on this server's clock. It has to land
+	 * in the next LEAD_IN seconds: a start already gone by, or further off than the director could
+	 * mean, is a clock that has drifted rather than a cue.
+	 *
 	 * @since 2.4.0
 	 *
-	 * @param WP_REST_Request $request Request with `set`, `track` and `position`.
+	 * @param WP_REST_Request $request Request with `set`, `track`, `position` and `start`.
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public static function write( WP_REST_Request $request ) {
@@ -232,13 +276,28 @@ final class Cue {
 			return new WP_Error( 'callboard_cue_invalid', __( 'That track is not in a published playlist.', 'callboard' ), array( 'status' => 400 ) );
 		}
 
+		$now   = self::now();
+		$start = (int) round( (float) $request->get_param( 'start' ) );
+		if ( $start && ( $start <= $now || $start > $now + self::LEAD_IN * 1000 ) ) {
+			return new WP_Error(
+				'callboard_cue_start_invalid',
+				sprintf(
+					/* translators: %d: number of seconds. */
+					__( 'A start has to be within the next %d seconds.', 'callboard' ),
+					self::LEAD_IN
+				),
+				array( 'status' => 400 )
+			);
+		}
+
 		$previous = get_option( self::OPTION );
 		$cue      = array(
 			'seq'      => (int) ( is_array( $previous ) ? ( $previous['seq'] ?? 0 ) : 0 ) + 1,
 			'set'      => $slug,
 			'track'    => $track,
 			'position' => round( max( 0.0, (float) $request->get_param( 'position' ) ), 1 ),
-			'at'       => self::now(),
+			'at'       => $now,
+			'start'    => $start ? $start : null,
 		);
 		update_option( self::OPTION, $cue, false );
 		return new WP_REST_Response( $cue, 200 );

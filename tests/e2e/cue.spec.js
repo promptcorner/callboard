@@ -1,8 +1,10 @@
 /**
  * Shared cue (callboard/cue): a director with Lead on opens a track, and a phone with Follow on opens the
- * same one. The director is the signed-in admin; the follower is a second, signed-out browser context.
+ * same one. Together goes further and sounds them together. The director is the signed-in admin; the
+ * follower is a second, signed-out browser context.
  */
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
+const { wav, fulfillWithRanges } = require( './utils/wav' );
 
 const base = new URL( process.env.WP_BASE_URL || 'http://localhost:8889' );
 const isCue = ( url ) =>
@@ -294,10 +296,107 @@ test.describe( 'Shared cue', () => {
 				'track',
 				'position',
 				'at',
+				'start',
 			] );
 		} finally {
 			await context.close();
 			await saveSignIn( false );
+		}
+	} );
+} );
+
+test.describe( 'Playing together', () => {
+	// The site's service worker would answer audio requests itself, where page.route() can't see them.
+	test.use( { serviceWorkers: 'block' } );
+
+	// Record every scheduled buffer start, with the two clocks needed to put it on the wall: the audio
+	// clock the start was booked against, and the one both phones share on this machine.
+	const recordStarts = ( context ) =>
+		context.addInitScript( () => {
+			window.starts = [];
+			const createBufferSource =
+				AudioContext.prototype.createBufferSource;
+			AudioContext.prototype.createBufferSource =
+				function recordScheduled() {
+					const source = createBufferSource.call( this );
+					const start = source.start.bind( source );
+					source.start = ( when = 0, offset = 0 ) => {
+						window.starts.push( {
+							wall:
+								Date.now() + ( when - this.currentTime ) * 1000,
+							offset,
+						} );
+						return start( when, offset );
+					};
+					return source;
+				};
+		} );
+
+	// A tone the headless browser can decode, in place of the fixture's mp3.
+	const serveAudio = ( context ) =>
+		context.route( /\.mp3(\?|$)/, ( route ) =>
+			fulfillWithRanges( route, wav( { seconds: 30 } ) )
+		);
+
+	test( 'Together starts the track on two phones at the same moment', async ( {
+		page,
+		browser,
+	} ) => {
+		await serveAudio( page.context() );
+		await recordStarts( page.context() );
+		await lead( page );
+
+		const context = await signedOut( browser );
+		await serveAudio( context );
+		await recordStarts( context );
+		const follower = await context.newPage();
+		try {
+			await follower.goto( '/demo-set/' );
+			await follower.locator( '.track' ).nth( 4 ).click();
+			await openNowPlaying( follower );
+			await follower.locator( '#cue-follow' ).click();
+			await expect
+				.poll( () => state( follower ) )
+				.toMatchObject( { set: 'demo-set', index: 0, paused: true } );
+
+			// The director calls it. Both phones read the site's clock, so both book the same moment.
+			await openNowPlaying( page );
+			await page.locator( '#cue-start' ).click();
+			const scheduled = ( target ) =>
+				expect
+					.poll(
+						() => target.evaluate( () => window.starts.length ),
+						{
+							timeout: 15000,
+						}
+					)
+					.toBeGreaterThan( 0 );
+			await scheduled( page );
+			await scheduled( follower );
+
+			const [ director ] = await page.evaluate( () => window.starts );
+			const [ cast ] = await follower.evaluate( () => window.starts );
+			// Where the track's own zero falls on the wall. Two phones sounding together agree on it,
+			// whether one of them booked the moment or came in late and further into the track.
+			const zero = ( start ) => start.wall - start.offset * 1000;
+			// Thirty milliseconds of spread is an audible flam; these two share a machine's clock.
+			expect( Math.abs( zero( director ) - zero( cast ) ) ).toBeLessThan(
+				30
+			);
+
+			// Both are sounding from the buffer, with the element muted underneath as the loop does it.
+			await expect
+				.poll( () =>
+					follower.locator( '#audio' ).evaluate( ( a ) => a.muted )
+				)
+				.toBe( true );
+			await expect
+				.poll( () =>
+					follower.evaluate( () => window.callboard.state.position )
+				)
+				.toBeGreaterThan( 0 );
+		} finally {
+			await context.close();
 		}
 	} );
 } );

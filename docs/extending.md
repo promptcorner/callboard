@@ -162,7 +162,9 @@ Tracks and sets in event details are frozen copies, so changing one has no effec
 | `loop` | `{ a, b }` or `null` |
 | `online` | `navigator.onLine` |
 
-`callboard.commands` moves it: `play()`, `pause()`, `seek( seconds )`, `next()`, `prev()`, `goTo( slug, index = 0, { at = 0, play = true } )` (opens the set if it is not on screen, and resolves to `true` or `false`), and `display( text | null, { detail, className } )`, which puts text on the deck's title line until it is called with `null`.
+`callboard.commands` moves it: `play()`, `pause()`, `seek( seconds )`, `next()`, `prev()`, `goTo( slug, index = 0, { at = 0, play = true } )` (opens the set if it is not on screen, and resolves to `true` or `false`), `startAt( inSeconds, from = 0 )`, and `display( text | null, { detail, className } )`, which puts text on the deck's title line until it is called with `null`.
+
+`startAt` starts the track in the deck at a moment rather than now: `inSeconds` from the call, `from` seconds into the track. It plays a buffer started against `AudioContext.currentTime`, which lands on the sample where `play()` lands tens of milliseconds either way, so phones that agree on the time sound together. The element plays muted underneath, as it does for the gapless loop, and takes the sound back where the ear left off when the start ends, the track changes, somebody seeks or somebody pauses. Fetching and decoding are counted against the wait, and a phone that is late to the moment comes in where the others already are rather than starting late. It resolves to `false` where there is no track, no Web Audio, or the moment has passed the end of the track.
 
 An extension adds commands with the `commands` argument or `callboard.registerCommand( 'ns/name/command', fn )`, and anybody runs them with `callboard.run( 'ns/name/command', …args )`.
 
@@ -176,7 +178,7 @@ The rest of `window.callboard`: `version` (the plugin), `hooks` (`wp.hooks`), `e
 | `callboard/quality` | Track data `quality`, app data `format`, and a Now Playing item (class `quality-pill`) | Now Playing shows no quality |
 | `callboard/badging` | An app badge contribution of zero, so opening the app clears what a notification set | The page leaves the badge alone |
 | `callboard/practice` | App data `url` and, for signed-in users, `nonce`; a REST route, `POST callboard/v1/practice/counts`; and listeners on the `track`, `loop`, `play`, `pause` and `ended` events. Registered only when the **Count practice** setting is on | Nothing is counted or sent |
-| `callboard/cue` | App data `canLead`, `api` and, for signed-in users, `nonce`; Lead and Follow buttons in the transport controls; a REST route, `callboard/v1/cue/`; listeners on the `track`, `seek` and `view` events; and the `callboard.cue.changed` event (see [The shared cue](#the-shared-cue)) | No buttons, and the page never reads or sends the cue |
+| `callboard/cue` | App data `canLead`, `api`, `time` and, for signed-in users, `nonce`; Lead, Together and Follow buttons in the transport controls; two REST routes, `callboard/v1/cue/` and `callboard/v1/cue/time`; listeners on the `track`, `seek` and `view` events; and the `callboard.cue.changed` event (see [The shared cue](#the-shared-cue)) | No buttons, and the page never reads or sends the cue |
 
 They live in `includes/extensions/` and in their own sections at the bottom of `assets/app.js`, where they can reach `window.callboard` and nothing else. To replace one:
 
@@ -202,9 +204,16 @@ More of Callboard's features become extensions in later releases: offline saving
 
 A director turns on Lead in Now Playing, and each track they open becomes the cue, as does each seek (except the jumps a running A-B loop makes). A phone with Follow on reads the cue every 2 seconds while the page is visible and opens that track, paused. Follow only shows while a cue is set.
 
-- `GET callboard/v1/cue/` returns `{ seq, set, track, position, at }`. `seq` goes up by one on every change. `set` is the playlist's slug, `track` is the track's index in the playlist (from 0), `position` is in seconds, and `at` is when the cue was set, in milliseconds on the server's clock. Two hours after the last change, `set`, `track` and `at` are `null`. With `?since=<seq>`, a cue that is still set and has not changed answers `204` with no body. Anyone who can view the site can read it.
-- `POST callboard/v1/cue/` with `set`, `track` and `position` sets the cue. It needs `edit_posts`. A track that is not in a published playlist gets a `400`.
+- `GET callboard/v1/cue/` returns `{ seq, set, track, position, at, start }`. `seq` goes up by one on every change. `set` is the playlist's slug, `track` is the track's index in the playlist (from 0), `position` is in seconds, `at` is when the cue was set and `start` is when the track begins, both in milliseconds on the server's clock and `start` `null` unless the director asked for one. Two hours after the last change, `set`, `track`, `at` and `start` are `null`. With `?since=<seq>`, a cue that is still set and has not changed answers `204` with no body. Anyone who can view the site can read it.
+- `POST callboard/v1/cue/` with `set`, `track`, `position` and `start` sets the cue. It needs `edit_posts`. A track that is not in a published playlist gets a `400`, and so does a `start` that is not within the next `Cue::LEAD_IN` seconds, which is a clock that has drifted rather than a cue. A cue sent without a `start` clears the last one: opening another track is not a start.
+- `GET callboard/v1/cue/time` returns `{ now }`, the server's clock in milliseconds. Anyone who can view the site can read it, and nothing about it is cached.
 - `callboard.cue.changed` fires with the same object each time the page reads or sends a cue it had not seen, including the empty one when a cue runs out.
+
+### Playing together
+
+Together, beside Lead, sends the track in the deck with a `start` three seconds off, and every phone following plays it then. The director's own phone is one of them: it holds where it is and comes back in on the moment, which is what a stand-by is. Anything that leaves that moment — a seek, a pause, another track — hands the sound back to the audio element where the ear left off. Nothing connects the phones to each other, the way nothing connects the cars in a multi-car light show: the content is already on the phone, the clocks agree, and the start time is written down.
+
+A phone agrees the clock by asking `callboard/v1/cue/time` five times and keeping the offset from the round trip that came back quickest, since a slow trip is one the network stretched, which is how NTP picks a sample. That reading stands for ten minutes. Turning Lead or Follow on takes it, so the clock is in hand before a start arrives rather than after. The moment itself is handed to [`callboard.commands.startAt`](#state-and-commands), which schedules the sound against the audio clock: thirty milliseconds of spread between two phones is an audible flam, and `play()` cannot promise better than that.
 
 ## The hooks underneath
 
