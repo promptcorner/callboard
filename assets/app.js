@@ -117,7 +117,9 @@
 	( window.requestIdleCallback || ( ( f ) => setTimeout( f, 1000 ) ) )(
 		() => {
 			if ( 'serviceWorker' in navigator ) {
-				navigator.serviceWorker.register( '/sw.js' ).catch( () => {} );
+				navigator.serviceWorker
+					.register( G.worker.url, { scope: G.worker.scope } )
+					.catch( () => {} );
 			}
 		}
 	);

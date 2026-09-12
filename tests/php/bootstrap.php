@@ -23,6 +23,11 @@ if ( ! defined( 'WP_TESTS_CONFIG_FILE_PATH' ) ) {
 	define( 'WP_TESTS_CONFIG_FILE_PATH', __DIR__ . '/wp-tests-config.php' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- core's own constant name, read by the test suite's bootstrap.
 }
 
+// `WP_TESTS_MULTISITE=1 ./vendor/bin/phpunit` runs the suite as a multisite network (npm run test:php:multisite).
+if ( getenv( 'WP_TESTS_MULTISITE' ) && ! defined( 'WP_TESTS_MULTISITE' ) ) {
+	define( 'WP_TESTS_MULTISITE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- core's own constant name, read by the test suite's bootstrap.
+}
+
 require_once $callboard_tests_dir . '/includes/functions.php';
 
 /**

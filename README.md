@@ -56,7 +56,7 @@ Elements that change state after load (save marks, header buttons, the AirPlay p
 <details>
 <summary>No build step</summary>
 
-`assets/app.js` is one IIFE, `assets/app.css` is one file. No bundler, framework, or transpiler. The plugin has to keep working on sites nobody maintains, and a build chain is the first thing to break. Every browser feature is behind a check; CSS degrades through `@supports` and media queries. `Pwa::write_files()` writes the service worker and manifest to the site root, since a worker only controls the scope it is served from.
+`assets/app.js` is one IIFE, `assets/app.css` is one file. No bundler, framework, or transpiler. The plugin has to keep working on sites nobody maintains, and a build chain is the first thing to break. Every browser feature is behind a check; CSS degrades through `@supports` and media queries. `Pwa::write_files()` writes the service worker and manifest to the site root, since a worker only controls the scope it is served from. On a multisite network the sites share that folder, so each site saves both in its own options and serves them from its home URL (`/?callboard_file=sw.js`).
 
 Design rules: animate only transform and opacity, never use font weight for state, prefer native controls, one set of colour tokens for both schemes.
 
