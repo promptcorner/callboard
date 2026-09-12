@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.3.0](https://github.com/promptcorner/callboard/compare/v2.2.0...v2.3.0) (2026-09-12)
+
+
+### Features
+
+* add an extension API, and rebuild the count-in, audio quality label and Home Screen badge on it ([#137](https://github.com/promptcorner/callboard/issues/137)) ([de885f8](https://github.com/promptcorner/callboard/commit/de885f8ce85947fa8560935538ee9912d02be80b))
+* add Director and Cast member roles ([#177](https://github.com/promptcorner/callboard/issues/177)) ([975cfe9](https://github.com/promptcorner/callboard/commit/975cfe972b26c4aa002322cfd44a85693c1dfc58))
+* filters on callboard_set_data below priority 5 no longer see a track's top-level bpm and quality ([#137](https://github.com/promptcorner/callboard/issues/137)) ([de885f8](https://github.com/promptcorner/callboard/commit/de885f8ce85947fa8560935538ee9912d02be80b))
+* show how much each track was practiced since the last call ([#157](https://github.com/promptcorner/callboard/issues/157)) ([33e7031](https://github.com/promptcorner/callboard/commit/33e70312b85c836ddc9e1bd5fbf123b16abe1f57))
+* the track in the callboard:track event is now a frozen copy instead of the player's own track object ([#137](https://github.com/promptcorner/callboard/issues/137)) ([de885f8](https://github.com/promptcorner/callboard/commit/de885f8ce85947fa8560935538ee9912d02be80b))
+
+
+### Bug Fixes
+
+* clean up extension commands and discard stale badge results ([#164](https://github.com/promptcorner/callboard/issues/164)) ([6e47029](https://github.com/promptcorner/callboard/commit/6e47029f20b146b68f70766c76dd09768cdd2bc0))
+* close Now Playing with the back button, Escape or a close button instead of a swipe ([#154](https://github.com/promptcorner/callboard/issues/154)) ([8926af4](https://github.com/promptcorner/callboard/commit/8926af4840c401115b06ae686a5675830d1ad0a6))
+* keep player scripts in footer ([#153](https://github.com/promptcorner/callboard/issues/153)) ([24ae648](https://github.com/promptcorner/callboard/commit/24ae648082394c4f3569eee769efa11d3cfd0c71))
+* keep the level meter moving on the home page ([#122](https://github.com/promptcorner/callboard/issues/122)) ([0e54d9c](https://github.com/promptcorner/callboard/commit/0e54d9cfb328ec930f9fa6b6e420adb7367bf364))
+* load the Playground demo again after the repository moved ([#132](https://github.com/promptcorner/callboard/issues/132)) ([2fd1be5](https://github.com/promptcorner/callboard/commit/2fd1be5f4566f913c2b2412c7126291a191f93a4))
+* make the landing page demo preview accurate and easy to start ([#156](https://github.com/promptcorner/callboard/issues/156)) ([a06ad5e](https://github.com/promptcorner/callboard/commit/a06ad5efdb535514823574dd2347e305a582089d))
+* only mark a playlist as saved offline once it can open without a connection ([#135](https://github.com/promptcorner/callboard/issues/135)) ([c18ef33](https://github.com/promptcorner/callboard/commit/c18ef33487bc9fa50c8365b5c3054f46838b1520))
+* preserve extension assets in the offline cache after updates ([#152](https://github.com/promptcorner/callboard/issues/152)) ([106948c](https://github.com/promptcorner/callboard/commit/106948c976d09cf0d9921fdb12df23dab8534065))
+* stabilize extension cache variants and memoize active registry resolution ([#150](https://github.com/promptcorner/callboard/issues/150)) ([d24449d](https://github.com/promptcorner/callboard/commit/d24449d886c9c2af56ec4e26e3548d675c839d70))
+* start the gapless loop when both ends are set quickly ([#167](https://github.com/promptcorner/callboard/issues/167)) ([540c31b](https://github.com/promptcorner/callboard/commit/540c31b8b159230986d89df9478232e5dcc968ef))
+* stop calling imagedestroy(), which is deprecated in PHP 8.5 ([#136](https://github.com/promptcorner/callboard/issues/136)) ([75c1a70](https://github.com/promptcorner/callboard/commit/75c1a70d5b2f6c2791658487ac89ebd109670ec5))
+
 ## [2.2.0](https://github.com/promptcorner/callboard/compare/v2.1.0...v2.2.0) (2026-09-12)
 
 
