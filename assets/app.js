@@ -1591,8 +1591,8 @@
 		return loop.a + ( ( ( t % len ) + len ) % len );
 	};
 	async function looperStart() {
-		if ( ! loop || looper || ! canLoopGapless() || audio.paused ) {
-			return;
+		if ( ! loop || looper || sked || ! canLoopGapless() || audio.paused ) {
+			return; // a scheduled start is the sound: two buffers would play at once
 		}
 		const url = audio.currentSrc || audio.src;
 		const ticket = { pending: true };
@@ -1680,9 +1680,10 @@
 		const url = audio.currentSrc || audio.src;
 		const asked = performance.now();
 		const ticket = { pending: true };
+		const wasPlaying = ! audio.paused;
 		skedStop();
 		looperStop();
-		if ( ! audio.paused ) {
+		if ( wasPlaying ) {
 			skedPause = true; // our own pause, not the listener's business
 			audio.pause();
 		}
@@ -1701,20 +1702,20 @@
 				};
 			}
 		} catch {
-			return skedGiveUp( ticket );
+			return skedGiveUp( ticket, wasPlaying );
 		}
 		if (
 			sked !== ticket ||
 			looperCtx.state !== 'running' // autoplay policy kept the context shut: never mute the element for a silent start
 		) {
-			return skedGiveUp( ticket );
+			return skedGiveUp( ticket, wasPlaying );
 		}
 		// Fetching and decoding took time, so the moment asked for is that much nearer. A phone that
 		// is late to it does not start late: it comes in where everyone else already is.
 		const wait = inSeconds - ( performance.now() - asked ) / 1000;
 		const offset = from + Math.max( 0, -wait );
 		if ( offset >= looperBuf.buffer.duration ) {
-			return skedGiveUp( ticket ); // the track would already be over
+			return skedGiveUp( ticket, wasPlaying ); // the track would already be over
 		}
 		const src = looperCtx.createBufferSource();
 		src.buffer = looperBuf.buffer;
@@ -1735,11 +1736,15 @@
 		);
 		return true;
 	}
-	// Drop a start that cannot be made, leaving the element exactly as it was found.
-	function skedGiveUp( ticket ) {
+	// Drop a start that cannot be made, leaving the element exactly as it was found. The caller hears
+	// false and can fall back to playing the track the ordinary way.
+	function skedGiveUp( ticket, wasPlaying ) {
 		if ( sked === ticket ) {
 			sked = null;
 			audio.muted = false;
+			if ( wasPlaying ) {
+				audio.play().catch( () => {} );
+			}
 		}
 		return false;
 	}
@@ -1777,6 +1782,7 @@
 		if ( ! d || b - a < 1 ) {
 			return;
 		}
+		skedStop(); // working a section is leaving the moment everyone else is in
 		loop = { a, b };
 		haptic();
 		loopBand.style.transform = `translateX(${ ( ( a / d ) * 100 ).toFixed(
@@ -4246,10 +4252,11 @@
 	let startButton = null;
 	let followButton = null;
 	let offset = 0; // milliseconds this phone's clock is behind the site's
-	let spread = Infinity; // the quickest round trip the offset came from
 	let clockAt = 0;
 	let clocking = null;
 	let started = 0; // the sequence number of the last cue this phone started on
+	let beginning = 0; // the one being started right now
+	let obeyingUntil = 0;
 
 	const live = () => !! cue?.set;
 	const visible = () => document.visibilityState === 'visible';
@@ -4259,6 +4266,7 @@
 	// The site's clock, read the way NTP reads one: several round trips, and the offset kept is the one
 	// from the quickest, since a slow trip is the one the network has stretched.
 	async function clock() {
+		let quickest = Infinity;
 		for ( let n = 0; n < SAMPLES; n++ ) {
 			const sent = Date.now();
 			let now = 0;
@@ -4277,53 +4285,90 @@
 			}
 			const back = Date.now();
 			const trip = back - sent;
-			if ( Number.isFinite( now ) && trip < spread ) {
-				spread = trip;
+			if ( Number.isFinite( now ) && trip < quickest ) {
+				quickest = trip;
 				offset = now + trip / 2 - back; // the site's clock, where this phone's hands are now
 				clockAt = back;
 			}
 		}
 		clocking = null;
-		return clockAt > 0;
+		return clockAt > 0; // a reading that could not be refreshed still beats no reading
 	}
 	function clocked() {
 		if ( clockAt && Date.now() - clockAt < CLOCK_LIFE ) {
 			return Promise.resolve( true );
 		}
-		spread = Infinity; // a reading this old is worth less than a fresh slow one
 		clocking = clocking || clock();
 		return clocking;
 	}
 	const siteNow = () => Date.now() + offset;
-	// Whether a start this phone knows about is still to come, or has only just gone by.
-	const waiting = () => !! cue?.start && siteNow() < cue.start + 1000;
+	// Opening the track a start names, and starting it, move this phone's own playhead a moment later,
+	// once the element has caught up. Those moves are the cue being obeyed, not a new one.
+	const obeying = () => Date.now() < obeyingUntil;
+	const obey = () => {
+		obeyingUntil = Date.now() + 1000;
+	};
 
 	// Play the cue at the moment it names. A phone that arrives after that moment does not start late: it
-	// comes in where the others already are.
+	// comes in where the others already are, which callboard.commands.startAt works out for itself.
 	async function begin() {
-		if ( ! cue?.start || cue.seq === started ) {
+		if ( ! cue?.start || cue.seq === started || cue.seq === beginning ) {
 			return false;
 		}
-		started = cue.seq;
-		const wanted = cue.seq;
-		if ( ! ( await clocked() ) ) {
-			return false;
-		}
-		const state = cb.state;
-		if ( state.set?.slug !== cue.set || state.index !== cue.track ) {
-			const opened = await cb.commands.goTo( cue.set, cue.track, {
-				at: cue.position,
-				play: false,
-			} );
-			if ( ! opened ) {
+		const { seq, set, track, position, start } = cue;
+		beginning = seq;
+		try {
+			if ( ! ( await clocked() ) ) {
 				return false;
 			}
+			const state = cb.state;
+			if ( state.set?.slug !== set || state.index !== track ) {
+				obey();
+				if (
+					! ( await cb.commands.goTo( set, track, {
+						at: position,
+						play: false,
+					} ) )
+				) {
+					return false;
+				}
+			}
+			if ( cue?.seq !== seq ) {
+				return false; // a newer cue arrived while this one was being opened
+			}
+			obey();
+			const ok = await cb.commands.startAt(
+				( start - siteNow() ) / 1000,
+				position
+			);
+			obey();
+			if ( ! ok ) {
+				// No Web Audio, a context an autoplay policy kept shut, or a track that would not
+				// decode. Tens of milliseconds out is worse than the sample and better than silence.
+				anyway( seq, position, start );
+			}
+			started = seq;
+			return ok;
+		} finally {
+			beginning = 0;
 		}
-		if ( cue.seq !== wanted ) {
-			return false; // a newer cue arrived while this one was being opened
-		}
-		const wait = ( cue.start - siteNow() ) / 1000;
-		return cb.commands.startAt( wait, cue.position + Math.max( 0, -wait ) );
+	}
+
+	// The fallback: play the track at the moment, on the element's own clock.
+	function anyway( seq, position, start ) {
+		setTimeout(
+			() => {
+				if ( cue?.seq !== seq ) {
+					return; // a newer cue arrived while this one waited
+				}
+				obey();
+				cb.commands.seek(
+					position + Math.max( 0, ( siteNow() - start ) / 1000 )
+				);
+				cb.commands.play();
+			},
+			Math.max( 0, start - siteNow() )
+		);
 	}
 
 	// Together: the track in the deck, from where it stands, on every phone following, IN from now.
@@ -4455,9 +4500,7 @@
 		// Loading a track fires a seek straight after it; send once for both.
 		sendTimer = setTimeout( async () => {
 			const set = cb.state.set;
-			// Opening the track a start names, and starting it, move this phone's own playhead. Those
-			// are the cue being obeyed, not a new one.
-			if ( ! leading || ! set || cb.state.index < 0 || waiting() ) {
+			if ( ! leading || ! set || cb.state.index < 0 || obeying() ) {
 				return;
 			}
 			try {
