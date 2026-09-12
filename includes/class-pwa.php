@@ -1,7 +1,8 @@
 <?php
 /**
- * Home-screen app files. The service worker must be served from the site root to control the site,
- * so both files are written to ABSPATH (WP Engine and most hosts allow it).
+ * Home-screen app files. On a single site, sw.js and manifest.json are written to ABSPATH (WP Engine
+ * and most hosts allow it). On a multisite network every site shares ABSPATH, so each site keeps its
+ * copies in options and WordPress serves them from that site's home URL.
  *
  * @package Callboard
  */
@@ -16,9 +17,26 @@ defined( 'ABSPATH' ) || exit;
 final class Pwa {
 
 	/**
+	 * Option holding a network site's service worker.
+	 */
+	public const SW_OPTION = 'callboard_sw';
+
+	/**
+	 * Option holding a network site's manifest.
+	 */
+	public const MANIFEST_OPTION = 'callboard_manifest';
+
+	/**
+	 * Query variable a network site's app files are served under: `?callboard_file=sw.js`.
+	 */
+	public const QUERY_VAR = 'callboard_file';
+
+	/**
 	 * Hook registration.
 	 */
 	public static function register_hooks(): void {
+		add_filter( 'query_vars', array( self::class, 'query_vars' ) );
+		add_action( 'parse_request', array( self::class, 'serve' ) );
 		add_action( 'update_option_blogname', array( self::class, 'write_files' ) );
 		add_action( 'update_option_site_icon', array( self::class, 'write_files' ) );
 		add_action( 'delete_option_site_icon', array( self::class, 'write_files' ) ); // Core deletes the option when the icon's attachment is deleted.
@@ -32,6 +50,133 @@ final class Pwa {
 		// is on the generic one, so the manifest would be written from the cache about to be cleared.
 		add_action( 'save_post', array( self::class, 'write_manifest_for_set' ), 20, 2 );
 		add_action( 'deleted_post', array( self::class, 'write_manifest_for_set' ), 20, 2 );
+	}
+
+	/**
+	 * Whether this site's app files are kept in options and served by WordPress instead of written to ABSPATH.
+	 *
+	 * @since 2.3.0
+	 */
+	public static function serves_files(): bool {
+		return is_multisite();
+	}
+
+	/**
+	 * The service worker's URL for this site.
+	 *
+	 * @since 2.3.0
+	 */
+	public static function sw_url(): string {
+		return self::serves_files() ? add_query_arg( self::QUERY_VAR, 'sw.js', home_url( '/' ) ) : home_url( '/sw.js' );
+	}
+
+	/**
+	 * The manifest's URL for this site.
+	 *
+	 * @since 2.3.0
+	 */
+	public static function manifest_url(): string {
+		return self::serves_files() ? add_query_arg( self::QUERY_VAR, 'manifest.json', home_url( '/' ) ) : home_url( '/manifest.json' );
+	}
+
+	/**
+	 * The path the service worker controls: the site's home path, such as `/` or `/choir/`.
+	 *
+	 * @since 2.3.0
+	 */
+	public static function scope(): string {
+		$root = wp_make_link_relative( home_url( '/' ) );
+		return '' !== $root ? $root : '/';
+	}
+
+	/**
+	 * The service worker or manifest as this site last wrote it, or an empty string.
+	 *
+	 * @since 2.3.0
+	 *
+	 * @param string $file `sw.js` or `manifest.json`.
+	 */
+	public static function contents( string $file ): string {
+		if ( 'sw.js' !== $file && 'manifest.json' !== $file ) {
+			return '';
+		}
+		if ( self::serves_files() ) {
+			return (string) get_option( 'sw.js' === $file ? self::SW_OPTION : self::MANIFEST_OPTION, '' );
+		}
+		return is_readable( ABSPATH . $file ) ? (string) file_get_contents( ABSPATH . $file ) : ''; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+	}
+
+	/**
+	 * Add the query variable a network site's app files are requested with.
+	 *
+	 * @since 2.3.0
+	 *
+	 * @param string[] $vars Public query variables.
+	 * @return string[]
+	 */
+	public static function query_vars( array $vars ): array {
+		$vars[] = self::QUERY_VAR;
+		return $vars;
+	}
+
+	/**
+	 * The response for `?callboard_file=sw.js` or `?callboard_file=manifest.json` on a network site.
+	 *
+	 * Writes the file first when the site has no copy yet.
+	 *
+	 * @since 2.3.0
+	 *
+	 * @param string $file `sw.js` or `manifest.json`.
+	 * @return array{headers: array<string, string>, body: string}|null Null when this site does not serve the file.
+	 */
+	public static function response( string $file ): ?array {
+		if ( ! self::serves_files() || ( 'sw.js' !== $file && 'manifest.json' !== $file ) ) {
+			return null;
+		}
+		$body = self::contents( $file );
+		if ( '' === $body ) {
+			if ( 'sw.js' === $file ) {
+				self::write_sw();
+			} else {
+				self::write_manifest();
+			}
+			$body = self::contents( $file );
+		}
+		if ( '' === $body ) {
+			return null;
+		}
+		$headers = array(
+			'Content-Type'           => 'sw.js' === $file ? 'text/javascript; charset=utf-8' : 'application/manifest+json; charset=utf-8',
+			'Cache-Control'          => 'no-cache',
+			'X-Content-Type-Options' => 'nosniff',
+		);
+		if ( 'sw.js' === $file ) {
+			$headers['Service-Worker-Allowed'] = self::scope();
+		}
+		return array(
+			'headers' => $headers,
+			'body'    => $body,
+		);
+	}
+
+	/**
+	 * Answer a request for a network site's service worker or manifest, then stop.
+	 *
+	 * @since 2.3.0
+	 *
+	 * @param \WP $wp Current request.
+	 */
+	public static function serve( \WP $wp ): void {
+		$response = self::response( (string) ( $wp->query_vars[ self::QUERY_VAR ] ?? '' ) );
+		if ( ! $response ) {
+			return;
+		}
+		status_header( 200 );
+		foreach ( $response['headers'] as $name => $value ) {
+			header( $name . ': ' . $value );
+		}
+		echo $response['body']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a script and a JSON document this site wrote.
+		exit;
 	}
 
 	/**
@@ -196,7 +341,7 @@ final class Pwa {
 	}
 
 	/**
-	 * Draw the maskable icon and the splash screens, and write manifest.json and sw.js into the site root.
+	 * Draw the maskable icon and the splash screens, and write manifest.json and sw.js.
 	 *
 	 * @return bool Whether both files were written.
 	 */
@@ -231,12 +376,8 @@ final class Pwa {
 	 * @return bool Whether the file was written.
 	 */
 	public static function write_manifest(): bool {
-		global $wp_filesystem;
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		if ( ! WP_Filesystem() ) {
-			return false;
-		}
-		return (bool) $wp_filesystem->put_contents( ABSPATH . 'manifest.json', wp_json_encode( self::manifest(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), FS_CHMOD_FILE );
+		$manifest = self::manifest();
+		return self::put( 'manifest.json', (string) wp_json_encode( $manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
 	}
 
 	/**
@@ -247,8 +388,7 @@ final class Pwa {
 	 * @return array<string, mixed>
 	 */
 	public static function manifest(): array {
-		$root  = wp_make_link_relative( home_url( '/' ) );
-		$root  = '' !== $root ? $root : '/';
+		$root  = self::scope();
 		$name  = callboard_site_name();
 		$short = $name;
 		if ( mb_strlen( $name ) > 12 ) { // the Home Screen label: cut at a word, never mid-word.
@@ -341,17 +481,12 @@ final class Pwa {
 	 * @return bool Whether the file was written.
 	 */
 	public static function write_sw(): bool {
-		global $wp_filesystem;
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		if ( ! WP_Filesystem() ) {
-			return false;
-		}
 		$assets = array_map(
 			'wp_make_link_relative',
 			array(
 				home_url( '/' ),
 				home_url( '/?fragment=1' ), // Home as the script swaps it in; a saved set's fragment is warmed by the page.
-				home_url( '/manifest.json' ),
+				self::manifest_url(),
 				callboard_asset( 'assets/app.js' ),
 				// The icons the page and manifest link to. A site icon on another host is left out: the
 				// worker only handles requests to this site, and one failed download fails the whole precache.
@@ -365,16 +500,45 @@ final class Pwa {
 		// so an installed app opens with its extensions when there is no network.
 		$assets = array_values( array_unique( array_merge( $assets, Extensions::precache_urls() ) ) );
 		$sw     = str_replace(
-			array( '__VERSION__', '__PLUGIN_PATH__', '__ASSETS__', '__APP_VERSION__', '__PUSH_API__' ),
-			array( (string) time(), wp_make_link_relative( CALLBOARD_URL ), wp_json_encode( $assets, JSON_UNESCAPED_SLASHES ), CALLBOARD_VERSION, Settings::get( 'push' ) && Push::available() ? wp_make_link_relative( rest_url( 'callboard/v1/push/' ) ) : '' ),
-			(string) $wp_filesystem->get_contents( CALLBOARD_DIR . 'pwa/sw.js' )
+			array( '__VERSION__', '__PLUGIN_PATH__', '__ASSETS__', '__APP_VERSION__', '__PUSH_API__', '__HOME__', '__MANIFEST__', '__SITE__' ),
+			array(
+				(string) time(),
+				wp_make_link_relative( CALLBOARD_URL ),
+				wp_json_encode( $assets, JSON_UNESCAPED_SLASHES ),
+				CALLBOARD_VERSION,
+				Settings::get( 'push' ) && Push::available() ? wp_make_link_relative( rest_url( 'callboard/v1/push/' ) ) : '',
+				self::scope(),
+				wp_make_link_relative( self::manifest_url() ),
+				self::serves_files() ? (string) get_current_blog_id() : '',
+			),
+			(string) file_get_contents( CALLBOARD_DIR . 'pwa/sw.js' ) // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- a file inside the plugin.
 		);
-		if ( ! $wp_filesystem->put_contents( ABSPATH . 'sw.js', $sw, FS_CHMOD_FILE ) ) {
+		if ( ! self::put( 'sw.js', $sw ) ) {
 			return false;
 		}
 		// Whatever wrote the worker (an update, an import, the admin noticing a new extension), this is
 		// what went into it. Extensions::maybe_refresh_worker() compares against it.
 		update_option( 'callboard_extension_assets', Extensions::assets_fingerprint(), false );
 		return true;
+	}
+
+	/**
+	 * Save an app file: into ABSPATH on a single site, into an option on a network site.
+	 *
+	 * @param string $file `sw.js` or `manifest.json`.
+	 * @param string $body File contents.
+	 * @return bool Whether it was saved.
+	 */
+	private static function put( string $file, string $body ): bool {
+		if ( self::serves_files() ) {
+			update_option( 'sw.js' === $file ? self::SW_OPTION : self::MANIFEST_OPTION, $body, false );
+			return true;
+		}
+		global $wp_filesystem;
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		if ( ! WP_Filesystem() ) {
+			return false;
+		}
+		return (bool) $wp_filesystem->put_contents( ABSPATH . $file, $body, FS_CHMOD_FILE );
 	}
 }

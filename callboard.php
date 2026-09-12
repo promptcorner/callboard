@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Callboard
  * Description: Rehearsal tracks for a cast. Sets of audio, a persistent player, installable as a home-screen app.
- * Version: 2.2.0
+ * Version: 2.3.0
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Plugin URI: https://promptcorner.github.io/callboard/
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CALLBOARD_VERSION', '2.2.0' );
+define( 'CALLBOARD_VERSION', '2.3.0' );
 
 /*
  * The extension contract's version, which moves separately from the plugin's. Within one API version

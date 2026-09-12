@@ -117,7 +117,9 @@
 	( window.requestIdleCallback || ( ( f ) => setTimeout( f, 1000 ) ) )(
 		() => {
 			if ( 'serviceWorker' in navigator ) {
-				navigator.serviceWorker.register( '/sw.js' ).catch( () => {} );
+				navigator.serviceWorker
+					.register( G.worker.url, { scope: G.worker.scope } )
+					.catch( () => {} );
 			}
 		}
 	);
@@ -1562,8 +1564,8 @@
 	const canLoopGapless = () =>
 		'AudioContext' in window && document.visibilityState === 'visible';
 	const playhead = () => {
-		if ( ! looper || ! loop ) {
-			return audio.currentTime;
+		if ( ! looper?.src || ! loop ) {
+			return audio.currentTime; // no looper yet, or its audio is still being fetched and decoded
 		}
 		const len = loop.b - loop.a,
 			t =
@@ -1592,11 +1594,15 @@
 				};
 			}
 		} catch {
-			looper = null; // no decode here: the element's own loop stands
+			if ( looper === ticket ) {
+				looper = null; // no decode here: the element's own loop stands
+			}
 			return;
 		}
+		if ( looper !== ticket ) {
+			return; // the loop changed while this one was decoding, and a newer start is on its way
+		}
 		if (
-			looper !== ticket ||
 			! loop ||
 			audio.paused ||
 			! canLoopGapless() ||
@@ -1685,11 +1691,11 @@
 			doAction( 'callboard.loop', null );
 		}
 		looperStop();
-		if ( ! sheetOpen() ) {
-			letSleep();
-		}
 		loop = null;
 		loopFrom = null;
+		if ( ! stayAwake() ) {
+			letSleep();
+		}
 		if ( loopBand ) {
 			loopBand.classList.remove( 'on' );
 			if ( loopChip ) {
@@ -1969,16 +1975,23 @@
 	}
 	let wake = null;
 	const keepAwake = async () => {
+		if ( wake && ! wake.released ) {
+			return; // one lock is enough; a second request would leave the first held for good
+		}
 		try {
-			wake = await navigator.wakeLock?.request( 'screen' );
+			wake = ( await navigator.wakeLock?.request( 'screen' ) ) || null;
 		} catch {}
 	};
 	const letSleep = () => {
 		wake?.release().catch( () => {} );
 		wake = null;
 	};
+	// The lock follows the open lyrics sheet or a set loop: either one means the phone is on the stand.
+	// The system drops the lock whenever the page hides, so coming back has to take it again.
+	const stayAwake = () =>
+		document.body.classList.contains( 'sheet-open' ) || !! loop;
 	document.addEventListener( 'visibilitychange', () => {
-		if ( document.visibilityState === 'visible' && sheetOpen() ) {
+		if ( document.visibilityState === 'visible' && stayAwake() ) {
 			keepAwake();
 		}
 	} );
@@ -2010,8 +2023,10 @@
 		}
 	};
 	function hideLyrics() {
-		letSleep();
 		document.body.classList.remove( 'sheet-open' );
+		if ( ! stayAwake() ) {
+			letSleep(); // a loop keeps the screen on without the sheet
+		}
 		if ( reduce() || ! sheetOpen() ) {
 			closeSheet();
 		} else {
@@ -3974,5 +3989,305 @@
 		version: '1.0.0',
 		apiVersion: 1,
 		badge: () => 0,
+	} );
+} )();
+
+// ---- callboard/practice. Anonymous practice counts per track: times opened, loops set and seconds played.
+// The page sends them to the site in batches. Runs only when the "Count practice" setting is on.
+( () => {
+	const cb = window.callboard;
+	if ( ! cb?.isActive( 'callboard/practice' ) || ! navigator.sendBeacon ) {
+		return;
+	}
+	const counts = new Map(); // track id -> { opens, loops, seconds }
+	let playing = null; // { id, since } while a track plays
+	// An open is the first play of a track after it loads. The page can load a track before this runs,
+	// and resuming after a pause is not a new open.
+	let opened = null;
+	const entry = ( id ) => {
+		if ( ! counts.has( id ) ) {
+			counts.set( id, { opens: 0, loops: 0, seconds: 0 } );
+		}
+		return counts.get( id );
+	};
+	// Add the time played so far to the playing track, and keep timing it.
+	const tick = () => {
+		if ( playing ) {
+			const now = performance.now();
+			entry( playing.id ).seconds += ( now - playing.since ) / 1000;
+			playing.since = now;
+		}
+	};
+	const stop = () => {
+		tick();
+		playing = null;
+	};
+	const send = () => {
+		tick();
+		const config = cb.data( 'callboard/practice' );
+		const body = [ ...counts ]
+			.map( ( [ track, c ] ) => ( {
+				track,
+				opens: c.opens,
+				loops: c.loops,
+				seconds: Math.round( c.seconds ),
+			} ) )
+			.filter( ( c ) => c.opens || c.loops || c.seconds );
+		if ( ! body.length || ! config?.url ) {
+			return;
+		}
+		const url = new URL( config.url, window.location.href );
+		if ( config.nonce ) {
+			url.searchParams.set( '_wpnonce', config.nonce ); // sendBeacon cannot set headers
+		}
+		// Sent as text/plain, which a beacon can send without a CORS preflight in every browser.
+		const queued = navigator.sendBeacon(
+			url.href,
+			new Blob( [ JSON.stringify( body ) ], { type: 'text/plain' } )
+		);
+		if ( queued ) {
+			counts.clear();
+		}
+	};
+	/**
+	 * Practice counts, as an extension: listens to player events and sends totals.
+	 */
+	cb.registerExtension( 'callboard/practice', {
+		version: '1.0.0',
+		apiVersion: 1,
+		events: {
+			track() {
+				stop();
+				opened = null;
+			},
+			loop( range ) {
+				const track = cb.state.track;
+				if ( range && track?.id ) {
+					entry( track.id ).loops++;
+				}
+			},
+			play( { track } ) {
+				stop();
+				if ( track?.id ) {
+					if ( opened !== track.id ) {
+						entry( track.id ).opens++;
+						opened = track.id;
+					}
+					playing = { id: track.id, since: performance.now() };
+				}
+			},
+			pause: stop,
+			ended: stop,
+		},
+		setup() {
+			document.addEventListener( 'visibilitychange', () => {
+				if ( document.visibilityState === 'hidden' ) {
+					send();
+				}
+			} );
+			window.addEventListener( 'pagehide', send );
+			setInterval( send, 5 * 60 * 1000 );
+		},
+	} );
+} )();
+
+// ---- callboard/cue. The shared cue. With Lead on, each track the director opens, and each seek, is sent
+// to the site. With Follow on, the page reads the cue every 2 seconds while it is visible and opens that
+// track, paused. The PHP half is includes/extensions/class-cue.php.
+( () => {
+	const cb = window.callboard;
+	const config = cb?.data( 'callboard/cue' );
+	if ( ! cb?.isActive( 'callboard/cue' ) || ! config?.api ) {
+		return;
+	}
+	const POLL = 2000; // how often a following page reads the cue
+	const RECHECK = 15000; // the shortest gap between reads while not following
+	let cue = null; // the last cue read or sent: { seq, set, track, position, at }
+	let leading = false;
+	let following = false;
+	let timer = 0;
+	let sendTimer = 0;
+	let checked = 0;
+	let busy = null;
+	let leadButton = null;
+	let followButton = null;
+
+	const live = () => !! cue?.set;
+	const visible = () => document.visibilityState === 'visible';
+	const headers = ( extra = {} ) =>
+		config.nonce ? { ...extra, 'X-WP-Nonce': config.nonce } : extra;
+
+	function paint() {
+		leadButton?.setAttribute( 'aria-pressed', String( leading ) );
+		if ( followButton ) {
+			followButton.hidden = leading || ! live();
+			followButton.setAttribute( 'aria-pressed', String( following ) );
+		}
+	}
+
+	// Open the cued track, or only seek when that track is already in the player.
+	function move() {
+		const state = cb.state;
+		if ( state.set?.slug === cue.set && state.index === cue.track ) {
+			cb.commands.seek( cue.position );
+			return;
+		}
+		cb.commands.goTo( cue.set, cue.track, {
+			at: cue.position,
+			play: false,
+		} );
+	}
+
+	function received( next ) {
+		cue = next;
+		if ( ! live() ) {
+			following = false;
+		}
+		paint();
+		/**
+		 * The page read or sent a cue it had not seen. Detail: { seq, set, track, position, at }.
+		 */
+		cb.emit( 'callboard.cue.changed', Object.freeze( { ...cue } ) );
+	}
+
+	// Read the cue. Resolves to true when it changed; with `since`, an unchanged cue is a 204.
+	function check() {
+		if ( busy ) {
+			return busy;
+		}
+		checked = Date.now();
+		const url = new URL( config.api, window.location.href );
+		if ( cue ) {
+			url.searchParams.set( 'since', cue.seq );
+		}
+		busy = fetch( url, {
+			headers: headers(),
+			credentials: 'same-origin',
+			cache: 'no-store',
+		} )
+			.then( async ( res ) => {
+				if ( res.status !== 200 ) {
+					return false;
+				}
+				received( await res.json() );
+				return true;
+			} )
+			.catch( () => false )
+			.finally( () => {
+				busy = null;
+			} );
+		return busy;
+	}
+
+	function schedule() {
+		clearTimeout( timer );
+		timer = 0;
+		if ( following && visible() ) {
+			timer = setTimeout( poll, POLL );
+		}
+	}
+
+	async function poll() {
+		if ( ( await check() ) && following ) {
+			move();
+		}
+		schedule();
+	}
+
+	// While not following, read the cue now and then, so Follow appears once a director starts leading.
+	function recheck() {
+		if (
+			! following &&
+			! leading &&
+			visible() &&
+			Date.now() - checked >= RECHECK
+		) {
+			check();
+		}
+	}
+
+	function send() {
+		clearTimeout( sendTimer );
+		// Loading a track fires a seek straight after it; send once for both.
+		sendTimer = setTimeout( async () => {
+			const set = cb.state.set;
+			if ( ! leading || ! set || cb.state.index < 0 ) {
+				return;
+			}
+			try {
+				const res = await fetch( config.api, {
+					method: 'POST',
+					headers: headers( { 'Content-Type': 'application/json' } ),
+					credentials: 'same-origin',
+					body: JSON.stringify( {
+						set: set.slug,
+						track: cb.state.index,
+						position: cb.state.position,
+					} ),
+				} );
+				if ( res.ok ) {
+					received( await res.json() );
+				} else {
+					leading = false; // signed out, or the nonce expired
+					paint();
+				}
+			} catch {}
+		}, 250 );
+	}
+
+	/**
+	 * Shared cue, as an extension: Lead and Follow in the transport controls, and a poll while following.
+	 */
+	cb.registerExtension( 'callboard/cue', {
+		version: '1.0.0',
+		apiVersion: 1,
+		setup() {
+			leadButton = document.getElementById( 'cue-lead' );
+			followButton = document.getElementById( 'cue-follow' );
+			leadButton?.addEventListener( 'click', () => {
+				leading = !! config.canLead && ! leading;
+				if ( leading ) {
+					following = false;
+					schedule();
+					send();
+				}
+				paint();
+			} );
+			followButton?.addEventListener( 'click', async () => {
+				following = ! following;
+				paint();
+				if ( following ) {
+					await check();
+					if ( following && live() ) {
+						move();
+					}
+				}
+				schedule();
+			} );
+			document.addEventListener( 'visibilitychange', () => {
+				if ( following && visible() ) {
+					poll();
+					return;
+				}
+				schedule();
+				recheck();
+			} );
+			check();
+		},
+		events: {
+			track() {
+				if ( leading ) {
+					send();
+				}
+				recheck();
+			},
+			seek() {
+				// A running A-B loop seeks back on every pass; those are not cues.
+				if ( leading && ! cb.state.loop ) {
+					send();
+				}
+			},
+			view: recheck,
+		},
 	} );
 } )();

@@ -20,7 +20,7 @@ A WordPress plugin for a cast's rehearsal tracks. The stage manager posts the ca
 
 - **Board.** The home page shows the next call: time, place, note, and the numbers being worked. Each number is a tap that starts the track. A call is a post under Sets. Publishing one sends a push notification.
 - **Sets.** A set is a post; its tracks are audio attachments. Fetch a playlist with WP-CLI, or import a folder of audio.
-- **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, an A/B loop (two fingers on the wave, or the bracket keys), count-in, lyrics and director's notes in time with the track, AirPlay, and lock-screen controls. The tab title carries the track as well, for whoever has the board open behind a rehearsal PDF.
+- **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, an A/B loop (two fingers on the wave, or the bracket keys), count-in, lyrics and director's notes in time with the track, Lead and Follow buttons so phones that follow open whatever track the director opens, AirPlay, and lock-screen controls. The tab title carries the track as well, for whoever has the board open behind a rehearsal PDF.
 - **Offline.** Save a set once. It plays from the phone with no connection, or load it from a file when there is no signal to save it with.
 - **Settings.** Site name, accent colour, badge, confetti behind a triple tap on the title. Hooks and template overrides for developers.
 
@@ -56,7 +56,7 @@ Elements that change state after load (save marks, header buttons, the AirPlay p
 <details>
 <summary>No build step</summary>
 
-`assets/app.js` is one IIFE, `assets/app.css` is one file. No bundler, framework, or transpiler. The plugin has to keep working on sites nobody maintains, and a build chain is the first thing to break. Every browser feature is behind a check; CSS degrades through `@supports` and media queries. `Pwa::write_files()` writes the service worker and manifest to the site root, since a worker only controls the scope it is served from.
+`assets/app.js` is one IIFE, `assets/app.css` is one file. No bundler, framework, or transpiler. The plugin has to keep working on sites nobody maintains, and a build chain is the first thing to break. Every browser feature is behind a check; CSS degrades through `@supports` and media queries. `Pwa::write_files()` writes the service worker and manifest to the site root, since a worker only controls the scope it is served from. On a multisite network the sites share that folder, so each site saves both in its own options and serves them from its home URL (`/?callboard_file=sw.js`).
 
 Design rules: animate only transform and opacity, never use font weight for state, prefer native controls, one set of colour tokens for both schemes.
 
@@ -75,6 +75,7 @@ Design rules: animate only transform and opacity, never use font weight for stat
 | `_callboard_lyrics`, `_callboard_lyrics_approved` | Timed lines from captions, shown after approval |
 | `_callboard_notes` | Director's notes with a time and date |
 | `_callboard_bpm` | Tempo, for the count-in |
+| `_callboard_practice` | Anonymous practice counts per hour, written only while **Count practice** is on |
 | `_callboard_video_id`, `_callboard_source_url`, `_callboard_uploader` | Source. The uploader is also sent per track as `artist` — right for one playlist by one uploader, wrong for a set where every track differs |
 | `_callboard_codec`, `_callboard_reencoded` | What a fetch actually got (e.g. `aac`) and whether `ffmpeg` had to re-encode to get it — provenance, not a measurement of the file itself |
 
@@ -117,7 +118,11 @@ The service worker precaches the shell and the home fragment. Saving a set strea
 
 `Privacy` adds `noindex` via `wp_robots` and `X-Robots-Tag`, disallows everything in `robots.txt`, sets `Referrer-Policy: no-referrer`, requires authentication for REST except the push routes, hides the users endpoint, disables XML-RPC and feeds, and redirects author archives and search to home.
 
-`Gate` is the one decision about who may see the front end, and it is off by default: a link in a group chat is the whole setup, and that is the point. Turn on **Require a WordPress sign-in** and the answer becomes `is_user_logged_in()` and nothing else, so whatever sign-in the site already has guards the app too — Apple, Google, a membership plugin, passkeys through Two Factor and its WebAuthn provider. Core still ships no passkeys of its own. `callboard_can_view` overrides both; return `null` and the filter never has to know what the setting says.
+`Gate` is the one decision about who may see the front end, and it is off by default: a link in a group chat is the whole setup, and that is the point. Turn on **Require a WordPress sign-in** and the answer becomes `is_user_logged_in()` and nothing else, so whatever sign-in the site already has guards the app too — Apple, Google, a membership plugin, passkeys through Two Factor and its WebAuthn provider. Core still ships no passkeys of its own. Also turn on **Only let in users with access to Callboard** and a signed-in user needs the `view_callboard` capability too. `callboard_can_view` overrides the settings; return `null` and the filter never has to know what they say.
+
+`Roles` adds two roles. **Director** can post calls, edit playlists and their track notes, and send notifications from Notices. **Cast member** can only open the front end. Each post type has its own capabilities (`edit_callboard_calls`, `edit_callboard_playlists`, and so on), and on activation or update every other role gets the ones that match the post capabilities it already has. Administrators, editors, authors and contributors keep what they could do before. Deleting the plugin removes the roles and capabilities.
+
+**Count practice** is off by default. When it is on, the page counts how many times each track is opened, how many loops are set on it and how many seconds it plays, and sends those totals to the site. They are stored on the track, grouped by hour, and shown on each call in the editor. No user id, name, IP address or cookie is stored with them.
 
 A gated request answers 403 with `templates/gate.php` rather than redirecting to `wp-login.php`, which would drop the cast out of an installed app and into WordPress branding mid-session. Nothing about the sets escapes it: the script and its data are not enqueued, link previews are suppressed, and the document title falls back to the site name. Audio files keep their own upload addresses either way, so the gate guards the app, not the media.
 
@@ -136,7 +141,8 @@ A gated request answers 403 with `templates/gate.php` rather than redirecting to
 | Path | Purpose |
 | --- | --- |
 | `callboard.php` | Plugin header, constants, autoload |
-| `includes/` | One class per concern: `Plugin`, `Router`, `Frontend`, `Sets`, `Calls`, `Post_Types`, `Admin`, `Settings`, `Importer`, `Exporter`, `Id3`, `Fetcher`, `Requests`, `Push`, `Pwa`, `Privacy`, `Gate`, `Art`, `Cli`. `helpers.php` has icons and formatting |
+| `uninstall.php` | Removes the roles and capabilities when the plugin is deleted |
+| `includes/` | One class per concern: `Plugin`, `Router`, `Frontend`, `Sets`, `Calls`, `Post_Types`, `Admin`, `Settings`, `Importer`, `Exporter`, `Id3`, `Fetcher`, `Requests`, `Push`, `Pwa`, `Privacy`, `Gate`, `Roles`, `Art`, `Cli`. `helpers.php` has icons and formatting |
 | `templates/` | `index.php` (shell), `fragment.php`, `home.php`, `board.php`, `set.php`, `deck.php` (player), `gate.php`, `footer.php` |
 | `assets/` | `app.js`, `app.css` |
 | `pwa/sw.js` | Service worker source |
@@ -146,7 +152,7 @@ A gated request answers 403 with `templates/gate.php` rather than redirecting to
 | `site/` | Landing page (GitHub Pages) |
 | `languages/callboard.pot` | Translation template; `npm run pot` regenerates it |
 | `scripts/sync-versions.sh` | Writes the release version into the plugin files |
-| `scripts/screenshots.js` | Retakes the landing-page screenshots from a running wp-env site, at the exact sizes the page expects |
+| `scripts/screenshots.js` | Retakes the landing-page screenshots from a running wp-env site, at the exact sizes the page expects. `node scripts/screenshots.js demo` retakes only the live demo previews |
 | `scripts/wporg-screenshots.js` | Regenerates the wordpress.org screenshots in `.wordpress-org/` from a running wp-env site, using `scripts/wporg/template.html`. `.wordpress-org/screenshots.json` sets each screenshot's page, headline, and readme.txt caption. `tests/e2e/wporg-screenshots.spec.js` checks the captions and image sizes match |
 | `.github/` | Workflows, Dependabot, PR template, CONTRIBUTING |
 | `AGENTS.md` | Notes for coding agents |
@@ -191,12 +197,17 @@ Features are extensions: an id, a version, and named contribution points shared 
 
 | Name | Kind | What it does |
 | --- | --- | --- |
+| `callboard.apiVersion` | number | The extension contract's version: 1 |
 | `callboard.registerExtension( id, args )` | function | Register the page half of an extension PHP registered |
 | `callboard.unregisterExtension( id )` | function | Remove its client contributions |
-| `callboard.state` | object | The view, the set and track in the deck, position, duration, paused, loop, online |
+| `callboard.state` | object | The view, the playlist and track in the player bar, position, duration, paused, loop, online |
 | `callboard.commands` | object | `play`, `pause`, `seek`, `next`, `prev`, `goTo`, `display` |
-| `callboard.data( id )`, `callboard.run( command )`, `callboard.emit( event )`, `callboard.invalidate( point )` | functions | App data, extension commands and events, re-rendering |
+| `callboard.registerCommand( name, fn )` | function | Add a command named `namespace/name/command` for a registered extension |
+| `callboard.run( name, ...args )` | function | Run a command with arguments and return what it returns |
+| `callboard.data( id )`, `callboard.emit( name, detail )`, `callboard.invalidate( ...points )` | functions | An extension's app data, its own events, re-rendering |
+| `callboard.deprecated( name, { since, alternative, hint } )` | function | Log a deprecation warning once per name, in the shape of `@wordpress/deprecated` |
 | `callboard.ready`, `.view`, `.viewTeardown`, `.track`, `.play`, `.pause`, `.ended`, `.seek`, `.loop`, `.save`, `.unsave`, `.online`, `.offline` | `wp.hooks` actions | Also fired as `callboard:<event>` on `document`, which is how `callboard:track` and `callboard:view` have always arrived |
+| `callboard.cue.changed` | `wp.hooks` action | The shared cue changed: `{ seq, set, track, position, at }`. See [The shared cue](docs/extending.md#the-shared-cue) |
 | `callboard.slot.trackBadges`, `.slot.trackMeta`, `.slot.nowPlayingMeta`, `callboard.badge`, `callboard.beforePlay` | `wp.hooks` filters | The contribution points underneath the registry |
 
 </details>
@@ -225,7 +236,7 @@ Links go to the specifications.
 - [Push API](https://www.w3.org/TR/push-api/) with declarative payloads and `pushsubscriptionchange`, [Notifications](https://notifications.spec.whatwg.org/), [Badging](https://www.w3.org/TR/badging/)
 - [HTML media element](https://html.spec.whatwg.org/multipage/media.html), [Media Session](https://www.w3.org/TR/mediasession/), [Audio Session](https://w3c.github.io/audio-session/), [Remote Playback](https://www.w3.org/TR/remote-playback/), [TextTrack](https://html.spec.whatwg.org/multipage/media.html#text-track-api) for lyric cues
 - [Web Audio](https://www.w3.org/TR/webaudio/) for the level meter, count-in, and sample-accurate loop
-- [Web Locks](https://www.w3.org/TR/web-locks/) so one tab plays at a time, [Screen Wake Lock](https://www.w3.org/TR/screen-wake-lock/) during loops
+- [Web Locks](https://www.w3.org/TR/web-locks/) so one tab plays at a time, [Screen Wake Lock](https://www.w3.org/TR/screen-wake-lock/) while a loop is set or the lyrics sheet is open
 - [Storage](https://storage.spec.whatwg.org/) estimate and persist, [Streams](https://streams.spec.whatwg.org/) with `tee()` for save progress, [AbortController](https://dom.spec.whatwg.org/#interface-abortcontroller), [Web Storage](https://html.spec.whatwg.org/multipage/webstorage.html)
 - [Web Share](https://www.w3.org/TR/web-share/) for the set's link with a [Clipboard](https://www.w3.org/TR/clipboard-apis/) fallback, and for the track's own file, which reaches AirDrop and "Save to Files", [Vibration](https://www.w3.org/TR/vibration/), [WebKit switch control](https://webkit.org/blog/15054/an-html-switch-control/) for iPhone haptics
 - [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) for the waveform, [View Transitions](https://www.w3.org/TR/css-view-transitions-1/), [History API](https://html.spec.whatwg.org/multipage/nav-history-apis.html#the-history-interface), [Pointer Events](https://www.w3.org/TR/pointerevents/), [ResizeObserver](https://www.w3.org/TR/resize-observer/), [requestIdleCallback](https://www.w3.org/TR/requestidlecallback/), [online/offline events](https://html.spec.whatwg.org/multipage/system-state.html#navigator.online), [back/forward cache](https://web.dev/articles/bfcache) via `pageshow`
@@ -246,7 +257,7 @@ Links go to the specifications.
 <summary>WordPress and PHP</summary>
 
 - [Custom post types](https://developer.wordpress.org/plugins/post-types/), [meta boxes](https://developer.wordpress.org/plugins/metadata/custom-meta-boxes/), [Settings API](https://developer.wordpress.org/plugins/settings/settings-api/), [Transients](https://developer.wordpress.org/apis/transients/), [Filesystem API](https://developer.wordpress.org/apis/filesystem/), [nonces](https://developer.wordpress.org/apis/security/nonces/), [admin-post actions](https://developer.wordpress.org/reference/hooks/admin_post_action/)
-- [REST API](https://developer.wordpress.org/rest-api/) for push subscriptions, [WP-CLI](https://make.wordpress.org/cli/handbook/guides/commands-cookbook/), [template_redirect](https://developer.wordpress.org/reference/hooks/template_redirect/), [wp_robots](https://developer.wordpress.org/reference/functions/wp_robots/)
+- [REST API](https://developer.wordpress.org/rest-api/) for push subscriptions and the shared cue (`callboard/v1/cue/`), [WP-CLI](https://make.wordpress.org/cli/handbook/guides/commands-cookbook/), [template_redirect](https://developer.wordpress.org/reference/hooks/template_redirect/), [wp_robots](https://developer.wordpress.org/reference/functions/wp_robots/)
 - [GD](https://www.php.net/manual/en/book.image.php) for artwork, [proc_open](https://www.php.net/manual/en/function.proc_open.php) for the fetch tools, [OpenSSL](https://www.php.net/manual/en/book.openssl.php) with [GMP](https://www.php.net/manual/en/book.gmp.php) or [BCMath](https://www.php.net/manual/en/book.bc.php) for VAPID keys, [web-push-php](https://github.com/web-push-libs/web-push-php)
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp#usage-and-options), [ffmpeg](https://ffmpeg.org/ffmpeg.html), [Playground blueprints](https://wordpress.github.io/wordpress-playground/blueprints/)
 

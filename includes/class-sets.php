@@ -16,7 +16,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Sets {
 
-	private const CACHE_KEY = 'callboard_sets_v1';
+	private const CACHE_KEY           = 'callboard_sets_v1';
+	private const LAST_CHANGED_OPTION = 'callboard_sets_last_changed';
 
 	/**
 	 * Hook registration: keep the cache honest.
@@ -54,6 +55,8 @@ final class Sets {
 	 */
 	public static function flush(): void {
 		delete_transient( self::CACHE_KEY );
+		$last_changed = max( 1, (int) get_option( self::LAST_CHANGED_OPTION, 1 ) );
+		update_option( self::LAST_CHANGED_OPTION, $last_changed + 1, false );
 	}
 
 	/**
@@ -62,12 +65,13 @@ final class Sets {
 	 * @return array<int, array<string, mixed>>
 	 */
 	public static function all(): array {
-		// Keyed on the extensions that shape the data as well as the data, so switching one on or off
-		// rebuilds the sets instead of serving what the last configuration made.
+		// Keyed on the active data-shaping extensions, and on a generation counter flush() bumps.
+		// That keeps one variant per fingerprint between flushes rather than rebuilding every request.
 		$fingerprint = Extensions::data_fingerprint();
-		$cached      = get_transient( self::CACHE_KEY );
-		if ( is_array( $cached ) && ( $cached['extensions'] ?? null ) === $fingerprint && is_array( $cached['sets'] ?? null ) ) {
-			return $cached['sets'];
+		$key         = self::CACHE_KEY . '_' . self::last_changed() . '_' . $fingerprint;
+		$cached      = get_transient( $key );
+		if ( is_array( $cached ) ) {
+			return $cached;
 		}
 		$posts = get_posts(
 			array(
@@ -81,15 +85,20 @@ final class Sets {
 			)
 		);
 		$sets  = array_map( array( self::class, 'build' ), $posts );
-		set_transient(
-			self::CACHE_KEY,
-			array(
-				'extensions' => $fingerprint,
-				'sets'       => $sets,
-			),
-			DAY_IN_SECONDS
-		);
+		set_transient( $key, $sets, DAY_IN_SECONDS );
 		return $sets;
+	}
+
+	/**
+	 * Generation of the set cache key, bumped by flush() to bound fingerprint variants.
+	 */
+	private static function last_changed(): int {
+		$last_changed = (int) get_option( self::LAST_CHANGED_OPTION, 0 );
+		if ( $last_changed > 0 ) {
+			return $last_changed;
+		}
+		add_option( self::LAST_CHANGED_OPTION, 1, '', 'no' );
+		return 1;
 	}
 
 	/**

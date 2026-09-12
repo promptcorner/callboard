@@ -128,6 +128,10 @@ final class Meta {
 					'type'        => 'array',
 					'description' => 'Director\'s notes: a time in seconds, the note, and the date it was given.',
 				),
+				'_callboard_practice'     => array(
+					'type'        => 'array',
+					'description' => 'Anonymous practice counts by hour in the site time zone: { "Y-m-d H": { opens, loops, seconds } }. Written only while the Count practice setting is on.',
+				),
 				'_callboard_lyrics'       => array(
 					'type'        => 'array',
 					'description' => 'Caption cues as [start, end, text], from the source\'s own auto-captions.',

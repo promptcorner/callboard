@@ -3,8 +3,11 @@ const VERSION = '__VERSION__';
 const APP = '__APP_VERSION__'; // the plugin version the pages compare against
 const PLUGIN = '__PLUGIN_PATH__';
 const PUSH_API = '__PUSH_API__';
+const HOME = '__HOME__'; // the site's home path, `/` or a network site's `/choir/`
+const MANIFEST = '__MANIFEST__';
 const ASSETS = __ASSETS__; // eslint-disable-line no-undef -- written by PHP: shell files, versioned the way the page requests them
-const SHELL = `callboard-shell-${ VERSION }`;
+const SITE = '__SITE__'; // the site ID on a multisite network, whose sites can share one origin and its caches; empty on a single site
+const SHELL = `callboard-shell-${ SITE ? SITE + '-' : '' }${ VERSION }`;
 const AUDIO = 'callboard-audio-v1';
 
 self.addEventListener( 'install', ( e ) => {
@@ -20,7 +23,8 @@ self.addEventListener( 'activate', ( e ) =>
 	e.waitUntil(
 		( async () => {
 			for ( const k of await caches.keys() ) {
-				if ( k !== SHELL && k !== AUDIO ) {
+				const others = SITE && ! k.startsWith( `callboard-shell-${ SITE }-` ); // another network site's caches
+				if ( k !== SHELL && k !== AUDIO && ! others ) {
 					await caches.delete( k );
 				}
 			}
@@ -53,7 +57,7 @@ self.addEventListener( 'push', ( e ) => {
 				icon: n.icon,
 				badge: d.badge || n.icon,
 				tag: n.tag,
-				data: { url: n.navigate || d.url || '/' },
+				data: { url: n.navigate || d.url || HOME },
 			} ),
 			'setAppBadge' in self.navigator
 				? self.navigator
@@ -97,7 +101,7 @@ self.addEventListener( 'pushsubscriptionchange', ( e ) => {
 self.addEventListener( 'notificationclick', ( e ) => {
 	e.notification.close();
 	const url = new URL(
-		( e.notification.data && e.notification.data.url ) || '/',
+		( e.notification.data && e.notification.data.url ) || HOME,
 		self.location.origin
 	).href;
 	e.waitUntil(
@@ -159,7 +163,7 @@ self.addEventListener( 'fetch', ( e ) => {
 	}
 	const fragment = url.searchParams.has( 'fragment' ); // a view without the shell, fetched by the page on navigation
 	if ( req.mode === 'navigate' || fragment ) {
-		if ( ! fragment && url.pathname.startsWith( '/wp-' ) ) {
+		if ( ! fragment && url.pathname.includes( '/wp-' ) ) {
 			// wp-admin and wp-login are not ours, but with navigation preload on the browser has already sent
 			// the request; hand that response over rather than let a second request follow the first, which
 			// on an options.php redirect loses the "Settings saved" notice.
@@ -174,7 +178,7 @@ self.addEventListener( 'fetch', ( e ) => {
 	// fetching.
 	if (
 		url.pathname.startsWith( PLUGIN ) ||
-		url.pathname === '/manifest.json' ||
+		url.pathname + url.search === MANIFEST ||
 		ASSETS.includes( url.pathname + url.search )
 	) {
 		return e.respondWith( staleWhileRevalidate( req ) );
@@ -229,7 +233,7 @@ async function page( req, e, fragment ) {
 		// as a document and gets the shell's home
 		return (
 			( await cache.match( req.url ) ) ||
-			( ! fragment && ( await cache.match( '/' ) ) ) ||
+			( ! fragment && ( await cache.match( HOME ) ) ) ||
 			new Response( 'You are offline.', {
 				status: 503,
 				headers: { 'Content-Type': 'text/plain' },

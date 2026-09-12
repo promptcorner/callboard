@@ -9,6 +9,7 @@
 
 use Callboard\Extensions;
 use Callboard\Privacy;
+use Callboard\Pwa;
 use Callboard\Sets;
 
 /**
@@ -202,6 +203,72 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 		$this->assertNull( $bpm(), 'the cache still held the tempo of an extension that is off' );
 	}
 
+	public function test_alternating_fingerprints_use_cached_variants(): void {
+		$this->set_with_a_track();
+		$count_in = true;
+		$builds   = 0;
+		add_filter(
+			'callboard_extension_enabled',
+			static function ( bool $on, string $id ) use ( &$count_in ): bool {
+				if ( 'callboard/count-in' !== $id ) {
+					return $on;
+				}
+				return $count_in;
+			},
+			10,
+			2
+		);
+		add_filter(
+			'callboard_set_data',
+			static function ( array $set ) use ( &$builds ): array {
+				++$builds;
+				return $set;
+			},
+			999
+		);
+		$read_bpm = static function ( bool $enabled ) use ( &$count_in ) {
+			$count_in = $enabled;
+			// Tests run in one PHP process; poke the registry to emulate a fresh request's active memo.
+			callboard_register_extension( 'test/poke', array( 'version' => '1.0.0' ) );
+			callboard_unregister_extension( 'test/poke' );
+			return Sets::by_slug( 'registry-set' )['tracks'][0]['bpm'];
+		};
+
+		$this->assertSame( 104, $read_bpm( true ) );
+		$this->assertSame( 1, $builds );
+		$this->assertNull( $read_bpm( false ) );
+		$this->assertSame( 2, $builds );
+		$this->assertSame( 104, $read_bpm( true ) );
+		$this->assertSame( 2, $builds, 'the first fingerprint variant should be reused' );
+	}
+
+	public function test_active_extensions_are_memoized_until_registry_changes(): void {
+		$calls = 0;
+		add_filter(
+			'callboard_extension_enabled',
+			static function ( bool $on ) use ( &$calls ): bool {
+				++$calls;
+				return $on;
+			}
+		);
+
+		Extensions::active();
+		$first_pass = $calls;
+		$this->assertGreaterThan( 0, $first_pass );
+		Extensions::contributions( 'track_data' );
+		Extensions::contributions( 'set_data' );
+		Extensions::active();
+		$this->assertSame( $first_pass, $calls );
+
+		$this->register( 'test/memo-reset' );
+		Extensions::active();
+		$this->assertGreaterThan( $first_pass, $calls );
+		$after_register = $calls;
+		callboard_unregister_extension( 'test/memo-reset' );
+		Extensions::active();
+		$this->assertGreaterThan( $after_register, $calls );
+	}
+
 	public function test_contributions_run_by_priority_then_registration_order(): void {
 		$this->register( 'test/b', array( 'slots' => array( 'track_badges' => static fn() => array( array( 'text' => 'b' ) ) ) ) );
 		$this->register(
@@ -309,19 +376,22 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 	}
 
 	public function test_the_worker_is_rewritten_once_when_extension_assets_change(): void {
-		$sw     = ABSPATH . 'sw.js';
-		$before = file_exists( $sw ) ? (string) file_get_contents( $sw ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$sw      = ABSPATH . 'sw.js';
+		$before  = file_exists( $sw ) ? (string) file_get_contents( $sw ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$on_disk = ! Pwa::serves_files(); // A network site keeps its worker in an option instead.
 		wp_register_script( 'test-asset', 'https://example.org/wp-content/plugins/test/asset.js', array(), '3', true );
 		$this->register( 'test/asset', array( 'script' => 'test-asset' ) );
 
 		try {
 			$this->assertContains( '/wp-content/plugins/test/asset.js?ver=3', Extensions::precache_urls() );
 			$this->assertTrue( Extensions::maybe_refresh_worker(), 'a new asset rewrites the worker' );
-			$this->assertStringContainsString( '/wp-content/plugins/test/asset.js?ver=3', (string) file_get_contents( $sw ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$this->assertStringContainsString( '/wp-content/plugins/test/asset.js?ver=3', Pwa::contents( 'sw.js' ) );
 			$this->assertFalse( Extensions::maybe_refresh_worker(), 'and the next request leaves it alone' );
 		} finally {
 			// The tests container serves the end-to-end site from this ABSPATH: put its worker back.
-			if ( null === $before ) {
+			if ( ! $on_disk ) {
+				$this->assertSame( $before, file_exists( $sw ) ? (string) file_get_contents( $sw ) : null, 'a network site leaves the root worker alone' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			} elseif ( null === $before ) {
 				wp_delete_file( $sw );
 			} else {
 				file_put_contents( $sw, $before ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents

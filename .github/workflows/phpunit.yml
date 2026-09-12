@@ -9,9 +9,13 @@ permissions:
 
 jobs:
   phpunit:
-    name: WordPress test suite
+    name: WordPress test suite (${{ matrix.multisite && 'multisite' || 'single site' }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        multisite: [ false, true ]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,6 +37,10 @@ jobs:
       # at /wordpress-phpunit and the same WordPress the E2E suite uses.
       - run: npm run env:start
       - run: npm run test:php
+        if: ${{ ! matrix.multisite }}
+      # The same suite on a network, with WP_TESTS_MULTISITE=1.
+      - run: npm run test:php:multisite
+        if: ${{ matrix.multisite }}
 
       - name: WordPress debug log
         if: ${{ failure() }}

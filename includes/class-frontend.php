@@ -48,6 +48,10 @@ final class Frontend {
 		$data['settings'] = Settings::for_client();
 		$data['icon']     = callboard_asset( 'assets/icon-512.png' );
 		$data['version']  = CALLBOARD_VERSION;
+		$data['worker']   = array(
+			'url'   => wp_make_link_relative( Pwa::sw_url() ),
+			'scope' => Pwa::scope(),
+		);
 		$data['push']     = Settings::get( 'push' ) && Push::available() ? array(
 			'key' => Push::keys()['publicKey'] ?? '',
 			'api' => esc_url_raw( rest_url( 'callboard/v1/push/' ) ),
@@ -171,7 +175,7 @@ final class Frontend {
 		<meta name="theme-color" content="#eceae5" media="(prefers-color-scheme: light)">
 		<meta name="theme-color" content="#161616" media="(prefers-color-scheme: dark)">
 		<meta name="color-scheme" content="light dark">
-		<link rel="manifest" href="<?php echo esc_url( home_url( '/manifest.json' ) ); ?>">
+		<link rel="manifest" href="<?php echo esc_url( Pwa::manifest_url() ); ?>">
 		<link rel="icon" sizes="192x192" href="<?php echo esc_url( Pwa::icon_url( 192 ) ); ?>">
 		<link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url( Pwa::icon_url( 180 ) ); ?>">
 		<meta name="apple-mobile-web-app-capable" content="yes">

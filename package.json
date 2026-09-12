@@ -1,6 +1,6 @@
 {
   "name": "callboard",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Rehearsal tracks for a cast. A WordPress plugin.",
   "license": "GPL-2.0-or-later",
   "private": true,
@@ -16,12 +16,14 @@
     "test:e2e": "wp-scripts test-playwright",
     "test:e2e:ui": "wp-scripts test-playwright --ui",
     "test:php": "wp-env run tests-wordpress --env-cwd=wp-content/plugins/callboard ./vendor/bin/phpunit",
+    "test:php:multisite": "wp-env run tests-wordpress --env-cwd=wp-content/plugins/callboard env WP_TESTS_MULTISITE=1 ./vendor/bin/phpunit",
     "test:php:filter": "wp-env run tests-wordpress --env-cwd=wp-content/plugins/callboard ./vendor/bin/phpunit --filter",
     "plugin-zip": "wp-scripts plugin-zip",
     "pot": "wp-env run cli wp i18n make-pot wp-content/plugins/callboard wp-content/plugins/callboard/languages/callboard.pot --exclude=vendor,node_modules,tests,site,artifacts,build --domain=callboard"
   },
   "files": [
     "callboard.php",
+    "uninstall.php",
     "includes",
     "templates",
     "assets",

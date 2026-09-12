@@ -15,6 +15,12 @@
 		apiVersion: 1,
 		setup() {
 			count( 'exampleSetups' );
+			// The button this extension put in the transport slot from PHP.
+			document
+				.querySelector( '.example-transport' )
+				?.addEventListener( 'click', () =>
+					count( 'exampleTransportClicks' )
+				);
 		},
 		init( view ) {
 			count( 'exampleInits' );
@@ -48,11 +54,20 @@
 				body.exampleShout = word;
 				return String( word ).toUpperCase();
 			},
+			// Fires this extension's own event.
+			ping: ( word ) => cb.emit( 'example.demo.pinged', { word } ),
 		},
 		badge: () => 3,
 	} );
 
-	cb.registerExtension( 'example/late', { version: '1.0.0', apiVersion: 1 } );
+	cb.registerExtension( 'example/late', {
+		version: '1.0.0',
+		apiVersion: 1,
+		events: {
+			'example.demo.pinged': ( { word } ) =>
+				( body.examplePinged = word ),
+		},
+	} );
 
 	// Registered in PHP only when the test replaces callboard/quality; refused here otherwise.
 	if ( cb.isActive( 'example/quality' ) ) {

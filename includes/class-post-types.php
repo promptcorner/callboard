@@ -46,7 +46,7 @@ final class Post_Types {
 				'supports'        => array( 'title', 'thumbnail', 'page-attributes' ),
 				'rewrite'         => false,
 				'has_archive'     => false,
-				'capability_type' => 'post',
+				'capability_type' => Roles::CAPABILITY_TYPES[ self::SET ],
 				'map_meta_cap'    => true,
 			)
 		);

@@ -172,6 +172,41 @@ test.describe( 'Front end', () => {
 		); // the button comes back
 	} );
 
+	test( 'saving asks the browser for persistent storage', async ( {
+		page,
+	} ) => {
+		await page.addInitScript( () => {
+			window.__persistCalls = { persisted: 0, persist: 0 };
+			const storage = navigator.storage || {};
+			storage.persisted = async () => {
+				window.__persistCalls.persisted++;
+				return false;
+			};
+			storage.persist = async () => {
+				window.__persistCalls.persist++;
+				return true;
+			};
+			if ( ! navigator.storage ) {
+				Object.defineProperty( navigator, 'storage', {
+					configurable: true,
+					value: storage,
+				} );
+			}
+		} );
+		await page.goto( '/demo-set/' );
+		await expect( page.locator( '#offline[data-some]' ) ).toBeAttached( {
+			timeout: 15000,
+		} );
+		const before = await page.evaluate( () => window.__persistCalls );
+		expect( before.persist ).toBe( 0 );
+		expect( before.persisted ).toBeGreaterThan( 0 );
+		await page.locator( '#offline' ).click();
+		await page.waitForFunction( () => window.__persistCalls.persist > 0 );
+		expect(
+			await page.evaluate( () => window.__persistCalls.persist )
+		).toBeGreaterThan( 0 );
+	} );
+
 	test( 'a saved copy whose size no longer matches is not counted as saved', async ( {
 		page,
 	} ) => {
@@ -211,6 +246,44 @@ test.describe( 'Front end', () => {
 				await ( await caches.open( 'callboard-audio-v1' ) ).delete( k );
 			}
 		} );
+	} );
+
+	test( 'cached audio answers byte-range requests', async ( { page } ) => {
+		await page.goto( '/demo-set/' );
+		await page
+			.waitForFunction( () => navigator.serviceWorker?.controller, null, {
+				timeout: 15000,
+			} )
+			.catch( async () => {
+				await page.reload();
+				await page.waitForFunction(
+					() => navigator.serviceWorker?.controller,
+					null,
+					{ timeout: 15000 }
+				);
+			} );
+		await page.locator( '.track' ).first().click();
+		const partial = await page.evaluate( async () => {
+			const url = document.getElementById( 'audio' ).src;
+			const c = await caches.open( 'callboard-audio-v1' );
+			const full = await fetch( url, { cache: 'no-store' } );
+			await c.put( url, full.clone() );
+			const res = await fetch( url, {
+				headers: { Range: 'bytes=10-29' },
+			} );
+			return {
+				status: res.status,
+				range: res.headers.get( 'Content-Range' ),
+				length: Number( res.headers.get( 'Content-Length' ) ) || 0,
+				acceptRanges: res.headers.get( 'Accept-Ranges' ),
+				bytes: ( await res.arrayBuffer() ).byteLength,
+			};
+		} );
+		expect( partial.status ).toBe( 206 );
+		expect( partial.range ).toMatch( /^bytes 10-29\/\d+$/ );
+		expect( partial.length ).toBe( 20 );
+		expect( partial.acceptRanges ).toBe( 'bytes' );
+		expect( partial.bytes ).toBe( 20 );
 	} );
 
 	test( 'a set shows its tracks, credits and no personal chrome', async ( {

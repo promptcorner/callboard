@@ -62,26 +62,27 @@ h2{font-size:clamp(2rem,4.2vw,3.25rem)}
 .crop img{position:absolute;left:50%;transform:translateX(-50%);width:min(100%,420px);border-radius:24px 24px 0 0;box-shadow:0 30px 70px -20px rgba(0,0,0,.35)}
 .crop.top img{top:8%}
 .crop.bottom img{bottom:-12%;top:auto;border-radius:24px}
-/* make it yours: a live copy in a phone, and three presets that change only settings */
+/* live demo: a phone-sized preview beside the controls that change it and start the demo */
 .yours{padding:120px 0 40px}
 .yours .lede{max-width:40rem}
-.demo{margin-top:48px;display:grid;justify-items:center;gap:22px}
-.presets{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
-.chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink-2);border-radius:999px;height:40px;padding:0 16px;font:inherit;font-size:.9375rem;font-weight:600;cursor:pointer;transition:color var(--t),border-color var(--t),background var(--t)}
+.demo{margin-top:48px;display:grid;grid-template-columns:minmax(0,24rem) 390px;gap:56px;align-items:center;justify-content:center}
+.demo-panel{display:grid;gap:14px;justify-items:start}
+.demo-h{margin:0;font-size:1.0625rem;letter-spacing:-.01em}
+.demo-text{margin:0;color:var(--ink-2);font-size:.9375rem;text-wrap:pretty}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink-2);border-radius:999px;min-height:44px;padding:0 16px;font:inherit;font-size:.9375rem;font-weight:600;cursor:pointer;transition:color var(--t),border-color var(--t),background var(--t)}
 .chip:hover{color:var(--ink);border-color:var(--ink)}
-.chip.is-on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.chip[disabled]{opacity:.5;cursor:progress}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:disabled{opacity:.5;cursor:progress}
 .phone{width:min(390px,100%);padding:10px;border-radius:46px;background:#0d0d0d;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 40px 90px -20px rgba(0,0,0,.45)}
 .screen{position:relative;aspect-ratio:390/844;border-radius:36px;overflow:hidden;background:#161616}
-.screen img,.screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;object-fit:cover}
-.screen iframe[hidden]{display:none}
-.demo-cover{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:14px;background:rgba(0,0,0,.28);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);transition:opacity var(--t-slow) var(--ease)}
-.demo-cover.is-gone{opacity:0;pointer-events:none}
-.demo-cover .btn{background:#f2f1ee;color:#1c1c1c;border-color:#f2f1ee}
-.demo-note{margin:0;color:#f2f1ee;font-size:.9375rem;text-align:center;max-width:16rem;text-wrap:pretty}
-.demo-foot{margin:0;max-width:40rem;text-align:center;color:var(--ink-3);font-size:.9375rem;text-wrap:pretty}
-.demo-foot a{color:var(--ink-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
-@media (max-width:900px){.yours{padding:80px 0 20px}}
+.screen img,.screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+.screen img{object-fit:contain;z-index:1}
+.screen [hidden]{display:none}
+.demo-start[aria-disabled="true"]{opacity:.6;cursor:progress}
+.demo-status{margin:0;font-size:.9375rem;color:var(--ink);text-wrap:pretty}
+.demo-panel a:not(.btn){color:var(--ink-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
+@media (max-width:900px){.yours{padding:80px 0 20px}.demo{grid-template-columns:1fr;justify-items:center;gap:32px}.demo-panel{max-width:24rem}.phone{width:min(340px,100%)}}
 /* the board: the editor doing the work, the phone showing the result */
 .board{padding:120px 0 96px}
 .board .lede{max-width:40rem}
@@ -126,19 +127,25 @@ html.js .r.in{opacity:1;transform:none}
 <section class="yours" id="yours"><div class="wrap">
 	<div class="r"><h2>Make it yours.</h2><p class="lede" style="margin-top:20px">Your name on the door. Your colour on the wave. Your badge on the track that is playing. Your lucky number in the confetti. Every one is a setting, not code, and so is the lock: leave the address open, which is what a cast usually wants, or ask for a sign-in and whatever the site already uses guards the app too. Try three of them on a real copy, running in your browser.</p></div>
 	<div class="demo r">
-		<div class="presets" role="group" aria-label="Presets">
-			<button type="button" class="chip is-on" data-preset="show">Spring Show</button>
-			<button type="button" class="chip" data-preset="choir">Chamber Choir</button>
-			<button type="button" class="chip" data-preset="maya">Maya Sings</button>
+		<div class="demo-panel">
+			<h3 class="demo-h" id="demo-examples">Example settings</h3>
+			<p class="demo-text">Each example changes the site name and accent colour. The preview shows the result.</p>
+			<div class="presets" role="group" aria-labelledby="demo-examples">
+				<button type="button" class="chip" aria-pressed="true" data-preset="show" data-src="demo-spring-show.png">Spring Show</button>
+				<button type="button" class="chip" aria-pressed="false" data-preset="choir" data-src="demo-chamber-choir.png">Chamber Choir</button>
+				<button type="button" class="chip" aria-pressed="false" data-preset="maya" data-src="demo-maya-sings.png">Maya Sings</button>
+			</div>
+			<h3 class="demo-h">Live demo</h3>
+			<p class="demo-text">Starts a temporary WordPress site with Callboard and a sample playlist, using WordPress Playground. It runs in your browser, nothing is installed, and the site is deleted when you leave the page. It takes about 10 to 30 seconds to start.</p>
+			<a class="btn demo-start" id="demo-start" href="https://playground.wordpress.net/?mode=seamless&blueprint-url={{pages_url}}blueprint.json" target="_blank" rel="noopener">Start the live demo</a>
+			<p class="demo-status" id="demo-status" role="status"></p>
 		</div>
 		<div class="phone">
 			<div class="screen">
-				<img id="demo-still" src="yours-1.png" alt="">
-				<iframe id="demo" title="Callboard, running in WordPress Playground" hidden></iframe>
-				<div class="demo-cover" id="demo-cover"><button type="button" class="btn" id="demo-start">Try it live</button><p class="demo-note" id="demo-note" hidden>Starting WordPress in your browser. About half a minute.</p></div>
+				<img id="demo-still" src="demo-spring-show.png" width="780" height="1688" alt="Preview of the Spring Show example: the home page on a phone, with the next rehearsal call and the Shakespeare's Sonnets playlist">
+				<iframe id="demo" title="Live demo of Callboard running in WordPress Playground" hidden></iframe>
 			</div>
 		</div>
-		<p class="demo-foot">A full WordPress with the plugin, in <a href="https://playground.wordpress.net/?mode=seamless&blueprint-url={{pages_url}}blueprint.json">WordPress Playground</a>. Nothing is installed on your machine, and it is gone when you leave. Under the hood it is a self-hosted player: any folder of audio becomes a set, for a cast, a choir, a band, or one kid's favourite songs.</p>
 	</div>
 </div></section>
 
@@ -171,53 +178,133 @@ html.js .r.in{opacity:1;transform:none}
 	document.querySelectorAll( '.r' ).forEach( ( el ) => io.observe( el ) );
 </script>
 <script type="module">
-	// The live copy boots only when asked: a whole WordPress is a lot to download for a page you may just be reading.
+	// Live demo. Nothing from WordPress Playground loads until someone starts the demo.
+	// Keep PRESETS in step with DEMO_PRESETS in scripts/screenshots.js.
 	const PRESETS = {
 		show:  { name: 'Spring Show',   accent: '',        badge: '★', confetti: '',   hearts: false },
 		choir: { name: 'Chamber Choir', accent: '#3b82f6', badge: '♪', confetti: '',   hearts: false },
 		maya:  { name: 'Maya Sings',    accent: '#e0457b', badge: '♥', confetti: '22', hearts: true },
 	};
-	const iframe = document.getElementById( 'demo' ), cover = document.getElementById( 'demo-cover' ), note = document.getElementById( 'demo-note' ), startBtn = document.getElementById( 'demo-start' ), chips = [ ...document.querySelectorAll( '.chip' ) ];
-	let client = null, starting = null;
-	function start() {
+	const PLAYGROUND = 'https://playground.wordpress.net/';
+	// Below this width the demo opens in a new tab: a whole site scrolling inside a small frame is hard to use on a phone.
+	const EMBED = matchMedia( '(min-width: 901px)' );
+
+	const still = document.getElementById( 'demo-still' );
+	const iframe = document.getElementById( 'demo' );
+	const link = document.getElementById( 'demo-start' );
+	const status = document.getElementById( 'demo-status' );
+	const chips = [ ...document.querySelectorAll( '.chip' ) ];
+	let current = 'show';
+	let client = null;
+	let starting = null;
+	let failed = false;
+
+	const presetCode = ( p ) => `<?php require '/wordpress/wp-load.php';
+		update_option( 'blogname', ${ JSON.stringify( p.name ) } );
+		update_option( 'callboard_settings', array_merge( (array) get_option( 'callboard_settings' ), array(
+			'accent' => ${ JSON.stringify( p.accent ) }, 'badge' => ${ JSON.stringify( p.badge ) },
+			'confetti' => ${ JSON.stringify( p.confetti ) }, 'hearts' => ${ p.hearts ? 'true' : 'false' },
+		) ) );
+		Callboard\\Sets::flush();`;
+
+	// The demo blueprint with the chosen example's settings added as a last step.
+	let blueprintRequest = null;
+	const blueprintFor = async ( key ) => {
+		blueprintRequest ||= fetch( 'blueprint.json' ).then( ( r ) => {
+			if ( ! r.ok ) throw new Error( `blueprint.json: ${ r.status }` );
+			return r.json();
+		} );
+		const base = await blueprintRequest;
+		return { ...base, steps: [ ...base.steps, { step: 'runPHP', code: presetCode( PRESETS[ key ] ) } ] };
+	};
+
+	// Point the new-tab link at a Playground URL that carries the chosen example.
+	const updateLink = async () => {
+		try {
+			const json = JSON.stringify( await blueprintFor( current ) );
+			const bytes = new TextEncoder().encode( json );
+			link.href = `${ PLAYGROUND }?mode=seamless#${ btoa( String.fromCharCode( ...bytes ) ) }`;
+		} catch {
+			// Keep the link in the markup, which opens the demo with its default settings.
+		}
+	};
+
+	const setBusy = ( busy ) => {
+		link.setAttribute( 'aria-disabled', busy ? 'true' : 'false' );
+		chips.forEach( ( c ) => ( c.disabled = busy ) );
+	};
+
+	const showNewTabFallback = () => {
+		failed = true;
+		link.textContent = 'Open the demo in a new tab';
+		status.textContent = 'The live demo couldn’t start on this page.';
+	};
+
+	async function start() {
 		if ( starting ) return starting;
-		note.hidden = false; startBtn.hidden = true; chips.forEach( ( c ) => ( c.disabled = true ) );
+		setBusy( true );
+		status.textContent = 'Starting the live demo…';
 		starting = ( async () => {
 			const [ { startPlaygroundWeb }, blueprint ] = await Promise.all( [
-				import( 'https://playground.wordpress.net/client/index.js' ),
-				fetch( 'blueprint.json' ).then( ( r ) => r.json() ),
+				import( `${ PLAYGROUND }client/index.js` ),
+				blueprintFor( current ),
 			] );
 			iframe.hidden = false;
-			client = await startPlaygroundWeb( { iframe, remoteUrl: 'https://playground.wordpress.net/remote.html', blueprint } );
+			client = await startPlaygroundWeb( { iframe, remoteUrl: `${ PLAYGROUND }remote.html`, blueprint } );
 			await client.isReady();
-			cover.classList.add( 'is-gone' );
-			chips.forEach( ( c ) => ( c.disabled = false ) );
+			still.hidden = true;
+			link.textContent = 'Open the demo in a new tab';
+			status.textContent = 'The live demo is running in the phone frame. Changes are not saved.';
+			setBusy( false );
 			return client;
 		} )().catch( ( e ) => {
-			note.textContent = 'The live copy could not start here. The link below opens it in a new tab.';
-			chips.forEach( ( c ) => ( c.disabled = false ) );
+			iframe.hidden = true;
+			still.hidden = false;
 			starting = null;
+			setBusy( false );
+			showNewTabFallback();
 			throw e;
 		} );
 		return starting;
 	}
-	async function apply( key ) {
-		const p = PRESETS[ key ];
-		chips.forEach( ( c ) => c.classList.toggle( 'is-on', c.dataset.preset === key ) );
-		const c = await start();
-		chips.forEach( ( x ) => ( x.disabled = true ) );
-		await c.run( { code: `<?php require '/wordpress/wp-load.php';
-			update_option( 'blogname', ${ JSON.stringify( p.name ) } );
-			update_option( 'callboard_settings', array_merge( (array) get_option( 'callboard_settings' ), array(
-				'accent' => ${ JSON.stringify( p.accent ) }, 'badge' => ${ JSON.stringify( p.badge ) },
-				'confetti' => ${ JSON.stringify( p.confetti ) }, 'hearts' => ${ p.hearts ? 'true' : 'false' },
-			) ) );
-			Callboard\\Sets::flush();` } );
-		await c.goTo( '/' );
-		chips.forEach( ( x ) => ( x.disabled = false ) );
+
+	async function choose( chip ) {
+		current = chip.dataset.preset;
+		chips.forEach( ( c ) => c.setAttribute( 'aria-pressed', c === chip ? 'true' : 'false' ) );
+		still.src = chip.dataset.src;
+		still.alt = still.alt.replace( /^Preview of the .+? example/, `Preview of the ${ PRESETS[ current ].name } example` );
+		updateLink();
+		if ( ! client ) return;
+		setBusy( true );
+		status.textContent = `Applying ${ PRESETS[ current ].name }…`;
+		try {
+			await client.run( { code: presetCode( PRESETS[ current ] ) } );
+			await client.goTo( '/' );
+			status.textContent = `The live demo is showing ${ PRESETS[ current ].name }. Changes are not saved.`;
+		} finally {
+			setBusy( false );
+		}
 	}
-	startBtn.addEventListener( 'click', () => start().catch( () => {} ) );
-	chips.forEach( ( c ) => c.addEventListener( 'click', () => apply( c.dataset.preset ).catch( () => {} ) ) );
+
+	link.addEventListener( 'click', ( e ) => {
+		if ( link.getAttribute( 'aria-disabled' ) === 'true' ) {
+			e.preventDefault();
+			return;
+		}
+		// Once running, or after a failure, the link opens a new tab like it does on a phone.
+		if ( ! EMBED.matches || client || failed ) return;
+		e.preventDefault();
+		start().catch( () => {} );
+	} );
+	chips.forEach( ( c ) => c.addEventListener( 'click', () => choose( c ).catch( () => {} ) ) );
+	const labelLink = () => {
+		if ( ! client && ! failed ) {
+			link.textContent = EMBED.matches ? 'Start the live demo' : 'Open the live demo in a new tab';
+		}
+	};
+	EMBED.addEventListener( 'change', labelLink );
+	labelLink();
+	updateLink();
 </script>
 </body>
 </html>
