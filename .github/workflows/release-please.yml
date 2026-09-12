@@ -125,7 +125,11 @@ jobs:
           done
 
   # When the release pull request merges, release-please tags and cuts the
-  # GitHub Release. Build the distribution zip and attach it.
+  # GitHub Release. It is created in draft so this job can attach the
+  # distribution zip before anyone sees the release: this repository makes
+  # releases immutable once published, and an immutable release rejects
+  # asset uploads with "HTTP 422: Cannot upload assets to an immutable
+  # release", so the zip must be attached while the release is still a draft.
   build-release-asset:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
@@ -154,9 +158,15 @@ jobs:
           test -f build/callboard/callboard.php
           test -f build/callboard/vendor/autoload.php
           find build/callboard -name '*.php' -not -path '*/vendor/*' -print0 | xargs -0 -n1 -P 4 php -l > /dev/null
-      - name: Attach the zip to the release
+      - name: Attach the zip to the draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
         run: gh release upload --clobber "$TAG_NAME" build/callboard.zip
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+        run: gh release edit "$TAG_NAME" --draft=false
