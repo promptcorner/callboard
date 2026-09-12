@@ -55,7 +55,7 @@ final class Push {
 				'public'          => false,
 				'show_ui'         => false,
 				'supports'        => array( 'title' ),
-				'capability_type' => 'post',
+				'capability_type' => Roles::CAPABILITY_TYPES[ self::TYPE ],
 				'map_meta_cap'    => true,
 			)
 		);
@@ -343,7 +343,7 @@ final class Push {
 	 * Admin "Notify the cast" form.
 	 */
 	public static function handle_admin_notify(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( Roles::NOTIFY ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'callboard' ) );
 		}
 		check_admin_referer( 'callboard_notify' );

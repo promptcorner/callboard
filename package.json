@@ -22,6 +22,7 @@
   },
   "files": [
     "callboard.php",
+    "uninstall.php",
     "includes",
     "templates",
     "assets",

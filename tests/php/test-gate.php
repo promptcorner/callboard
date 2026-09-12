@@ -10,6 +10,7 @@
  */
 
 use Callboard\Gate;
+use Callboard\Roles;
 use Callboard\Settings;
 
 /**
@@ -36,8 +37,17 @@ class Test_Callboard_Gate extends WP_UnitTestCase {
 		parent::tear_down();
 	}
 
-	private function require_signin( bool $on ): void {
-		update_option( Settings::OPTION, array_merge( Settings::defaults(), array( 'require_signin' => $on ) ) );
+	private function require_signin( bool $on, bool $access = false ): void {
+		update_option(
+			Settings::OPTION,
+			array_merge(
+				Settings::defaults(),
+				array(
+					'require_signin' => $on,
+					'require_access' => $access,
+				)
+			)
+		);
 	}
 
 	public function test_the_gate_is_open_by_default(): void {
@@ -58,6 +68,36 @@ class Test_Callboard_Gate extends WP_UnitTestCase {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
 
 		$this->assertTrue( Gate::allowed(), 'a subscriber is a cast member, not an editor' );
+	}
+
+	public function test_with_the_capability_required_a_subscriber_is_turned_away_and_a_cast_member_is_let_in(): void {
+		$this->require_signin( true, true );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		$this->assertTrue( Gate::capability_required() );
+		$this->assertFalse( Gate::allowed() );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => Roles::CAST_MEMBER ) ) );
+		$this->assertTrue( Gate::allowed() );
+
+		wp_set_current_user( 0 );
+		$this->assertFalse( Gate::allowed() );
+	}
+
+	public function test_the_capability_setting_does_nothing_without_the_signin_setting(): void {
+		$this->require_signin( false, true );
+		wp_set_current_user( 0 );
+
+		$this->assertFalse( Gate::capability_required() );
+		$this->assertTrue( Gate::allowed() );
+	}
+
+	public function test_a_filter_still_outranks_the_capability_setting(): void {
+		$this->require_signin( true, true );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
+		add_filter( 'callboard_can_view', '__return_true' );
+
+		$this->assertTrue( Gate::allowed() );
 	}
 
 	/**

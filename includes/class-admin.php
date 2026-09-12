@@ -23,6 +23,7 @@ final class Admin {
 		add_action( 'add_meta_boxes_' . Post_Types::SET, array( self::class, 'meta_boxes' ) );
 		add_action( 'save_post_' . Post_Types::SET, array( self::class, 'save' ) );
 		add_action( 'admin_menu', array( self::class, 'menu' ) );
+		add_action( 'admin_menu', array( self::class, 'new_call_menu' ), 11 );
 		add_action( 'admin_init', array( self::class, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( self::class, 'assets' ) );
 		add_action( 'admin_notices', array( self::class, 'import_notice' ) );
@@ -261,8 +262,26 @@ final class Admin {
 	public static function menu(): void {
 		$parent = 'edit.php?post_type=' . Post_Types::SET;
 		add_submenu_page( $parent, __( 'Import', 'callboard' ), __( 'Import', 'callboard' ), 'manage_options', 'callboard-import', array( self::class, 'page_import' ) );
-		add_submenu_page( $parent, __( 'Notices', 'callboard' ), __( 'Notices', 'callboard' ), 'manage_options', 'callboard-notices', array( self::class, 'page_notices' ) );
+		add_submenu_page( $parent, __( 'Notices', 'callboard' ), __( 'Notices', 'callboard' ), Roles::NOTIFY, 'callboard-notices', array( self::class, 'page_notices' ) );
 		add_submenu_page( $parent, __( 'Callboard Settings', 'callboard' ), __( 'Settings', 'callboard' ), 'manage_options', 'callboard-settings', array( self::class, 'page_settings' ) );
+	}
+
+	/**
+	 * A "Post a Call" submenu for users who can post calls but not blog posts, such as directors.
+	 *
+	 * Calls are shown under the Sets menu. WordPress then refuses post-new.php for that post type to anyone
+	 * without `edit_posts`, unless the page is in a menu (core ticket #22895).
+	 *
+	 * @since 2.3.0
+	 */
+	public static function new_call_menu(): void {
+		if ( current_user_can( 'edit_posts' ) ) {
+			return;
+		}
+		$type = get_post_type_object( Calls::TYPE );
+		if ( $type ) {
+			add_submenu_page( 'edit.php?post_type=' . Post_Types::SET, $type->labels->add_new_item, $type->labels->add_new_item, $type->cap->create_posts, 'post-new.php?post_type=' . Calls::TYPE );
+		}
 	}
 
 	/**
@@ -294,6 +313,7 @@ final class Admin {
 			'count_in'        => array( __( 'Count in tracks that have a tempo', 'callboard' ), 'checkbox', __( 'Four clicks at the marked tempo before a track starts from the top, so singers come in on the beat. Off, the tempo still shows on the track.', 'callboard' ) ),
 			'practice'        => array( __( 'Count practice', 'callboard' ), 'checkbox', __( 'Counts how many times each track is opened, how many loops are set on it, and how many minutes it plays. Counts are anonymous: no names, accounts, IP addresses or cookies are stored. They are grouped by hour and shown on each call in the editor.', 'callboard' ) ),
 			'require_signin'  => array( __( 'Require a WordPress sign-in', 'callboard' ), 'checkbox', __( 'Off, anyone with the address can open the site, which is usually what a cast wants. On, the front end asks for a signed-in user, so whatever sign-in the site already has — Apple, Google, a membership plugin, passkeys through Two Factor — guards it too. Audio files keep their own upload addresses either way.', 'callboard' ) ),
+			'require_access'  => array( __( 'Only let in users with access to Callboard', 'callboard' ), 'checkbox', __( 'Needs the sign-in setting above. On, a signed-in user also needs the view_callboard capability. Cast members, directors and anyone who can edit posts have it. Subscribers do not.', 'callboard' ) ),
 		);
 		foreach ( $fields as $key => list( $label, $type, $help ) ) {
 			add_settings_field(

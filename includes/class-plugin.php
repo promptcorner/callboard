@@ -41,9 +41,13 @@ final class Plugin {
 	}
 
 	/**
-	 * After an update: drop cached data shaped by the old version and refresh the app files.
+	 * After an update: add any missing roles, drop cached data shaped by the old version and refresh the app files.
 	 */
 	public static function maybe_upgrade(): void {
+		// Checked apart from the plugin version, so a site that already has this version still gets the roles.
+		if ( (int) get_option( Roles::OPTION ) < Roles::VERSION ) {
+			Roles::install();
+		}
 		if ( get_option( 'callboard_version' ) === CALLBOARD_VERSION ) {
 			return;
 		}
@@ -54,9 +58,10 @@ final class Plugin {
 	}
 
 	/**
-	 * Activation: register types, write PWA files, import anything waiting.
+	 * Activation: add the roles, register types, write PWA files, import anything waiting.
 	 */
 	public static function activate(): void {
+		Roles::install();
 		Post_Types::register();
 		if ( ! get_option( 'permalink_structure' ) ) { // /<set>/ routes need pretty permalinks.
 			update_option( 'permalink_structure', '/%postname%/' );

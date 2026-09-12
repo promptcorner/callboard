@@ -68,7 +68,7 @@ class Test_Callboard_Settings extends WP_UnitTestCase {
 	public function test_an_absent_checkbox_reads_as_off(): void {
 		$clean = Settings::sanitize( array( 'tagline' => 'Only this' ) );
 
-		foreach ( array( 'hearts', 'show_hint', 'offline', 'push', 'notify_new_sets', 'notify_calls', 'count_in', 'require_signin' ) as $flag ) {
+		foreach ( array( 'hearts', 'show_hint', 'offline', 'push', 'notify_new_sets', 'notify_calls', 'count_in', 'require_signin', 'require_access' ) as $flag ) {
 			$this->assertFalse( $clean[ $flag ], "{$flag} should be off when the box is not posted" );
 		}
 	}

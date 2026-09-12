@@ -40,7 +40,7 @@ final class Requests {
 				'show_ui'         => false,
 				'show_in_rest'    => false,
 				'supports'        => array( 'title' ),
-				'capability_type' => 'post',
+				'capability_type' => Roles::CAPABILITY_TYPES[ self::TYPE ],
 				'map_meta_cap'    => true,
 			)
 		);

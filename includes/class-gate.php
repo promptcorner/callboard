@@ -6,6 +6,7 @@
  * same place — a signed-in user — so asking `is_user_logged_in()` and nothing else inherits
  * Sign in with Apple, Google SSO, membership plugins, and Two Factor with its WebAuthn
  * provider without knowing any of them exist. Core still ships no passkeys of its own.
+ * A site can also require the `view_callboard` capability, which the Cast member role has.
  *
  * Off by default: a link in a group chat is the whole setup, and that is the point of the
  * plugin. The switch is for companies that need more.
@@ -38,7 +39,10 @@ final class Gate {
 		$allowed = apply_filters( 'callboard_can_view', null );
 
 		if ( null === $allowed ) {
-			return ! self::required() || is_user_logged_in();
+			if ( ! self::required() ) {
+				return true;
+			}
+			return self::capability_required() ? current_user_can( Roles::VIEW ) : is_user_logged_in();
 		}
 
 		return (bool) $allowed;
@@ -49,6 +53,15 @@ final class Gate {
 	 */
 	public static function required(): bool {
 		return (bool) Settings::get( 'require_signin' );
+	}
+
+	/**
+	 * Whether a signed-in user also needs the `view_callboard` capability. Only applies when sign-in is required.
+	 *
+	 * @since 2.3.0
+	 */
+	public static function capability_required(): bool {
+		return self::required() && (bool) Settings::get( 'require_access' );
 	}
 
 	/**

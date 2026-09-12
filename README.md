@@ -118,7 +118,9 @@ The service worker precaches the shell and the home fragment. Saving a set strea
 
 `Privacy` adds `noindex` via `wp_robots` and `X-Robots-Tag`, disallows everything in `robots.txt`, sets `Referrer-Policy: no-referrer`, requires authentication for REST except the push routes, hides the users endpoint, disables XML-RPC and feeds, and redirects author archives and search to home.
 
-`Gate` is the one decision about who may see the front end, and it is off by default: a link in a group chat is the whole setup, and that is the point. Turn on **Require a WordPress sign-in** and the answer becomes `is_user_logged_in()` and nothing else, so whatever sign-in the site already has guards the app too — Apple, Google, a membership plugin, passkeys through Two Factor and its WebAuthn provider. Core still ships no passkeys of its own. `callboard_can_view` overrides both; return `null` and the filter never has to know what the setting says.
+`Gate` is the one decision about who may see the front end, and it is off by default: a link in a group chat is the whole setup, and that is the point. Turn on **Require a WordPress sign-in** and the answer becomes `is_user_logged_in()` and nothing else, so whatever sign-in the site already has guards the app too — Apple, Google, a membership plugin, passkeys through Two Factor and its WebAuthn provider. Core still ships no passkeys of its own. Also turn on **Only let in users with access to Callboard** and a signed-in user needs the `view_callboard` capability too. `callboard_can_view` overrides the settings; return `null` and the filter never has to know what they say.
+
+`Roles` adds two roles. **Director** can post calls, edit playlists and their track notes, and send notifications from Notices. **Cast member** can only open the front end. Each post type has its own capabilities (`edit_callboard_calls`, `edit_callboard_playlists`, and so on), and on activation or update every other role gets the ones that match the post capabilities it already has. Administrators, editors, authors and contributors keep what they could do before. Deleting the plugin removes the roles and capabilities.
 
 **Count practice** is off by default. When it is on, the page counts how many times each track is opened, how many loops are set on it and how many seconds it plays, and sends those totals to the site. They are stored on the track, grouped by hour, and shown on each call in the editor. No user id, name, IP address or cookie is stored with them.
 
@@ -139,7 +141,8 @@ A gated request answers 403 with `templates/gate.php` rather than redirecting to
 | Path | Purpose |
 | --- | --- |
 | `callboard.php` | Plugin header, constants, autoload |
-| `includes/` | One class per concern: `Plugin`, `Router`, `Frontend`, `Sets`, `Calls`, `Post_Types`, `Admin`, `Settings`, `Importer`, `Exporter`, `Id3`, `Fetcher`, `Requests`, `Push`, `Pwa`, `Privacy`, `Gate`, `Art`, `Cli`. `helpers.php` has icons and formatting |
+| `uninstall.php` | Removes the roles and capabilities when the plugin is deleted |
+| `includes/` | One class per concern: `Plugin`, `Router`, `Frontend`, `Sets`, `Calls`, `Post_Types`, `Admin`, `Settings`, `Importer`, `Exporter`, `Id3`, `Fetcher`, `Requests`, `Push`, `Pwa`, `Privacy`, `Gate`, `Roles`, `Art`, `Cli`. `helpers.php` has icons and formatting |
 | `templates/` | `index.php` (shell), `fragment.php`, `home.php`, `board.php`, `set.php`, `deck.php` (player), `gate.php`, `footer.php` |
 | `assets/` | `app.js`, `app.css` |
 | `pwa/sw.js` | Service worker source |
