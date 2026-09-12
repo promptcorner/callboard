@@ -184,6 +184,7 @@ final class Admin {
 		}
 		$order  = array_map( 'intval', (array) ( $_POST['callboard_order'] ?? array() ) );
 		$titles = isset( $_POST['callboard_title'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_title'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
+		$notes_to_notify = array();
 		foreach ( $order as $i => $track_id ) {
 			if ( (int) get_post_field( 'post_parent', $track_id ) !== $post_id ) {
 				continue;
@@ -224,6 +225,22 @@ final class Admin {
 			Importer::import_all();
 		}
 		Sets::flush();
+		foreach ( $notes_to_notify as $item ) {
+			$note = $item['note'];
+			$url  = add_query_arg(
+				array(
+					'track' => (int) $item['index'],
+					'at'    => (float) $note['t'],
+				),
+				trailingslashit( home_url( '/' . get_post_field( 'post_name', $post_id ) . '/' ) )
+			);
+			Push::send(
+				/* translators: %s: track title. */
+				sprintf( __( "Director's note: %s", 'callboard' ), $item['title'] ),
+				$note['text'],
+				$url
+			);
+		}
 	}
 
 	/**

@@ -2578,13 +2578,30 @@
 			paintCalls();
 		}
 		if ( set?.tracks.length ) {
+			const params = new URLSearchParams( location.search ),
+				noteIndex = Number( params.get( 'track' ) ),
+				noteAt = Number( params.get( 'at' ) ),
+				noteStart =
+					Number.isInteger( noteIndex ) &&
+					noteIndex >= 0 &&
+					noteIndex < set.tracks.length &&
+					Number.isFinite( noteAt ) &&
+					noteAt >= 0
+						? { index: noteIndex, at: noteAt }
+						: null;
 			if ( ! queue ) {
 				queue = set;
-				const saved = ls.get( key() );
-				load( saved && set.tracks[ saved.i ] ? saved.i : 0, {
-					play: false,
-					at: saved?.t || 0,
-				} );
+				if ( noteStart ) {
+					load( noteStart.index, { at: noteStart.at } );
+				} else {
+					const saved = ls.get( key() );
+					load( saved && set.tracks[ saved.i ] ? saved.i : 0, {
+						play: false,
+						at: saved?.t || 0,
+					} );
+				}
+			} else if ( noteStart ) {
+				startSet( set, noteStart.index, { at: noteStart.at } );
 			}
 			$( 'play-all' )?.addEventListener( 'click', () => {
 				haptic();

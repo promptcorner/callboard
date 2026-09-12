@@ -52,6 +52,22 @@ test.describe( 'Front end', () => {
 		); // pinned to the bottom edge
 	} );
 
+	test( 'a director note link opens its track at the note time', async ( {
+		page,
+	} ) => {
+		await page.goto( '/demo-set/?track=2&at=4' );
+		await expect( page.locator( '#now-title' ) ).toContainText(
+			'Sonnets 21–30'
+		);
+		await expect
+			.poll( () =>
+				page
+					.locator( '#audio' )
+					.evaluate( ( audio ) => audio.currentTime )
+			)
+			.toBeGreaterThanOrEqual( 4 );
+	} );
+
 	test( 'loading a set from files fills the offline copies without the network', async ( {
 		page,
 	} ) => {
