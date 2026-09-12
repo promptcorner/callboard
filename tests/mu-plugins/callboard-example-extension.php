@@ -14,6 +14,7 @@
  *   callboard_example_disable=callboard/count-in,callboard/badging   switch those off by id
  *   callboard_example_count_in=1       the count-in setting, on for this request only
  *   callboard_example_gate=1           the front-end gate, closed for this request only
+ *   callboard_example_visitor=<text>   a value example/demo returns from app_data
  *
  * Mapped in by .wp-env.json and kept under tests/, which the plugin zip excludes.
  *
@@ -44,7 +45,11 @@ add_action(
 				'api_version' => 1,
 				'track_data'  => static fn( array $track ) => array( 'seconds' => (int) round( (float) $track['duration'] ) ),
 				'set_data'    => static fn( array $set ) => array( 'tracks' => count( $set['tracks'] ) ),
-				'app_data'    => static fn() => array( 'greeting' => 'hello' ),
+				// Built on every request: `visitor` follows a cookie, so a cached copy would show the old value.
+				'app_data'    => static fn() => array(
+					'greeting' => 'hello',
+					'visitor'  => callboard_example_cookie( 'callboard_example_visitor' ),
+				),
 				'slots'       => array(
 					// Ahead of the count-in's ♩ badge, which sits at the default 10.
 					'track_badges' => array(
