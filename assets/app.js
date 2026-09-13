@@ -471,7 +471,9 @@
 			return;
 		}
 		try {
-			const ctx = new AudioContext();
+			// One context for the meter, the gapless loop and scheduled starts: nodes can't connect across contexts.
+			looperCtx = looperCtx || new AudioContext();
+			const ctx = looperCtx;
 			const src = ctx.createMediaElementSource( audio );
 			analyser = ctx.createAnalyser();
 			analyser.fftSize = 64;
