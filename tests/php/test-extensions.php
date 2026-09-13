@@ -115,6 +115,17 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 		$this->assertSame( 1, CALLBOARD_API_VERSION );
 	}
 
+	public function test_the_shared_cue_is_gone_and_updating_clears_its_option(): void {
+		$this->assertNull( callboard_get_extension( 'callboard/cue' ), 'Lead and Follow were removed' );
+		rest_get_server();
+		$this->assertEmpty( preg_grep( '#^/callboard/v1/cue#', array_keys( rest_get_server()->get_routes() ) ), 'the cue routes were removed' );
+
+		update_option( 'callboard_cue', array( 'seq' => 3 ) );
+		update_option( 'callboard_version', '2.3.0' );
+		\Callboard\Plugin::maybe_upgrade();
+		$this->assertFalse( get_option( 'callboard_cue' ), 'updating the plugin deletes the stored cue' );
+	}
+
 	public function test_an_extension_registers_reads_back_and_unregisters(): void {
 		$registered = $this->register( 'test/round-trip', array( 'title' => 'Round trip' ) );
 

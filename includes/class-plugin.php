@@ -54,7 +54,7 @@ final class Plugin {
 			return;
 		}
 		update_option( 'callboard_version', CALLBOARD_VERSION, false );
-		delete_option( 'callboard_cue' ); // Left by the shared cue, which was removed before 2.4.0.
+		delete_option( 'callboard_cue' ); // Left by the shared cue, which shipped in 2.4.0 and was then removed.
 		Sets::flush();
 		Importer::import_all(); // sidecar files (levels, notes, tempo) added by a deploy land here.
 		Pwa::write_files();
