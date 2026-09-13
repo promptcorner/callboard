@@ -143,30 +143,76 @@ final class Calls {
 		if ( ! isset( $_POST[ self::NONCE ] ) || ! wp_verify_nonce( sanitize_key( $_POST[ self::NONCE ] ), self::NONCE ) || ! current_user_can( 'edit_post', $post_id ) ) {
 			return;
 		}
-		$when = sanitize_text_field( wp_unslash( $_POST['callboard_when'] ?? '' ) );
+		$meta = self::clean_meta(
+			sanitize_text_field( wp_unslash( $_POST['callboard_when'] ?? '' ) ),
+			sanitize_text_field( wp_unslash( $_POST['callboard_where'] ?? '' ) ),
+			array_map( 'intval', (array) ( $_POST['callboard_numbers'] ?? array() ) ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each value is cast to int.
+		);
+		foreach ( array( self::WHEN, self::WHERE, self::NUMBERS ) as $key ) {
+			if ( isset( $meta[ $key ] ) ) {
+				update_post_meta( $post_id, $key, $meta[ $key ] );
+			} else {
+				delete_post_meta( $post_id, $key );
+			}
+		}
+	}
+
+	/**
+	 * Post a call without the editor: the same post and meta the Publish button saves.
+	 *
+	 * The meta goes in with the post, so the notification sent on publish already has the time and place.
+	 *
+	 * @since 2.5.0
+	 *
+	 * @param string $title   What is called.
+	 * @param string $note    The note under it.
+	 * @param string $when    'Y-m-d\TH:i' in the site's time zone, as the editor's When field sends it. Empty for a notice.
+	 * @param string $where   Room, stage, address.
+	 * @param int[]  $numbers Attachment ids of the tracks being worked.
+	 * @return int|\WP_Error The call's post id.
+	 */
+	public static function post( string $title, string $note = '', string $when = '', string $where = '', array $numbers = array() ): int|\WP_Error {
+		return wp_insert_post(
+			wp_slash(
+				array(
+					'post_type'    => self::TYPE,
+					'post_status'  => 'publish',
+					'post_title'   => $title,
+					'post_content' => $note,
+					'meta_input'   => self::clean_meta( $when, sanitize_text_field( $where ), $numbers ),
+				)
+			),
+			true
+		);
+	}
+
+	/**
+	 * A call's time, place and numbers, cleaned. Empty ones are left out.
+	 *
+	 * @param string $when    'Y-m-d\TH:i' in the site's time zone.
+	 * @param string $where   Sanitized place.
+	 * @param int[]  $numbers Attachment ids. Anything that is not an attachment is dropped.
+	 * @return array<string, mixed> Meta key to value.
+	 */
+	private static function clean_meta( string $when, string $where, array $numbers ): array {
+		$meta = array();
 		$dt   = $when ? date_create_immutable_from_format( 'Y-m-d\TH:i', $when, wp_timezone() ) : false;
 		if ( $dt ) {
-			update_post_meta( $post_id, self::WHEN, $dt->format( 'Y-m-d H:i' ) );
-		} else {
-			delete_post_meta( $post_id, self::WHEN );
+			$meta[ self::WHEN ] = $dt->format( 'Y-m-d H:i' );
 		}
-		$where = sanitize_text_field( wp_unslash( $_POST['callboard_where'] ?? '' ) );
 		if ( '' !== $where ) {
-			update_post_meta( $post_id, self::WHERE, $where );
-		} else {
-			delete_post_meta( $post_id, self::WHERE );
+			$meta[ self::WHERE ] = $where;
 		}
 		$numbers = array_values(
 			array_filter(
-				array_map( 'intval', (array) ( $_POST['callboard_numbers'] ?? array() ) ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- each value is cast to int.
+				array_map( 'intval', $numbers ),
 				static fn( int $id ) => $id > 0 && 'attachment' === get_post_type( $id )
 			)
 		);
 		if ( $numbers ) {
-			update_post_meta( $post_id, self::NUMBERS, $numbers );
-		} else {
-			delete_post_meta( $post_id, self::NUMBERS );
+			$meta[ self::NUMBERS ] = $numbers;
 		}
+		return $meta;
 	}
 
 	/**

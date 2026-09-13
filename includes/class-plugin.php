@@ -30,6 +30,7 @@ final class Plugin {
 		Exporter::register_hooks();
 		Requests::register_hooks();
 		Push::register_hooks();
+		Abilities::register_hooks();
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			Cli::register();
 		}
