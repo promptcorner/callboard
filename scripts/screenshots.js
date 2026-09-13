@@ -4,6 +4,7 @@
  * Run wp-env first, then:
  *   node scripts/screenshots.js           every screenshot
  *   node scripts/screenshots.js demo      only the live demo previews
+ *   node scripts/screenshots.js player    only the player bar and Now Playing
  *   node scripts/screenshots.js demo http://localhost:8889
  *
  * The phone shots are 390x664 at device pixel ratio 2 (780x1328). The live demo previews are 390x844
@@ -80,6 +81,7 @@ function testsPort() {
 
 const args = process.argv.slice( 2 );
 const ONLY_DEMO = args.includes( 'demo' );
+const ONLY_PLAYER = args.includes( 'player' );
 const BASE =
 	args.find( ( a ) => /^https?:\/\//.test( a ) ) ||
 	`http://localhost:${ testsPort() }`;
@@ -181,6 +183,26 @@ Callboard\\Sets::flush();
 		);
 	};
 
+	// The player bar over a set, and Now Playing opened from it.
+	const player = async () => {
+		await phone( 'set-dark.png', 'dark', async ( p ) => {
+			await p.goto( `${ BASE }/demo-set/`, { waitUntil: 'networkidle' } );
+			await p.locator( '.track' ).first().click(); // the player bar only shows once a track is loaded
+			await p.waitForTimeout( 900 );
+		} );
+		await phone( 'now-playing-dark.png', 'dark', async ( p ) => {
+			await p.goto( `${ BASE }/demo-set/`, { waitUntil: 'networkidle' } );
+			await p.locator( '.track' ).nth( 2 ).click();
+			await p.locator( '#open-lyrics' ).click(); // the player bar opens Now Playing
+			await p.waitForTimeout( 900 );
+		} );
+	};
+	if ( ONLY_PLAYER ) {
+		await player();
+		await browser.close();
+		return;
+	}
+
 	// The live demo previews: the home page as the demo blueprint sets it up, once per example.
 	const state = wp( DEMO_SETUP, { settings: DEMO_SETTINGS } );
 	if ( ! state ) {
@@ -215,11 +237,7 @@ Callboard\\Sets::flush();
 	await phone( 'set-light.png', 'light', async ( p ) => {
 		await p.goto( `${ BASE }/demo-set/`, { waitUntil: 'networkidle' } );
 	} );
-	await phone( 'set-dark.png', 'dark', async ( p ) => {
-		await p.goto( `${ BASE }/demo-set/`, { waitUntil: 'networkidle' } );
-		await p.locator( '.track' ).first().click(); // the player bar only shows once a track is loaded
-		await p.waitForTimeout( 900 );
-	} );
+	await player();
 
 	// The admin shot: a call open in the editor, at the desktop size the page uses.
 	const desk = await browser.newContext( {
