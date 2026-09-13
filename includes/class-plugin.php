@@ -23,6 +23,7 @@ final class Plugin {
 		Extensions::register_hooks();
 		Post_Types::register_hooks();
 		Meta::register_hooks();
+		Notes::register_hooks();
 		Calls::register_hooks();
 		Sets::register_hooks();
 		Importer::register_hooks();

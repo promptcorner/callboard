@@ -59,9 +59,9 @@ final class Admin {
 		foreach ( $tracks as $track ) {
 			$meta  = (array) wp_get_attachment_metadata( $track->ID );
 			$bpm   = (int) get_post_meta( $track->ID, '_callboard_bpm', true );
-			$notes = get_post_meta( $track->ID, '_callboard_notes', true );
+			$notes = Notes::get( (int) $track->ID );
 			$lines = array();
-			foreach ( is_array( $notes ) ? $notes : array() as $n ) {
+			foreach ( $notes as $n ) {
 				$lines[] = callboard_fmt( (float) $n['t'] ) . ' ' . $n['text'];
 			}
 			printf(
@@ -84,7 +84,7 @@ final class Admin {
 				esc_html__( 'With a tempo, Play from the top counts in four beats.', 'callboard' ),
 				esc_html__( 'Director notes', 'callboard' ),
 				esc_textarea( implode( "\n", $lines ) ),
-				esc_html__( 'One per line: a time, then the note. Each note is dated the day it is first saved and pinned at that time on the player.', 'callboard' )
+				esc_html__( 'One per line: a time, then the note. Each note is saved in your name, dated the day it is first saved, and pinned at that time on the player.', 'callboard' )
 			);
 		}
 		echo '</ol>';
@@ -199,7 +199,7 @@ final class Admin {
 			$bpms = array_map( 'intval', (array) ( $_POST['callboard_bpm'] ?? array() ) );
 			update_post_meta( $track_id, '_callboard_bpm', Importer::clamp_bpm( (int) ( $bpms[ $track_id ] ? $bpms[ $track_id ] : 0 ) ) );
 			$raw = isset( $_POST['callboard_notes'][ $track_id ] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['callboard_notes'][ $track_id ] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized here.
-			update_post_meta( $track_id, '_callboard_notes', self::parse_notes( $raw, (array) get_post_meta( $track_id, '_callboard_notes', true ) ) );
+			Notes::set( $track_id, self::parse_notes( $raw, Notes::get( $track_id ) ) );
 		}
 		$credits = isset( $_POST['callboard_credits'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_credits'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
 		update_post_meta(

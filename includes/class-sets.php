@@ -172,7 +172,7 @@ final class Sets {
 			}
 			$meta     = (array) wp_get_attachment_metadata( $track->ID );
 			$duration = get_post_meta( $track->ID, '_callboard_duration', true );
-			$notes    = get_post_meta( $track->ID, '_callboard_notes', true );
+			$notes    = Notes::get( (int) $track->ID );
 			$levels   = (string) get_post_meta( $track->ID, '_callboard_levels', true );
 			$by       = (string) get_post_meta( $track->ID, '_callboard_uploader', true );
 			$tracks[] = array(
@@ -183,7 +183,7 @@ final class Sets {
 				'duration' => '' !== $duration ? (float) $duration : (float) ( $meta['length'] ?? 0 ),
 				'bytes'    => (int) ( $meta['filesize'] ?? filesize( $file ) ),
 				'levels'   => '' !== $levels ? $levels : null,
-				'notes'    => is_array( $notes ) ? array_values( $notes ) : array(),
+				'notes'    => array_values( $notes ),
 				'artist'   => '' !== $by ? $by : null,
 				// Tempo and quality belong to callboard/count-in and callboard/quality now, under `ext`.
 				// Extensions::filter_set_data() still writes `bpm` and `quality` here for API v1.

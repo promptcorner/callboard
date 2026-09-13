@@ -266,6 +266,43 @@ final class Cli {
 	}
 
 	/**
+	 * Turn legacy `_callboard_notes` post meta into `callboard_note` comments.
+	 *
+	 * New notes are already saved as comments. This rewrites arrays that were stored before that,
+	 * leaving the old meta in place so a downgrade still has something to read. Safe to run more
+	 * than once: a track that already has note comments is skipped.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--dry-run]
+	 * : Count tracks and notes without writing.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp callboard migrate-notes
+	 *     wp callboard migrate-notes --dry-run
+	 *
+	 * @param string[]              $args       Positional args.
+	 * @param array<string, string> $assoc_args Named args.
+	 */
+	public function migrate_notes( array $args, array $assoc_args ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- WP-CLI signature.
+		$dry    = isset( $assoc_args['dry-run'] );
+		$result = Notes::migrate( $dry );
+		$msg    = sprintf(
+			/* translators: 1: number of tracks, 2: number of notes, 3: number of tracks skipped. */
+			__( '%1$d tracks, %2$d notes, %3$d already migrated.', 'callboard' ),
+			$result['tracks'],
+			$result['notes'],
+			$result['skipped']
+		);
+		if ( $dry ) {
+			WP_CLI::success( 'Dry run: ' . $msg );
+			return;
+		}
+		WP_CLI::success( $msg );
+	}
+
+	/**
 	 * Show which fetch tools this environment has.
 	 *
 	 * @param string[]              $args       Positional args.

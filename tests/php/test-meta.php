@@ -6,6 +6,7 @@
  */
 
 use Callboard\Meta;
+use Callboard\Notes;
 
 /**
  * @covers \Callboard\Meta
@@ -57,6 +58,8 @@ class Test_Callboard_Meta extends WP_UnitTestCase {
 		foreach ( Meta::map() as $fields ) {
 			$keys = array_merge( $keys, array_keys( $fields ) );
 		}
+		// Comment meta lives outside Meta::map(); Notes owns the only key today.
+		$keys[] = Notes::META_AT;
 		return $keys;
 	}
 
