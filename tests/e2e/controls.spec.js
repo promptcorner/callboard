@@ -95,8 +95,9 @@ test.describe( 'Controls', () => {
 		);
 	} );
 
-	// #35: the play key lost its disc and became a bare glyph like the skips beside it.
-	test( 'the play key is a solid disc with the glyph cut out of it', async ( {
+	// #35 kept a disc behind the play key. The player now follows Tidal's: a bare glyph in the same colour as
+	// the skips, only larger.
+	test( 'the play key is a bare glyph in the same colour as the skips', async ( {
 		page,
 	} ) => {
 		await page.locator( '.track' ).first().click();
@@ -106,8 +107,11 @@ test.describe( 'Controls', () => {
 		const glyph = await page
 			.locator( '#toggle .glyph' )
 			.evaluate( ( el ) => getComputedStyle( el ).fill );
-		expect( disc ).not.toMatch( /rgba\(.*, 0\)$/ ); // painted, not transparent
-		expect( glyph ).not.toBe( disc );
+		const skip = await page
+			.locator( '#next svg' )
+			.evaluate( ( el ) => getComputedStyle( el ).fill );
+		expect( disc ).toBe( 'rgba(0, 0, 0, 0)' );
+		expect( glyph ).toBe( skip );
 	} );
 
 	test( 'next and previous move through the set and wrap', async ( {

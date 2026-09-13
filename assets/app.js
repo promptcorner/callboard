@@ -435,16 +435,16 @@
 		}
 		setDeckView( 'compact' );
 	}
-	// The grabber (click or drag) and Escape: go back through the history entry so it isn't left behind.
+	// The grabber (click or drag) and Escape: close now, then go back through the history entry so it
+	// isn't left behind. Waiting for popstate to close it left the screen up for another frame or more.
 	function closeNowPlaying() {
 		if ( ! deck.classList.contains( 'is-expanded' ) ) {
 			return;
 		}
+		collapseDeck();
 		if ( nowPlayingEntry() ) {
 			history.back();
-			return;
 		}
-		collapseDeck();
 	}
 	let sheetKind = ''; // set by renderSheet(); declared here so syncOpenLyricsA11y() above can read it early
 	// After a reload, Now Playing starts closed, so clear the flag on the current entry.
@@ -780,8 +780,6 @@
 		if ( ! seekWidth ) {
 			measureSeek();
 		}
-		// the filament's lit length is also the compact bar's position line — see .deck-glow* in app.css
-		deck.style.setProperty( '--progress', ratio );
 		seekFill.style.transform = `scaleX(${ ratio })`;
 		if ( waveReveal ) {
 			const off = ( ( 1 - ratio ) * 100 ).toFixed( 3 );
@@ -1555,17 +1553,19 @@
 		}
 	} );
 
-	// The deck's height is a token the page padding and the lyrics sheet read. Measured rather than assumed,
-	// so Dynamic Type on iPhone, a landscape inset, or a longer row never leaves the last track under the deck.
+	// The player bar's height is a token the page padding and the lyrics sheet read. Measured rather than
+	// assumed, so Dynamic Type on iPhone, a landscape inset, or a longer row never leaves the last track under
+	// the bar, and a short bar doesn't leave a gap under the last track. Now Playing is the whole screen, so it
+	// isn't measured.
 	if ( window.ResizeObserver ) {
 		new ResizeObserver( () => {
-			if ( deck.hidden ) {
+			if ( deck.hidden || ! deck.classList.contains( 'is-compact' ) ) {
 				return;
 			}
 			const h =
 				deck.offsetHeight -
 				parseFloat( getComputedStyle( deck ).paddingBottom ); // the overscroll run-off and the safe area are not height
-			if ( h > 80 ) {
+			if ( h > 0 ) {
 				document.documentElement.style.setProperty(
 					'--deck-h',
 					`${ Math.round( h ) }px`
@@ -2187,13 +2187,14 @@
 		}
 		return false;
 	};
-	// Animates to y, then runs done unless something else cleared the offset first.
+	// Animates to y, then runs done unless something else cleared the offset first. A close is shorter than
+	// a spring back: the easing covers most of the distance early, and the rest reads as the screen parked.
 	const slideTo = ( y, done ) => {
 		let timer = 0;
 		const stop = () => {
 			clearTimeout( timer );
 			deck.removeEventListener( 'transitionend', end );
-			deck.classList.remove( 'is-settling' );
+			deck.classList.remove( 'is-settling', 'is-closing' );
 			slide = null;
 		};
 		const end = ( e ) => {
@@ -2209,10 +2210,15 @@
 			}
 		};
 		slide?.stop();
+		if ( done && Math.abs( offset() - y ) < 1 ) {
+			done(); // already there: nothing would transition, so transitionend would never come
+			return;
+		}
 		slide = { closing: !! done, stop };
 		deck.addEventListener( 'transitionend', end );
-		timer = setTimeout( end, 550 ); // in case transitionend never comes
+		timer = setTimeout( end, done ? 330 : 550 ); // in case transitionend never comes
 		deck.classList.add( 'is-settling' );
+		deck.classList.toggle( 'is-closing', !! done );
 		setOffset( y );
 	};
 	deck.addEventListener( 'pointerdown', ( e ) => {
@@ -2249,7 +2255,6 @@
 			dy: from,
 			moved: false,
 			still: reduce(),
-			frame: 0,
 			track: [ [ e.timeStamp, e.clientY ] ],
 		};
 		pulled = false;
@@ -2264,16 +2269,11 @@
 		if ( pull.track.length > 20 ) {
 			pull.track.shift();
 		}
-		if ( pull.still || pull.frame ) {
-			return;
+		// Written straight away: browsers already send one pointermove per frame, and waiting for the next
+		// frame put the screen a frame behind the finger.
+		if ( ! pull.still && deck.classList.contains( 'is-expanded' ) ) {
+			setOffset( pull.dy > 0 ? pull.dy : dampen( -pull.dy ) );
 		}
-		const p = pull;
-		p.frame = requestAnimationFrame( () => {
-			p.frame = 0;
-			if ( pull === p && deck.classList.contains( 'is-expanded' ) ) {
-				setOffset( p.dy > 0 ? p.dy : dampen( -p.dy ) );
-			}
-		} );
 	} );
 	const release = ( e ) => {
 		if ( ! pull || e.pointerId !== pull.id ) {
@@ -2281,7 +2281,6 @@
 		}
 		const p = pull;
 		pull = null;
-		cancelAnimationFrame( p.frame );
 		if ( ! deck.classList.contains( 'is-expanded' ) ) {
 			return;
 		}
@@ -2317,20 +2316,13 @@
 			}
 			return;
 		}
-		// Slide down to where the player bar sits, then close through history. setDeckView() clears the
-		// offset when the back lands; if it never does, bring the screen back rather than leave it there.
+		// Slide down to where the player bar sits, then close. closeNowPlaying() switches to the bar and
+		// clears the offset in the same frame, so the screen never waits there for the history back.
 		const bar =
 			barHeight > 0 && barHeight < window.innerHeight / 2
 				? window.innerHeight - barHeight
 				: deck.offsetHeight;
-		slideTo( Math.max( bar, p.dy ), () => {
-			closeNowPlaying();
-			setTimeout( () => {
-				if ( deck.classList.contains( 'is-expanded' ) ) {
-					slideTo( 0 );
-				}
-			}, 1000 );
-		} );
+		slideTo( Math.max( bar, p.dy ), closeNowPlaying );
 	};
 	deck.addEventListener( 'pointerup', release );
 	deck.addEventListener( 'pointercancel', release );

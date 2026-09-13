@@ -1484,6 +1484,233 @@ test.describe( 'Touch', () => {
 			} );
 			await isCompact( page );
 		} );
+
+		test( 'Now Playing moves with the finger on the same move, not a frame later', async ( {
+			page,
+		}, testInfo ) => {
+			await page.goto( '/demo-set/' );
+			await page.locator( '.track' ).first().click();
+			await expandDeck( page );
+			await isExpanded( page );
+			const start = await grabberCentre( page );
+			// Read where the screen is as each move arrives, after the deck has handled it.
+			await page.evaluate( () => {
+				const deck = document.getElementById( 'deck' );
+				window.cbMoves = [];
+				document.addEventListener( 'pointermove', ( e ) =>
+					window.cbMoves.push( [
+						e.clientY,
+						new DOMMatrix( getComputedStyle( deck ).transform )
+							.m42,
+					] )
+				);
+			} );
+			const dy = Math.round( page.viewportSize().height * 0.15 );
+			await drag( page, testInfo, start, dy, {
+				steps: 6,
+				ms: 40,
+				during: async () => {
+					const moves = await page.evaluate( () => window.cbMoves );
+					expect( moves.length ).toBeGreaterThan( 3 );
+					for ( const [ y, offset ] of moves.slice( 1 ) ) {
+						expect( offset ).toBeCloseTo( y - start.y, 0 );
+					}
+				},
+			} );
+		} );
+
+		test( 'a drag close becomes the player bar as it reaches it, without stopping there', async ( {
+			page,
+		}, testInfo ) => {
+			await page.goto( '/demo-set/' );
+			await page.locator( '.track' ).first().click();
+			await expandDeck( page );
+			await isExpanded( page );
+			// One sample per frame of whether Now Playing is still up and where it is.
+			await page.evaluate( () => {
+				const deck = document.getElementById( 'deck' );
+				window.cbFrames = [];
+				const tick = () => {
+					window.cbFrames.push( [
+						deck.classList.contains( 'is-expanded' ),
+						new DOMMatrix( getComputedStyle( deck ).transform )
+							.m42,
+					] );
+					if ( window.cbFrames.length < 900 ) {
+						requestAnimationFrame( tick );
+					}
+				};
+				requestAnimationFrame( tick );
+			} );
+			await drag(
+				page,
+				testInfo,
+				await grabberCentre( page ),
+				Math.round( page.viewportSize().height * 0.4 ),
+				{ steps: 8, ms: 20 }
+			);
+			await isCompact( page );
+			const frames = await page.evaluate( () => window.cbFrames );
+			const open = frames.filter( ( [ expanded ] ) => expanded );
+			const lowest = Math.max( ...open.map( ( [ , y ] ) => y ) );
+			// Frames where Now Playing sat at the bottom, at or within 2px of where it stopped. Waiting for the
+			// history back to close it left it there for 7 frames or more.
+			const parked = open.filter( ( [ , y ] ) => y >= lowest - 2 );
+			expect( parked.length ).toBeLessThanOrEqual( 4 );
+			expect( lowest ).toBeGreaterThan(
+				page.viewportSize().height * 0.6
+			);
+		} );
+	} );
+
+	test( 'the page under Now Playing does not scroll', async ( {
+		page,
+	}, testInfo ) => {
+		test.skip(
+			! testInfo.project.use.hasTouch,
+			'a finger panning Now Playing is what scrolled the page under it'
+		);
+		await page.goto( '/demo-set/' );
+		await page.locator( '.track' ).first().click();
+		await expandDeck( page );
+		await isExpanded( page );
+		const cdp = await page.context().newCDPSession( page );
+		// A real touch pan on the transport row, which Now Playing itself doesn't use for dragging.
+		const pan = async () => {
+			const box = await page.locator( '.deck-transport' ).boundingBox();
+			await cdp.send( 'Input.synthesizeScrollGesture', {
+				x: Math.round( box.x + 10 ),
+				y: Math.round( box.y + box.height / 2 ),
+				yDistance: -300,
+				gestureSourceType: 'touch',
+			} );
+		};
+		const before = await page.evaluate( () => window.scrollY );
+		await pan();
+		expect( await page.evaluate( () => window.scrollY ) ).toBe( before );
+		// The same pan on the player bar scrolls the page once Now Playing is closed.
+		await page.locator( '#deck-down' ).click();
+		await isCompact( page );
+		const box = await page.locator( '#open-lyrics' ).boundingBox();
+		await cdp.send( 'Input.synthesizeScrollGesture', {
+			x: Math.round( box.x + box.width / 2 ),
+			y: Math.round( box.y - 120 ),
+			yDistance: -300,
+			gestureSourceType: 'touch',
+		} );
+		await expect
+			.poll( () => page.evaluate( () => window.scrollY ) )
+			.toBeGreaterThan( before );
+		await cdp.detach();
+	} );
+
+	test( 'the player bar is sized like Tidal’s, and Now Playing uses the same glyphs a size up', async ( {
+		page,
+	} ) => {
+		await page.goto( '/demo-set/' );
+		await page.locator( '.track' ).first().click();
+		await isCompact( page );
+		const size = ( selector ) =>
+			page.locator( selector ).evaluate( ( el ) => {
+				const r = el.getBoundingClientRect();
+				return [ Math.round( r.width ), Math.round( r.height ) ];
+			} );
+		// The play glyph's path is 16 units tall in a 36-unit box; the skip glyphs' are 14 in 24.
+		const glyph = async ( selector, units, box ) =>
+			Math.round( ( ( await size( selector ) )[ 1 ] * units ) / box );
+		const bar = await page
+			.locator( '#deck' )
+			.evaluate(
+				( deck ) =>
+					deck.offsetHeight -
+					parseFloat( getComputedStyle( deck ).paddingBottom )
+			);
+		expect( bar ).toBeGreaterThanOrEqual( 84 );
+		expect( await size( '#toggle' ) ).toEqual( [ 48, 48 ] );
+		expect( await glyph( '#toggle .pp', 16, 36 ) ).toBe( 26 );
+		const disc = () =>
+			page
+				.locator( '#toggle .cap' )
+				.evaluate( ( cap ) => getComputedStyle( cap ).backgroundColor );
+		expect( await disc() ).toBe( 'rgba(0, 0, 0, 0)' ); // a bare glyph, no disc
+		expect( await size( '#next' ) ).toEqual( [ 48, 48 ] );
+		expect( await glyph( '#next svg', 14, 24 ) ).toBe( 18 );
+		const narrow = page.viewportSize().width <= 520;
+		await expect( page.locator( '#prev' ) ).toBeVisible( {
+			visible: ! narrow,
+		} );
+		// The title's tap target ends before the controls begin.
+		const open = await page.locator( '#open-lyrics' ).boundingBox();
+		const first = await page
+			.locator( narrow ? '#toggle' : '#prev' )
+			.boundingBox();
+		expect( open.x + open.width ).toBeLessThanOrEqual( first.x );
+
+		await expandDeck( page );
+		await isExpanded( page );
+		// The same bare glyphs, a size up.
+		expect( await size( '#toggle' ) ).toEqual( [ 64, 64 ] );
+		expect( await glyph( '#toggle .pp', 16, 36 ) ).toBe( 32 );
+		expect( await disc() ).toBe( 'rgba(0, 0, 0, 0)' );
+		expect( await size( '#prev' ) ).toEqual( [ 56, 56 ] );
+		expect( await glyph( '#prev svg', 14, 24 ) ).toBe( 21 );
+		expect( await size( '#loop' ) ).toEqual( [ 48, 48 ] );
+		expect( await size( '#repeat svg' ) ).toEqual( [ 24, 24 ] );
+	} );
+
+	test( 'the last track sits just above the player bar, and the bar has no position line', async ( {
+		page,
+	} ) => {
+		await page.goto( '/demo-set/' );
+		await page.locator( '.track' ).first().click();
+		await isCompact( page );
+		await page.evaluate( () =>
+			window.scrollTo( 0, document.documentElement.scrollHeight )
+		);
+		const gap = () =>
+			page.evaluate( () => {
+				const main = document.querySelector( '.app' );
+				const last = [ ...main.querySelectorAll( '*' ) ]
+					.filter( ( el ) => el.getClientRects().length )
+					.reduce(
+						( low, el ) =>
+							Math.max( low, el.getBoundingClientRect().bottom ),
+						0
+					);
+				return (
+					document.getElementById( 'deck' ).getBoundingClientRect()
+						.top - last
+				);
+			} );
+		await expect.poll( gap ).toBeGreaterThanOrEqual( 0 );
+		expect( await gap() ).toBeLessThanOrEqual( 64 );
+		expect(
+			await page
+				.locator( '#deck' )
+				.evaluate(
+					( deck ) => getComputedStyle( deck, '::before' ).content
+				)
+		).toBe( 'none' );
+		// The bar's height is what the page padding, toasts and the update prompt sit on. Opening Now Playing
+		// used to measure the whole screen into it.
+		const token = () =>
+			page.evaluate( () =>
+				getComputedStyle( document.documentElement ).getPropertyValue(
+					'--deck-h'
+				)
+			);
+		const closed = await token();
+		expect( parseFloat( closed ) ).toBeLessThan( 120 );
+		await expandDeck( page );
+		await isExpanded( page );
+		// Two frames: a ResizeObserver reports during the frame after the resize.
+		await page.evaluate(
+			() =>
+				new Promise( ( resolve ) =>
+					requestAnimationFrame( () => requestAnimationFrame( resolve ) )
+				)
+		);
+		expect( await token() ).toBe( closed );
 	} );
 
 	test( 'Enter and Space on the grabber close Now Playing', async ( {
