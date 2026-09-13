@@ -168,7 +168,7 @@ Features are extensions: an id, a version, and named contribution points shared 
 
 | Function or hook | Kind | What it does |
 | --- | --- | --- |
-| `callboard_register_extension( $id, $args )` | function | Register an extension on `callboard_register_extensions`. `callboard/*` is reserved |
+| `callboard_register_extension( $id, $args )` | function | Register an extension on `callboard_register_extensions`. `callboard/*` and [some other namespaces](docs/extending.md#the-contract) are reserved |
 | `callboard_unregister_extension( $id )` | function | Remove one, Callboard's own included |
 | `callboard_get_extension( $id )`, `callboard_get_extensions()` | functions | Read the registry |
 | `callboard_slot( $slot, ...$context )`, `callboard_get_slot()` | functions | Print or return a slot, for a replacement template |

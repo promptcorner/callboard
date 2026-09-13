@@ -81,37 +81,107 @@
 			return value;
 		}
 	};
+	const warned = new Set();
+	const warn = ( msg ) => {
+		if ( ! warned.has( msg ) ) {
+			warned.add( msg );
+			// eslint-disable-next-line no-console
+			console.warn( `[callboard] ${ msg }` );
+		}
+	};
+	// The same shape as @wordpress/deprecated, without loading it.
+	function deprecated(
+		name,
+		{ since = '', alternative = '', hint = '' } = {}
+	) {
+		warn(
+			`${ name } is deprecated${
+				since ? ` since version ${ since }` : ''
+			}.${ alternative ? ` Please use ${ alternative } instead.` : '' }${
+				hint ? ` Note: ${ hint }` : ''
+			}`
+		);
+	}
+	const owns = ( o, k ) => Object.prototype.hasOwnProperty.call( o, k );
+	// Track fields that moved into an extension's data. Copies keep them for API v1. With SCRIPT_DEBUG on,
+	// reading one from a copy logs a deprecation warning. The player's own tracks are never changed, so
+	// a copy has the same fields with debugging on or off.
+	const MOVED = {
+		bpm: "track.ext[ 'callboard/count-in' ].bpm",
+		quality: "track.ext[ 'callboard/quality' ].quality",
+	};
+	const warnOnMoved = ( track ) =>
+		Object.entries( MOVED ).forEach( ( [ field, alternative ] ) => {
+			if (
+				! track ||
+				typeof track !== 'object' ||
+				! owns( track, field )
+			) {
+				return;
+			}
+			const value = track[ field ];
+			Object.defineProperty( track, field, {
+				configurable: true,
+				enumerable: true,
+				get: () => {
+					deprecated( `track.${ field }`, {
+						since: '2.3.0',
+						alternative,
+					} );
+					return value;
+				},
+			} );
+		} );
 	// Extensions read copies. A set or a track handed out by reference is one assignment away from
-	// changing what the player itself plays.
+	// changing what the player itself plays. Freezing reads descriptors, not values, so it never
+	// sets off a deprecation warning.
 	const freeze = ( v ) => {
 		if ( v && typeof v === 'object' && ! Object.isFrozen( v ) ) {
-			Object.values( v ).forEach( freeze );
+			Object.values( Object.getOwnPropertyDescriptors( v ) ).forEach(
+				( d ) => freeze( d.value )
+			);
 			Object.freeze( v );
 		}
 		return v;
 	};
-	const snapshot = ( v ) => {
+	// kind is 'track' or 'set'. With SCRIPT_DEBUG on, reading bpm or quality from that copy logs a warning.
+	const snapshot = ( v, kind = '' ) => {
 		if ( v === null || v === undefined ) {
 			return null;
 		}
+		let copy;
 		try {
-			return freeze(
+			copy =
 				typeof structuredClone === 'function'
 					? structuredClone( v )
-					: JSON.parse( JSON.stringify( v ) )
-			);
+					: JSON.parse( JSON.stringify( v ) );
 		} catch {
 			return null;
 		}
+		if ( G.debug && kind === 'track' ) {
+			warnOnMoved( copy );
+		} else if ( G.debug && kind === 'set' ) {
+			( copy.tracks || [] ).forEach( warnOnMoved );
+		}
+		return freeze( copy );
 	};
-	// PHP sends an empty map as []. An extension should never have to check which one it got.
+	// PHP sends an empty array as [], so an empty map arrives as a list. Each extension's data is
+	// normalised too, so an extension that returned nothing still reads an object.
 	const asMap = ( v ) => ( v && ! Array.isArray( v ) ? v : {} );
-	const owns = ( o, k ) => Object.prototype.hasOwnProperty.call( o, k );
-	G.ext = asMap( G.ext );
+	const extMap = ( v ) => {
+		const map = asMap( v );
+		Object.keys( map ).forEach( ( id ) => {
+			if ( Array.isArray( map[ id ] ) && ! map[ id ].length ) {
+				map[ id ] = {};
+			}
+		} );
+		return map;
+	};
+	G.ext = extMap( G.ext );
 	G.extensions = asMap( G.extensions );
 	G.sets.forEach( ( set ) => {
-		set.ext = asMap( set.ext );
-		set.tracks.forEach( ( t ) => ( t.ext = asMap( t.ext ) ) );
+		set.ext = extMap( set.ext );
+		set.tracks.forEach( ( t ) => ( t.ext = extMap( t.ext ) ) );
 	} );
 
 	( window.requestIdleCallback || ( ( f ) => setTimeout( f, 1000 ) ) )(
@@ -939,7 +1009,7 @@
 		 */
 		doAction( 'callboard.track', {
 			set: queue.slug,
-			track: snapshot( t ),
+			track: snapshot( t, 'track' ),
 			index: i,
 		} );
 		renderNowPlayingMeta();
@@ -949,7 +1019,7 @@
 			// one holds skips the wait (see the toggle below).
 			const start = holdStart( {
 				set: queue.slug,
-				track: snapshot( t ),
+				track: snapshot( t, 'track' ),
 				index: i,
 				at,
 			} );
@@ -1334,7 +1404,7 @@
 	} );
 	const playing = () => ( {
 		set: queue?.slug || '',
-		track: snapshot( queue?.tracks[ i ] ),
+		track: snapshot( queue?.tracks[ i ], 'track' ),
 		index: i,
 		position: audio.currentTime || 0,
 	} );
@@ -2662,7 +2732,7 @@
 	}
 	const savedDetail = ( t, state ) => ( {
 		set: G.sets.find( ( s ) => s.tracks.includes( t ) )?.slug || '',
-		track: snapshot( t ),
+		track: snapshot( t, 'track' ),
 		state,
 	} );
 	async function saveTrack( t, retry = true ) {
@@ -3227,59 +3297,28 @@
 	// nothing but this object.
 	const API_VERSION = 1;
 	const ID = /^[a-z0-9-]+\/[a-z0-9-]+$/;
+	// The same list as Extensions::RESERVED_NAMESPACES in PHP, less `callboard`: PHP only lets
+	// Callboard register that one, and Callboard's own extensions register it here.
+	const RESERVED = [
+		'cb',
+		'wp',
+		'core',
+		'ext',
+		'deck',
+		'set',
+		'seek',
+		'loop',
+		'track',
+		'lyrics',
+		'dl',
+		'wave',
+		'remote',
+		'sheet',
+		'quality',
+	];
 	const registry = new Map();
 	const commandMap = new Map();
-	const warned = new Set();
 	let currentView = null;
-	const warn = ( msg ) => {
-		if ( ! warned.has( msg ) ) {
-			warned.add( msg );
-			// eslint-disable-next-line no-console
-			console.warn( `[callboard] ${ msg }` );
-		}
-	};
-	// The same shape as @wordpress/deprecated, without loading it.
-	function deprecated(
-		name,
-		{ since = '', alternative = '', hint = '' } = {}
-	) {
-		warn(
-			`${ name } is deprecated${
-				since ? ` since version ${ since }` : ''
-			}.${ alternative ? ` Please use ${ alternative } instead.` : '' }${
-				hint ? ` Note: ${ hint }` : ''
-			}`
-		);
-	}
-	// Top-level track fields that belong to an extension now. Reading one still works for API v1, and
-	// says so where the site runs with SCRIPT_DEBUG.
-	if ( G.debug ) {
-		const moved = {
-			bpm: "track.ext[ 'callboard/count-in' ].bpm",
-			quality: "track.ext[ 'callboard/quality' ].quality",
-		};
-		G.sets.forEach( ( set ) =>
-			set.tracks.forEach( ( t ) =>
-				Object.entries( moved ).forEach( ( [ field, alternative ] ) => {
-					if ( ! ( field in t ) ) {
-						return;
-					}
-					const value = t[ field ];
-					Object.defineProperty( t, field, {
-						configurable: true,
-						enumerable: false,
-						get: () => {
-							deprecated( `track.${ field }`, {
-								since: '2.3.0',
-								alternative,
-							} );
-							return value;
-						},
-					} );
-				} )
-			)
-		);
-	}
 
 	const SLOT_HOOKS = {
 		trackBadges: 'callboard.slot.trackBadges',
@@ -3323,7 +3362,7 @@
 	}
 	const viewInfo = () => ( {
 		slug: view(),
-		set: snapshot( setBy( view() ) ),
+		set: snapshot( setBy( view() ), 'set' ),
 		main: $( 'main' ),
 	} );
 	// Client items on the rows: badges before the length, metadata in the second line.
@@ -3347,7 +3386,7 @@
 			if ( ! t ) {
 				return;
 			}
-			const copy = snapshot( t );
+			const copy = snapshot( t, 'track' );
 			/**
 			 * Items for a track row, before its length: [ { text, label, title, tone, className } ]. Args: track, view.
 			 */
@@ -3405,7 +3444,7 @@
 			applyFilters(
 				'callboard.slot.nowPlayingMeta',
 				[],
-				snapshot( t ),
+				snapshot( t, 'track' ),
 				callboard
 			)
 				.map( itemEl )
@@ -3537,6 +3576,15 @@
 		if ( ! ID.test( id ) ) {
 			warn(
 				`"${ id }" is not an extension id: "namespace/name", lowercase.`
+			);
+			return false;
+		}
+		if (
+			RESERVED.includes( id.split( '/' )[ 0 ] ) ||
+			id === 'callboard/ext'
+		) {
+			warn(
+				`${ id } uses a reserved namespace or name. Register it under a namespace of your own.`
 			);
 			return false;
 		}
@@ -3783,11 +3831,14 @@
 			{},
 			{
 				view: { enumerable: true, get: () => view() },
-				set: { enumerable: true, get: () => snapshot( queue ) },
+				set: { enumerable: true, get: () => snapshot( queue, 'set' ) },
 				track: {
 					enumerable: true,
 					get: () =>
-						snapshot( queue && i >= 0 ? queue.tracks[ i ] : null ),
+						snapshot(
+							queue && i >= 0 ? queue.tracks[ i ] : null,
+							'track'
+						),
 				},
 				index: { enumerable: true, get: () => i },
 				position: {
