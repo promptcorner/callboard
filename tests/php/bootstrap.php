@@ -59,9 +59,38 @@ tests_add_filter(
 			}
 		);
 
+		callboard_tests_keep_app_files();
+
 		require dirname( __DIR__, 2 ) . '/callboard.php';
 	}
 );
+
+/**
+ * Put sw.js and manifest.json in ABSPATH back the way they were when the run ends.
+ *
+ * The tests container serves the end-to-end tests site from the same ABSPATH. Loading the plugin
+ * rewrites both files for the PHPUnit site, and the roles tests activate and uninstall the plugin,
+ * which rewrites and then deletes them. Without this, a Playwright run straight after PHPUnit fails.
+ * Called before the plugin loads, so it sees the files as the tests site left them.
+ */
+function callboard_tests_keep_app_files(): void {
+	$before = array();
+	foreach ( array( 'sw.js', 'manifest.json' ) as $file ) {
+		$before[ $file ] = is_file( ABSPATH . $file ) ? (string) file_get_contents( ABSPATH . $file ) : null; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+	}
+
+	register_shutdown_function(
+		static function () use ( $before ): void {
+			foreach ( $before as $file => $contents ) {
+				if ( null !== $contents ) {
+					file_put_contents( ABSPATH . $file, $contents ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+				} elseif ( is_file( ABSPATH . $file ) ) {
+					unlink( ABSPATH . $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+				}
+			}
+		}
+	);
+}
 
 require $callboard_tests_dir . '/includes/bootstrap.php';
 
