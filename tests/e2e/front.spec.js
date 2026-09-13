@@ -1224,6 +1224,73 @@ const touchAreaUnder44 = ( page, selector ) =>
 		return short;
 	}, selector );
 
+// Vertical offset of Now Playing from its transform, in px.
+const deckOffset = ( page ) =>
+	page
+		.locator( '#deck' )
+		.evaluate( ( deck ) =>
+			Math.round(
+				new DOMMatrix( getComputedStyle( deck ).transform ).m42
+			)
+		);
+
+const grabberCentre = async ( page ) => {
+	const box = await page.locator( '#deck-down' ).boundingBox();
+	return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+};
+
+// Drags straight down with real input through the DevTools protocol: touch on the iPhone project, the mouse
+// on desktop. Each move is stamped `ms` after the last (8ms when `ms` is 0, a flick), so the speed the page
+// measures does not depend on how fast this machine sends events. `during` runs before the finger lifts,
+// and the lift is stamped with the real time, so a pause there reads as holding still.
+const drag = async (
+	page,
+	testInfo,
+	{ x, y },
+	dy,
+	{ steps = 10, ms = 0, during } = {}
+) => {
+	const touch = testInfo.project.use.hasTouch;
+	const cdp = await page.context().newCDPSession( page );
+	const start = Date.now() / 1000,
+		gap = ( ms || 8 ) / 1000;
+	const send = ( phase, py, timestamp ) =>
+		touch
+			? cdp.send( 'Input.dispatchTouchEvent', {
+					type: [ 'touchStart', 'touchMove', 'touchEnd' ][ phase ],
+					touchPoints: phase === 2 ? [] : [ { x, y: py } ],
+					timestamp,
+			  } )
+			: cdp.send( 'Input.dispatchMouseEvent', {
+					type: [ 'mousePressed', 'mouseMoved', 'mouseReleased' ][
+						phase
+					],
+					x,
+					y: py,
+					button: 'left',
+					buttons: phase === 2 ? 0 : 1,
+					clickCount: 1,
+					timestamp,
+			  } );
+	if ( ! touch ) {
+		await page.mouse.move( x, y );
+	}
+	await send( 0, y, start );
+	for ( let step = 1; step <= steps; step++ ) {
+		await send( 1, y + ( dy * step ) / steps, start + step * gap );
+		if ( ms ) {
+			await page.waitForTimeout( ms ); // eslint-disable-line playwright/no-wait-for-timeout -- the drag's speed is what is under test.
+		}
+	}
+	let end = start + ( steps + 1 ) * gap;
+	if ( during ) {
+		await during();
+		end = Math.max( end, Date.now() / 1000 );
+	}
+	await send( 2, y + dy, end );
+	await cdp.detach();
+};
+
 test.describe( 'Touch', () => {
 	test( 'browser back closes Now Playing and keeps the set page and scroll position', async ( {
 		page,
@@ -1272,36 +1339,189 @@ test.describe( 'Touch', () => {
 		await expect( page.locator( 'a.set' ).first() ).toBeVisible();
 	} );
 
-	test( 'dragging down on Now Playing does not close it', async ( {
+	test( 'the close button is a grabber bar with a 44px touch area', async ( {
 		page,
 	} ) => {
 		await page.goto( '/demo-set/' );
 		await page.locator( '.track' ).first().click();
 		await expandDeck( page );
 		await isExpanded( page );
-		const followed = await page.locator( '#deck' ).evaluate( ( deck ) => {
-			const cover = deck.querySelector( '.deck-cover' ),
-				r = cover.getBoundingClientRect();
-			const fire = ( type, clientY ) =>
-				cover.dispatchEvent(
-					new PointerEvent( type, {
-						clientX: r.left + r.width / 2,
-						clientY,
-						pointerId: 7,
-						pointerType: 'touch',
-						isPrimary: true,
-						bubbles: true,
-					} )
-				);
-			fire( 'pointerdown', r.top + 10 );
-			fire( 'pointermove', r.top + 150 );
-			const during = deck.style.transform;
-			fire( 'pointerup', r.top + 150 );
-			return during;
+		const grabber = page.getByRole( 'button', { name: 'Close player' } );
+		await expect( grabber ).toBeVisible();
+		await expect( grabber.locator( 'svg' ) ).toHaveCount( 0 );
+		const pill = await grabber.evaluate( ( button ) => {
+			const bar = button.firstElementChild,
+				r = bar.getBoundingClientRect();
+			return {
+				width: r.width,
+				height: r.height,
+				radius: parseFloat(
+					getComputedStyle( bar ).borderTopLeftRadius
+				),
+				centre: r.left + r.width / 2,
+				top: r.top,
+			};
 		} );
-		expect( followed ).toBe( '' ); // nothing moved with the drag
-		await isExpanded( page );
+		expect( pill.width ).toBeGreaterThanOrEqual( 32 );
+		expect( pill.width ).toBeLessThanOrEqual( 40 );
+		expect( pill.height ).toBeGreaterThanOrEqual( 4 );
+		expect( pill.height ).toBeLessThanOrEqual( 6 );
+		expect( pill.radius ).toBeGreaterThanOrEqual( pill.height / 2 );
+		expect( pill.centre ).toBeCloseTo( page.viewportSize().width / 2, 0 );
+		expect( pill.top ).toBeLessThan( 40 );
+		const box = await grabber.boundingBox();
+		expect( box.width ).toBeGreaterThanOrEqual( 44 );
+		expect( box.height ).toBeGreaterThanOrEqual( 44 );
+		expect( await touchAreaUnder44( page, '#deck-down' ) ).toEqual( [] );
+	} );
+
+	// The default config runs with reduced motion, where the screen does not follow the finger.
+	test.describe( 'with motion', () => {
+		test.use( {
+			contextOptions: {
+				reducedMotion: 'no-preference',
+				strictSelectors: true,
+			},
+		} );
+
+		test( 'a long drag down closes Now Playing without leaving a history entry', async ( {
+			page,
+		}, testInfo ) => {
+			await page.goto( '/' );
+			await page.locator( 'a.set', { hasText: 'Shakespeare' } ).click();
+			await expect( page ).toHaveURL( /\/demo-set\/$/ );
+			await page.locator( '.track' ).first().click();
+			await expandDeck( page );
+			await isExpanded( page );
+			const height = page.viewportSize().height;
+			const dy = Math.round( height * 0.6 );
+			await drag( page, testInfo, await grabberCentre( page ), dy, {
+				steps: 12,
+				ms: 30,
+				during: async () => {
+					// The screen follows the finger one to one.
+					await expect
+						.poll( () => deckOffset( page ) )
+						.toBeGreaterThan( dy - 3 );
+				},
+			} );
+			await isCompact( page );
+			await expect.poll( () => deckOffset( page ) ).toBe( 0 );
+			expect(
+				await page.evaluate( () => !! history.state?.nowPlaying )
+			).toBe( false );
+			// If a history entry was left behind, this back would stay on the set page.
+			await page.goBack();
+			await expect( page ).toHaveURL( /\/$/ );
+			await expect( page.locator( 'a.set' ).first() ).toBeVisible();
+		} );
+
+		test( 'a short slow drag springs back', async ( {
+			page,
+		}, testInfo ) => {
+			await page.goto( '/demo-set/' );
+			await page.locator( '.track' ).first().click();
+			await expandDeck( page );
+			await isExpanded( page );
+			const dy = Math.round( page.viewportSize().height * 0.15 );
+			await drag( page, testInfo, await grabberCentre( page ), dy, {
+				steps: 10,
+				ms: 60,
+				during: async () => {
+					await expect
+						.poll( () => deckOffset( page ) )
+						.toBeGreaterThan( dy - 3 );
+				},
+			} );
+			await expect.poll( () => deckOffset( page ) ).toBe( 0 );
+			await isExpanded( page );
+			expect(
+				await page.evaluate( () => !! history.state?.nowPlaying )
+			).toBe( true );
+		} );
+
+		test( 'a fast flick closes Now Playing', async ( {
+			page,
+		}, testInfo ) => {
+			await page.goto( '/demo-set/' );
+			await page.locator( '.track' ).first().click();
+			await expandDeck( page );
+			await isExpanded( page );
+			// Shorter than the distance that closes on its own, so only the speed can close it.
+			const dy = Math.round( page.viewportSize().height * 0.15 );
+			await drag( page, testInfo, await grabberCentre( page ), dy, {
+				steps: 3,
+			} );
+			await isCompact( page );
+			await expect( page ).toHaveURL( /\/demo-set\/$/ );
+		} );
+
+		test( 'a drag that starts on the seek bar does not move or close Now Playing', async ( {
+			page,
+		}, testInfo ) => {
+			await page.goto( '/demo-set/' );
+			await page.locator( '.track' ).first().click();
+			await expandDeck( page );
+			await isExpanded( page );
+			const seek = await page.locator( '#seek' ).boundingBox();
+			const dy = Math.round( page.viewportSize().height * 0.4 );
+			const start = {
+				x: seek.x + seek.width / 2,
+				y: seek.y + seek.height / 2,
+			};
+			let moved = null;
+			await drag( page, testInfo, start, dy, {
+				steps: 8,
+				ms: 20,
+				during: async () => ( moved = await deckOffset( page ) ),
+			} );
+			expect( moved ).toBe( 0 );
+			await isExpanded( page );
+			// The same drag from the grabber does close it.
+			await drag( page, testInfo, await grabberCentre( page ), dy, {
+				steps: 8,
+				ms: 20,
+			} );
+			await isCompact( page );
+		} );
+	} );
+
+	test( 'Enter and Space on the grabber close Now Playing', async ( {
+		page,
+	} ) => {
+		await page.goto( '/' );
+		await page.locator( 'a.set', { hasText: 'Shakespeare' } ).click();
 		await expect( page ).toHaveURL( /\/demo-set\/$/ );
+		await page.locator( '.track' ).first().click();
+		const grabber = page.getByRole( 'button', { name: 'Close player' } );
+		for ( const key of [ 'Enter', 'Space' ] ) {
+			await expandDeck( page );
+			await isExpanded( page );
+			await grabber.focus();
+			await page.keyboard.press( key );
+			await isCompact( page );
+		}
+		await page.goBack();
+		await expect( page ).toHaveURL( /\/$/ );
+	} );
+
+	test( 'with reduced motion, a long drag closes Now Playing without moving it', async ( {
+		page,
+	}, testInfo ) => {
+		await page.emulateMedia( { reducedMotion: 'reduce' } ); // the default here, but this test depends on it
+		await page.goto( '/demo-set/' );
+		await page.locator( '.track' ).first().click();
+		await expandDeck( page );
+		await isExpanded( page );
+		const dy = Math.round( page.viewportSize().height * 0.6 );
+		let moved = null;
+		await drag( page, testInfo, await grabberCentre( page ), dy, {
+			steps: 12,
+			ms: 30,
+			during: async () => ( moved = await deckOffset( page ) ),
+		} );
+		expect( moved ).toBe( 0 );
+		await isCompact( page );
 	} );
 
 	test( 'player and track list controls have touch areas of at least 44px', async ( {

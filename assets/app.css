@@ -199,8 +199,8 @@ input[type=range]::-moz-range-thumb{width:var(--thumb);height:var(--thumb);borde
 .deck-glow-halo{top:-19px;height:18px;color:var(--accent);background:linear-gradient(180deg,transparent,currentColor);filter:blur(6px);transform:translateZ(0)}
 @media (prefers-reduced-transparency:reduce){.deck-glow-halo{display:none}.deck-glow{box-shadow:none}}
 /* ---- Now Playing. The expanded deck is the full screen, not a taller bar: same element, same
-   controls, only the layout changes, so no state exists in two places. It closes with the close button,
-   Escape, or back. The wash is one hex value taken from the cover by Art::tint() and cached on
+   controls, only the layout changes, so no state exists in two places. It closes with the grabber (click
+   or drag down), Escape, or back. The wash is one hex value taken from the cover by Art::tint() and cached on
    the set, rather than a blurred copy of the artwork — a colour costs no second download, survives
    offline, and composes with the accent instead of fighting it. */
 .deck-down,.deck-top{display:none}
@@ -238,25 +238,27 @@ input[type=range]::-moz-range-thumb{width:var(--thumb);height:var(--thumb);borde
    so the amplitude reads as a room brightening, not a lamp being switched. */
 .deck.is-expanded .deck-glow-halo{top:0;height:220px;filter:none;background:linear-gradient(180deg,color-mix(in srgb,currentColor 40%,transparent),color-mix(in srgb,currentColor 12%,transparent) 45%,transparent);transition:opacity .5s ease-out;will-change:opacity}
 @media (prefers-reduced-motion:reduce){.deck.is-expanded .deck-glow-halo{transition:none;opacity:.25!important}}
-.deck.is-expanded{top:0;bottom:0;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto auto;padding-bottom:calc(var(--safe-b) + var(--s3));border-top:0;background-image:none;overflow:hidden}
+.deck.is-expanded{top:0;bottom:-60px;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto auto;padding-bottom:calc(var(--safe-b) + var(--s3) + 60px);border-top:0;background-image:none;overflow:hidden} /* 60px below the screen, so a drag up shows no gap */
 .deck.is-expanded::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 13%,transparent),transparent 190px),radial-gradient(130% 70% at 50% 0%,color-mix(in srgb,var(--tint,transparent) 20%,transparent),transparent 68%);pointer-events:none;z-index:0}
 @media (prefers-reduced-transparency:reduce){.deck.is-expanded::before{display:none}}
 /* Named, not `> *`: the three filament elements are position:absolute, and a blanket rule made them
    relative — which turned them into grid items that ate the first three rows, art included. */
 .deck.is-expanded>.deck-down,.deck.is-expanded>.deck-top,.deck.is-expanded>.deck-cover,.deck.is-expanded>.deck-inner,.deck.is-expanded>.seek-wrap,.deck.is-expanded>.deck-from{position:relative;z-index:1}
-/* Raise rows with small controls so their 44px touch areas aren't covered by the next row. The top row
-   passes touches through its empty space. */
-.deck.is-expanded>.deck-down,.deck.is-expanded>.deck-top,.deck.is-expanded>.seek-wrap{z-index:2}
-.deck.is-expanded>.deck-top{pointer-events:none}
-.deck.is-expanded>.deck-top>*{pointer-events:auto}
+/* Raise rows with small controls so their 44px touch areas aren't covered by the next row. The grabber
+   sits above the top row, which covers its lower 10px. */
+.deck.is-expanded>.deck-top,.deck.is-expanded>.seek-wrap{z-index:2}
+.deck.is-expanded>.deck-down{z-index:3}
+/* Drag to close (app.js) starts on the grabber, the top row, or the cover. Only those areas turn off
+   browser panning, and the drag only writes transform. is-settling animates the release with Vaul's easing. */
+.deck.is-expanded>:is(.deck-down,.deck-top,.deck-cover){touch-action:none}
+.deck.is-settling{transition:transform .5s cubic-bezier(.32,.72,0,1)}
 .deck-times{padding-top:6px}
 .deck.is-compact .deck-times{display:none}
-/* Close button: 44px, with a negative bottom margin so the row height stays 34px */
-.deck.is-expanded .deck-down{display:grid;place-items:center;justify-self:center;appearance:none;border:0;background:transparent;width:44px;height:44px;margin:0 0 -10px;padding:0;cursor:pointer;border-radius:50%;color:var(--ink-2)}
-.deck.is-expanded .deck-down svg{width:26px;height:26px;transition:transform var(--t-fast) var(--ease)}
-.deck.is-expanded .deck-down:hover,.deck.is-expanded .deck-down:focus-visible{color:var(--ink)}
-.deck.is-expanded .deck-down:active{color:var(--ink);background:var(--surface-2)}
-.deck.is-expanded .deck-down:active svg{transform:translateY(2px)}
+/* Grabber: a 36x5px pill in a 64x44px button, with a negative bottom margin so the row height stays 34px */
+.deck.is-expanded .deck-down{display:grid;place-items:center;justify-self:center;appearance:none;border:0;background:transparent;width:64px;height:44px;margin:0 0 -10px;padding:0;cursor:grab;border-radius:10px;color:var(--ink-3)}
+.deck.is-expanded .deck-down i{display:block;width:36px;height:5px;border-radius:999px;background:currentColor;opacity:.7;transition:opacity var(--t)}
+.deck.is-expanded .deck-down:hover i,.deck.is-expanded .deck-down:focus-visible i,.deck.is-expanded .deck-down:active i{opacity:1}
+.deck.is-expanded .deck-down:active{cursor:grabbing}
 .deck.is-expanded .deck-cover{position:static;display:grid;place-items:center;width:auto;height:auto;min-height:0;overflow:hidden;padding:var(--s2) max(20px,env(safe-area-inset-left,0px)) var(--s3);pointer-events:auto}
 /* No explicit width or height: the intrinsic square is clamped on both axes, so the art is as large
    as the row allows and never one pixel taller than it. A width alone would push the title under it. */
