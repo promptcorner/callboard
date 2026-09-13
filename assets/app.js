@@ -471,7 +471,7 @@
 			return;
 		}
 		try {
-			// One context for the meter, the gapless loop and scheduled starts: nodes can't connect across contexts.
+			// One context for the level meter and the gapless loop: nodes can't connect across contexts.
 			looperCtx = looperCtx || new AudioContext();
 			const ctx = looperCtx;
 			const src = ctx.createMediaElementSource( audio );
