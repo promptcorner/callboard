@@ -182,8 +182,8 @@ final class Admin {
 		if ( ! isset( $_POST['callboard_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['callboard_nonce'] ), 'callboard_save' ) || ! current_user_can( 'edit_post', $post_id ) || wp_is_post_autosave( $post_id ) ) {
 			return;
 		}
-		$order  = array_map( 'intval', (array) ( $_POST['callboard_order'] ?? array() ) );
-		$titles = isset( $_POST['callboard_title'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_title'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
+		$order           = array_map( 'intval', (array) ( $_POST['callboard_order'] ?? array() ) );
+		$titles          = isset( $_POST['callboard_title'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_title'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
 		$notes_to_notify = array();
 		foreach ( $order as $i => $track_id ) {
 			if ( (int) get_post_field( 'post_parent', $track_id ) !== $post_id ) {
