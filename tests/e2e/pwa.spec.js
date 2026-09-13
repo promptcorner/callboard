@@ -69,47 +69,6 @@ test.describe( 'PWA and previews', () => {
 		);
 	} );
 
-	test( 'the site icon is the Home Screen icon when one is set', async ( {
-		page,
-		request,
-		requestUtils,
-	} ) => {
-		const media = (
-			await requestUtils.rest( {
-				path: '/wp/v2/media?search=cover&per_page=100',
-			} )
-		).find( ( item ) =>
-			item?.source_url?.includes( '/uploads/callboard/demo-set/cover' )
-		);
-		expect( media ).toBeTruthy();
-
-		try {
-			await requestUtils.updateSiteSettings( { site_icon: media.id } );
-
-			await page.goto( '/demo-set/' );
-			const icon = page.locator( 'link[rel=apple-touch-icon]' );
-			await expect( icon ).toHaveCount( 1 ); // core's own site icon tags are not printed as well
-			await expect( icon ).toHaveAttribute(
-				'href',
-				/\/uploads\/.*\/cover(?:-\d+x\d+)?\.png$/
-			);
-
-			const manifest = await (
-				await request.get( '/manifest.json' )
-			).json();
-			for ( const { src } of manifest.icons ) {
-				expect( src ).not.toContain( 'assets/icon-' );
-			}
-		} finally {
-			await requestUtils.updateSiteSettings( { site_icon: 0 } );
-		}
-
-		await page.goto( '/demo-set/' );
-		await expect(
-			page.locator( 'link[rel=apple-touch-icon]' )
-		).toHaveAttribute( 'href', /assets\/icon-180\.png/ );
-	} );
-
 	test( 'a saved set opens and plays with the network off', async ( {
 		page,
 		context,

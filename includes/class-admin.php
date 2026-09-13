@@ -182,8 +182,9 @@ final class Admin {
 		if ( ! isset( $_POST['callboard_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['callboard_nonce'] ), 'callboard_save' ) || ! current_user_can( 'edit_post', $post_id ) || wp_is_post_autosave( $post_id ) ) {
 			return;
 		}
-		$order  = array_map( 'intval', (array) ( $_POST['callboard_order'] ?? array() ) );
-		$titles = isset( $_POST['callboard_title'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_title'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
+		$order           = array_map( 'intval', (array) ( $_POST['callboard_order'] ?? array() ) );
+		$titles          = isset( $_POST['callboard_title'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_title'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
+		$notes_to_notify = array();
 		foreach ( $order as $i => $track_id ) {
 			if ( (int) get_post_field( 'post_parent', $track_id ) !== $post_id ) {
 				continue;
@@ -199,7 +200,14 @@ final class Admin {
 			$bpms = array_map( 'intval', (array) ( $_POST['callboard_bpm'] ?? array() ) );
 			update_post_meta( $track_id, '_callboard_bpm', Importer::clamp_bpm( (int) ( $bpms[ $track_id ] ? $bpms[ $track_id ] : 0 ) ) );
 			$raw = isset( $_POST['callboard_notes'][ $track_id ] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['callboard_notes'][ $track_id ] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized here.
-			Notes::set( $track_id, self::parse_notes( $raw, Notes::get( $track_id ) ) );
+			// Notes::set() returns only the notes this save added.
+			foreach ( Notes::set( $track_id, self::parse_notes( $raw, Notes::get( $track_id ) ) ) as $note ) {
+				$notes_to_notify[] = array(
+					'index' => $i,
+					'title' => (string) get_post_field( 'post_title', $track_id ),
+					'note'  => $note,
+				);
+			}
 		}
 		$credits = isset( $_POST['callboard_credits'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_credits'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
 		update_post_meta(
@@ -224,6 +232,26 @@ final class Admin {
 			Importer::import_all();
 		}
 		Sets::flush();
+		// Only a published set has a page for the notification to open.
+		if ( 'publish' !== get_post_status( $post_id ) ) {
+			return;
+		}
+		foreach ( $notes_to_notify as $item ) {
+			$note = $item['note'];
+			$url  = add_query_arg(
+				array(
+					'track' => (int) $item['index'],
+					'at'    => (float) $note['t'],
+				),
+				trailingslashit( home_url( '/' . get_post_field( 'post_name', $post_id ) . '/' ) )
+			);
+			Push::send(
+				/* translators: %s: track title. */
+				sprintf( __( "Director's note: %s", 'callboard' ), $item['title'] ),
+				$note['text'],
+				$url
+			);
+		}
 	}
 
 	/**

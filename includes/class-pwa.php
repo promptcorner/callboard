@@ -38,8 +38,6 @@ final class Pwa {
 		add_filter( 'query_vars', array( self::class, 'query_vars' ) );
 		add_action( 'parse_request', array( self::class, 'serve' ) );
 		add_action( 'update_option_blogname', array( self::class, 'write_files' ) );
-		add_action( 'update_option_site_icon', array( self::class, 'write_files' ) );
-		add_action( 'delete_option_site_icon', array( self::class, 'write_files' ) ); // Core deletes the option when the icon's attachment is deleted.
 		add_action( 'callboard_imported', array( self::class, 'write_files' ) );
 		add_action( 'upgrader_process_complete', array( self::class, 'write_files' ) );
 		// The Home Screen shortcuts name the first four sets, so a set renamed or deleted in the
@@ -299,15 +297,13 @@ final class Pwa {
 		if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagettftext' ) ) {
 			return;
 		}
-		$loc       = self::splash_location();
-		$name      = callboard_site_name();
-		$icon_file = self::site_icon_file();
-		$key       = md5( $name . CALLBOARD_VERSION . '2' . $icon_file );
+		$loc  = self::splash_location();
+		$name = callboard_site_name();
+		$key  = md5( $name . CALLBOARD_VERSION . '2' );
 		if ( get_option( 'callboard_splash_key' ) === $key && is_dir( $loc['dir'] ) ) {
 			return;
 		}
 		wp_mkdir_p( $loc['dir'] );
-		$icon    = '' !== $icon_file ? Art::load( $icon_file ) : null;
 		$font    = CALLBOARD_DIR . 'assets/fonts/Poppins-SemiBold.ttf';
 		$schemes = array(
 			'light' => array( array( 236, 234, 229 ), array( 30, 28, 26 ) ),
@@ -320,19 +316,15 @@ final class Pwa {
 				$ink                 = imagecolorallocate( $im, ...$colors[1] );
 				$bg                  = imagecolorallocate( $im, ...$colors[0] );
 				imagefill( $im, 0, 0, $bg );
+				// The mark, drawn rather than pasted: a disc, a play triangle, the accent dot.
 				$r  = (int) round( $w * 0.09 );
 				$cx = (int) ( $w / 2 );
 				$cy = (int) ( $h / 2 - $r * 0.6 );
-				if ( $icon ) {
-					Art::place( $im, $icon, $cx, $cy, $r * 2 );
-				} else {
-					// The Callboard mark: a disc, a play triangle, the accent dot.
-					imagefilledellipse( $im, $cx, $cy, $r * 2, $r * 2, $ink );
-					$t = $r * 0.42;
-					imagefilledpolygon( $im, array( (int) ( $cx - $t * 0.65 ), (int) ( $cy - $t ), (int) ( $cx - $t * 0.65 ), (int) ( $cy + $t ), (int) ( $cx + $t * 1.05 ), $cy ), $bg );
-					$d = (int) round( $r * 0.16 );
-					imagefilledellipse( $im, (int) ( $cx + $r * 0.95 ), (int) ( $cy - $r * 0.95 ), $d * 2, $d * 2, imagecolorallocate( $im, 232, 84, 30 ) );
-				}
+				imagefilledellipse( $im, $cx, $cy, $r * 2, $r * 2, $ink );
+				$t = $r * 0.42;
+				imagefilledpolygon( $im, array( (int) ( $cx - $t * 0.65 ), (int) ( $cy - $t ), (int) ( $cx - $t * 0.65 ), (int) ( $cy + $t ), (int) ( $cx + $t * 1.05 ), $cy ), $bg );
+				$d = (int) round( $r * 0.16 );
+				imagefilledellipse( $im, (int) ( $cx + $r * 0.95 ), (int) ( $cy - $r * 0.95 ), $d * 2, $d * 2, imagecolorallocate( $im, 232, 84, 30 ) );
 				$pt  = (int) round( 13 * $dpr );
 				$box = imagettfbbox( $pt, 0, $font, $name );
 				$tw  = $box ? $box[2] - $box[0] : 0;
@@ -344,14 +336,13 @@ final class Pwa {
 	}
 
 	/**
-	 * Draw the maskable icon and the splash screens, and write manifest.json and sw.js.
+	 * Write manifest.json and sw.js, and draw the splash screens.
 	 *
 	 * @return bool Whether both files were written.
 	 */
 	public static function write_files(): bool {
-		self::write_maskable_icon(); // Before the manifest, which lists it.
-		self::write_splash_screens();
 		$manifest = self::write_manifest();
+		self::write_splash_screens();
 		return $manifest && self::write_sw();
 	}
 
@@ -379,18 +370,6 @@ final class Pwa {
 	 * @return bool Whether the file was written.
 	 */
 	public static function write_manifest(): bool {
-		$manifest = self::manifest();
-		return self::put( 'manifest.json', (string) wp_json_encode( $manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
-	}
-
-	/**
-	 * The web app manifest, as write_manifest() writes it.
-	 *
-	 * @since 2.4.0
-	 *
-	 * @return array<string, mixed>
-	 */
-	public static function manifest(): array {
 		$root  = self::scope();
 		$name  = callboard_site_name();
 		$short = $name;
@@ -419,7 +398,7 @@ final class Pwa {
 					'url'   => wp_make_link_relative( home_url( '/' . $set['slug'] . '/' ) ),
 					'icons' => array(
 						array(
-							'src'   => self::path_if_local( self::icon_url( 192 ) ),
+							'src'   => wp_make_link_relative( CALLBOARD_URL . 'assets/icon-192.png' ),
 							'sizes' => '192x192',
 						),
 					),
@@ -430,52 +409,25 @@ final class Pwa {
 			'background_color'            => '#eceae5',
 			'theme_color'                 => '#eceae5',
 			'icons'                       => array(
-				self::manifest_icon( self::icon_url( 192 ), '192x192' ),
-				self::manifest_icon( self::icon_url( 512 ), '512x512' ),
+				array(
+					'src'   => wp_make_link_relative( CALLBOARD_URL . 'assets/icon-192.png' ),
+					'sizes' => '192x192',
+					'type'  => 'image/png',
+				),
+				array(
+					'src'   => wp_make_link_relative( CALLBOARD_URL . 'assets/icon-512.png' ),
+					'sizes' => '512x512',
+					'type'  => 'image/png',
+				),
+				array(
+					'src'     => wp_make_link_relative( CALLBOARD_URL . 'assets/icon-512-maskable.png' ),
+					'sizes'   => '512x512',
+					'type'    => 'image/png',
+					'purpose' => 'maskable',
+				),
 			),
 		);
-		$maskable = self::maskable_icon_url();
-		if ( '' !== $maskable ) {
-			$manifest['icons'][] = self::manifest_icon( $maskable, '512x512' ) + array( 'purpose' => 'maskable' );
-		}
-		return $manifest;
-	}
-
-	/**
-	 * One entry of the manifest's icons list.
-	 *
-	 * @param string $url   Icon URL.
-	 * @param string $sizes Such as "192x192".
-	 * @return array<string, string>
-	 */
-	private static function manifest_icon( string $url, string $sizes ): array {
-		$icon = array(
-			'src'   => self::path_if_local( $url ),
-			'sizes' => $sizes,
-		);
-		$type = wp_check_filetype( (string) wp_parse_url( $url, PHP_URL_PATH ) )['type'];
-		if ( $type ) {
-			$icon['type'] = $type;
-		}
-		return $icon;
-	}
-
-	/**
-	 * Whether a URL is on the site's own host.
-	 *
-	 * @param string $url URL.
-	 */
-	private static function is_local( string $url ): bool {
-		return wp_parse_url( $url, PHP_URL_HOST ) === wp_parse_url( home_url(), PHP_URL_HOST );
-	}
-
-	/**
-	 * A root-relative path for a URL on this site, or the full URL for one on another host, such as a CDN.
-	 *
-	 * @param string $url URL.
-	 */
-	private static function path_if_local( string $url ): string {
-		return self::is_local( $url ) ? wp_make_link_relative( $url ) : $url;
+		return self::put( 'manifest.json', (string) wp_json_encode( $manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
 	}
 
 	/**
@@ -491,12 +443,9 @@ final class Pwa {
 				home_url( '/?fragment=1' ), // Home as the script swaps it in; a saved set's fragment is warmed by the page.
 				self::manifest_url(),
 				callboard_asset( 'assets/app.js' ),
-				// The icons the page and manifest link to. A site icon on another host is left out: the
-				// worker only handles requests to this site, and one failed download fails the whole precache.
-				...array_filter(
-					array( self::icon_url( 192 ), self::icon_url( 512 ), self::icon_url( 180 ) ),
-					static fn( string $url ) => self::is_local( $url )
-				),
+				callboard_asset( 'assets/icon-192.png' ),
+				callboard_asset( 'assets/icon-512.png' ),
+				callboard_asset( 'assets/icon-180.png' ),
 			)
 		);
 		// Core's hooks script and every active extension's assets, at the exact URLs the page asks for,
