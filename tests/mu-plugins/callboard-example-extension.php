@@ -18,6 +18,9 @@
  *   callboard_example_signin=1         the "require sign-in" setting, on for this request only
  *   callboard_example_debug=1|0        app data says SCRIPT_DEBUG is on (1) or off (0), whatever the site says
  *   callboard_example_reserved=1       app data claims deck/meta is active, which the page must still refuse
+ *   callboard_example_inline=1         an inline script after example/demo's, which WordPress will not defer
+ *   callboard_example_script_version=<v>   example/demo's script at ?ver=<v> rather than 1.0.0
+ *   callboard_example_missing=1        with them, register example/missing, whose script is not there
  *
  * Mapped in by .wp-env.json and kept under tests/, which the plugin zip excludes.
  *
@@ -81,7 +84,7 @@ add_action(
 				),
 				'script'      => array(
 					'src'     => content_url( 'mu-plugins/callboard-example/example.js' ),
-					'version' => '1.0.0',
+					'version' => callboard_example_cookie( 'callboard_example_script_version' ) ? callboard_example_cookie( 'callboard_example_script_version' ) : '1.0.0',
 				),
 			)
 		);
@@ -116,6 +119,20 @@ add_action(
 			)
 		);
 
+		// A script that 404s, the way one does once its plugin is gone.
+		if ( '1' === callboard_example_cookie( 'callboard_example_missing' ) ) {
+			callboard_register_extension(
+				'example/missing',
+				array(
+					'version'     => '1.0.0',
+					'api_version' => 1,
+					'script'      => array(
+						'src' => content_url( 'mu-plugins/callboard-example/missing.js' ),
+					),
+				)
+			);
+		}
+
 		if ( '1' === callboard_example_cookie( 'callboard_example_replace' ) ) {
 			callboard_unregister_extension( 'callboard/quality' );
 			callboard_register_extension(
@@ -138,6 +155,16 @@ add_filter(
 	},
 	10,
 	2
+);
+
+// WordPress defers no script with an inline script after it, and none of the scripts it depends on.
+add_action(
+	'wp_enqueue_scripts',
+	static function () {
+		if ( '1' === callboard_example_cookie( 'callboard_example_inline' ) ) {
+			wp_add_inline_script( 'example-demo', 'window.__exampleInline = true;', 'after' );
+		}
+	}
 );
 
 $callboard_example_count_in = static function ( $settings ) {

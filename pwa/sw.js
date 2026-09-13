@@ -9,12 +9,21 @@ const ASSETS = __ASSETS__; // eslint-disable-line no-undef -- written by PHP: sh
 const SITE = '__SITE__'; // the site ID on a multisite network, whose sites can share one origin and its caches; empty on a single site
 const SHELL = `callboard-shell-${ SITE ? SITE + '-' : '' }${ VERSION }`;
 const AUDIO = 'callboard-audio-v1';
+// The shell files by path, so a page asking for a newer ?ver= than this worker was written with still
+// reaches the copy it kept. The home page is left out: there the query string is the view.
+const ASSET_PATHS = ASSETS.map(
+	( a ) => new URL( a, location.origin ).pathname
+).filter( ( p ) => p !== HOME );
 
 self.addEventListener( 'install', ( e ) => {
+	// One file at a time: addAll keeps nothing when any file fails, and one extension script that 404s
+	// (its plugin gone, a bad src) would leave the app no home page and no script to open offline with.
 	e.waitUntil(
 		caches
 			.open( SHELL )
-			.then( ( c ) => c.addAll( ASSETS ) )
+			.then( ( c ) =>
+				Promise.allSettled( ASSETS.map( ( u ) => c.add( u ) ) )
+			)
 			.catch( () => {} )
 	);
 	self.skipWaiting();
@@ -179,9 +188,10 @@ self.addEventListener( 'fetch', ( e ) => {
 	if (
 		url.pathname.startsWith( PLUGIN ) ||
 		url.pathname + url.search === MANIFEST ||
-		ASSETS.includes( url.pathname + url.search )
+		ASSETS.includes( url.pathname + url.search ) ||
+		ASSET_PATHS.includes( url.pathname )
 	) {
-		return e.respondWith( staleWhileRevalidate( req ) );
+		return e.respondWith( staleWhileRevalidate( req, url ) );
 	}
 } );
 
@@ -241,7 +251,7 @@ async function page( req, e, fragment ) {
 		);
 	}
 }
-async function staleWhileRevalidate( req ) {
+async function staleWhileRevalidate( req, url ) {
 	const cache = await caches.open( SHELL );
 	const cached = await cache.match( req.url );
 	const network = fetch( req )
@@ -252,5 +262,13 @@ async function staleWhileRevalidate( req ) {
 			return res;
 		} )
 		.catch( () => null );
-	return cached || ( await network ) || new Response( '', { status: 504 } );
+	return (
+		cached ||
+		( await network ) ||
+		// No signal, and no copy at this ?ver=: a plugin updated without the worker being rewritten.
+		// The copy kept at the old version runs; nothing at all would leave its extension off.
+		( url.pathname !== HOME &&
+			( await cache.match( req.url, { ignoreSearch: true } ) ) ) ||
+		new Response( '', { status: 504 } )
+	);
 }

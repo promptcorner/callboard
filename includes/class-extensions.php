@@ -772,6 +772,10 @@ final class Extensions {
 			// A blocking script that depends on a deferred one makes WordPress load that one blocking
 			// too, which would undo the defer on Callboard's own script for every extension added.
 			wp_script_add_data( $handle, 'strategy', 'defer' );
+			// And in the footer, because a script in the head pulls the scripts it depends on into the head
+			// with it. An inline script added after this one still takes the defer off both, and in the
+			// footer they then run after the player's markup rather than before it.
+			wp_script_add_data( $handle, 'group', 1 );
 			wp_enqueue_script( $handle );
 		}
 		foreach ( $handles['styles'] as $handle ) {

@@ -42,7 +42,18 @@ final class Frontend {
 		// Core's hooks script is the lower layer of the extension API: window.callboard's events and
 		// filters are wp.hooks actions and filters. It ships with WordPress, so there is still no build.
 		wp_script_add_data( 'wp-hooks', 'strategy', 'defer' );
-		wp_enqueue_script( 'callboard', callboard_asset( 'assets/app.js' ), array( 'wp-hooks' ), null, array( 'strategy' => 'defer' ) ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+		// In the footer as well as deferred. WordPress drops the defer when an extension adds an inline
+		// script after its own, and a blocking script in the head would run before the player's markup exists.
+		wp_enqueue_script(
+			'callboard',
+			callboard_asset( 'assets/app.js' ),
+			array( 'wp-hooks' ),
+			null, // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+			array(
+				'strategy'  => 'defer',
+				'in_footer' => true,
+			)
+		);
 		Extensions::enqueue();
 		$data             = Sets::app_data( Router::view() );
 		$data['settings'] = Settings::for_client();

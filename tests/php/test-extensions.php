@@ -8,6 +8,7 @@
  */
 
 use Callboard\Extensions;
+use Callboard\Frontend;
 use Callboard\Privacy;
 use Callboard\Pwa;
 use Callboard\Sets;
@@ -526,6 +527,34 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 
 		$this->assertSame( rest_url(), $rest['root'] );
 		$this->assertSame( 1, wp_verify_nonce( $rest['nonce'], 'wp_rest' ) );
+	}
+
+	public function test_callboard_and_extension_scripts_print_in_the_footer_when_an_inline_script_takes_their_defer(): void {
+		$scripts               = $GLOBALS['wp_scripts'] ?? null;
+		$GLOBALS['wp_scripts'] = null; // A fresh queue, so what prints is what this test enqueued.
+
+		try {
+			// One the extension registers itself, in the head the way most plugins do, and one Callboard registers from a src.
+			wp_register_script( 'test-own', 'https://example.org/wp-content/plugins/test/own.js', array(), '1', false );
+			$this->register( 'test/own', array( 'script' => 'test-own' ) );
+			$this->register( 'test/src', array( 'script' => array( 'src' => 'https://example.org/wp-content/plugins/test/src.js' ) ) );
+			Extensions::register_assets();
+			// WordPress will not defer a script with an inline script after it, or any script it depends on.
+			wp_add_inline_script( 'test-src', 'window.testSrc = true;', 'after' );
+
+			Frontend::enqueue();
+			$head   = get_echo( 'wp_print_head_scripts' );
+			$footer = get_echo( 'wp_print_footer_scripts' );
+
+			foreach ( array( 'assets/app.js', 'test/own.js', 'test/src.js' ) as $file ) {
+				$this->assertStringNotContainsString( $file, $head, "{$file} is in the head, where it runs before the player's markup exists" );
+				$this->assertStringContainsString( $file, $footer );
+			}
+			preg_match( '#<script[^>]*assets/app\.js[^>]*>#', $footer, $tag );
+			$this->assertDoesNotMatchRegularExpression( '#\sdefer[\s=>]#', $tag[0], 'the inline script no longer takes the defer off, so this test checks nothing' );
+		} finally {
+			$GLOBALS['wp_scripts'] = $scripts;
+		}
 	}
 
 	public function test_the_worker_is_rewritten_once_when_extension_assets_change(): void {
