@@ -4,24 +4,27 @@ Callboard has one way to add a feature to the player, and its own features use i
 
 This is API version 1: `CALLBOARD_API_VERSION` in PHP, `callboard.apiVersion` in the page.
 
+A playlist is a `callboard_set` post, so code and data call it a set: `set_data`, `set.ext`, `$set`.
+
 - [An extension](#an-extension)
 - [Registering one](#registering-one)
 - [Lifecycle](#lifecycle)
 - [Contribution points](#contribution-points)
+- [REST routes](#rest-routes)
 - [Items and markup](#items-and-markup)
 - [Events](#events)
 - [State and commands](#state-and-commands)
 - [Callboard's own extensions](#callboards-own-extensions)
 - [The hooks underneath](#the-hooks-underneath)
 - [The contract](#the-contract)
-- [Caching, offline and the gate](#caching-offline-and-the-gate)
+- [Caching, offline and sign-in](#caching-offline-and-sign-in)
 
 ## An extension
 
 An extension is an id, a version, what it contributes, and a lifecycle.
 
-- `id`: `namespace/name`, lowercase letters, digits and hyphens, the shape of a block name. `callboard/*` belongs to the plugin. Registering one from anywhere else is refused with a `_doing_it_wrong` notice.
-- `version`: the extension's own version string. It keys the set cache (see [Caching](#caching-offline-and-the-gate)), so change it when your data changes shape.
+- `id`: `namespace/name`, lowercase letters, digits and hyphens, the shape of a block name. Some namespaces are reserved (see [Names](#the-contract)), and registering under one is refused with a `_doing_it_wrong` notice in PHP and a warning in the page.
+- `version`: the extension's own version string. It keys the playlist cache (see [Caching](#caching-offline-and-sign-in)), so change it when your data changes shape.
 - `api_version` (`apiVersion` in the script): the contract the extension was written for. Anything other than a version this Callboard runs is refused with a notice.
 - What it contributes: the points in the table below.
 
@@ -66,17 +69,19 @@ window.callboard.registerExtension( 'acme/call-sheet', {
 
 The PHP functions are `callboard_register_extension( $id, $args )`, `callboard_unregister_extension( $id )`, `callboard_get_extension( $id )` and `callboard_get_extensions()`. The first returns the registered extension or `false`; the second returns the removed one or `false`.
 
+`callboard_get_setting( $key )` reads one of Callboard's settings, with its default when the site never saved one, and returns `null` for a key that does not exist. The keys are the ones on the settings screen: `tagline`, `footer_note`, `badge`, `accent`, `confetti`, `hearts`, `show_hint`, `offline`, `push`, `notify_new_sets`, `notify_calls`, `count_in`, `practice` and `require_signin`. The count-in reads `count_in` this way.
+
 Every contribution takes either a callable or `array( 'callback' => …, 'priority' => … )` (`{ callback, priority }` in the script). Priority defaults to the extension's own `priority`, which defaults to 10. Lower runs first; equal priorities run in the order extensions registered.
 
 ## Lifecycle
 
-In PHP, Callboard registers its own extensions on `init` at priority 5, then fires `callboard_register_extensions`. Register there at the default priority; unregister or replace one of Callboard's at a later priority. From then on an extension is active on every request unless `callboard_extension_enabled` returns false for its id. Data callbacks run when set data is built. Slot callbacks run when a template renders.
+In PHP, Callboard registers its own extensions on `init` at priority 5, then fires `callboard_register_extensions`. Register there at the default priority; unregister or replace one of Callboard's at a later priority. From then on an extension is active on every request unless `callboard_extension_enabled` returns false for its id. Data callbacks run when playlist data is built. Slot callbacks run when a template renders.
 
 In the script, an extension goes through four steps:
 
 1. `registerExtension( id, args )`.
-2. `setup( app )`, once per page. `app` is `window.callboard`. This is the place for anything that lasts across views: the deck, the tab, the badge.
-3. `init( view )`, on every view: the first load, and each time navigation swaps a new view into `<main>`. `view` is `{ slug, set, main, signal }`, where `slug` is `''` on home, `set` is a frozen copy or `null`, and `main` is the element.
+2. `setup( app )`, once per page. `app` is `window.callboard`. This is the place for anything that lasts across views: the player bar, the tab, the badge.
+3. `init( view )`, on every view: the first load, and each time navigation swaps a new view into `<main>`. `view` is `{ slug, set, main, signal }`, where `slug` is `''` on home, `set` is a frozen copy of the playlist or `null`, and `main` is the element.
 4. `teardown( view )`, just before the next swap replaces `<main>`. `view.signal` aborts straight after, so `addEventListener( type, fn, { signal: view.signal } )` removes itself without a teardown at all.
 
 An extension can also register after the page is up. It gets `setup` and the current view's `init` straight away, and every slot re-renders.
@@ -89,27 +94,45 @@ PHP names are snake_case and script names camelCase; where a point exists on bot
 
 | Point | PHP argument | Script argument | Rendered by | Runs again |
 | --- | --- | --- | --- | --- |
-| Track data | `track_data( array $track, WP_Post $attachment ): array` | read `track.ext[ id ]` | PHP, inside `callboard_set_data` | When set data is rebuilt: on any save, import or attachment change, or when the active extensions change |
-| Set data | `set_data( array $set, WP_Post $post ): array` | read `set.ext[ id ]` | PHP, inside `callboard_set_data` | As track data |
+| Track data | `track_data( array $track, WP_Post $attachment ): array` | read `track.ext[ id ]` | PHP, inside `callboard_set_data` | When playlist data is rebuilt: on any save, import or attachment change, or when the active extensions change |
+| Playlist data | `set_data( array $set, WP_Post $post ): array` | read `set.ext[ id ]` | PHP, inside `callboard_set_data` | As track data |
 | App data | `app_data(): array` | `callboard.data( id )` | PHP, inside `callboard_app_data` | Every page load, never cached. The place for settings and anything per visitor |
 | Track row badges | `slots.track_badges( $track, $set ): item[]` | `slots.trackBadges( track, view ): item[]` | Server items in the row as it renders, before the length. Client items added by the script beside them | Server: every render. Client: on `init` and `callboard.invalidate( 'trackBadges' )` |
 | Track row metadata | `slots.track_meta( $track, $set ): item[]` | `slots.trackMeta( track, view ): item[]` | The row's second line, after the artist | As badges |
-| Set header | `slots.set_header( $set ): string` | bind to it in `init` | PHP, beside Play all, Save and Share, on a set with tracks | Every render |
+| Playlist header | `slots.set_header( $set ): string` | bind to it in `init` | PHP, beside Play all, Save and Share, on a playlist with tracks | Every render |
 | Now Playing metadata | none | `slots.nowPlayingMeta( track, app ): item[]` | The script, between elapsed and remaining | On every track, and `callboard.invalidate( 'nowPlayingMeta' )` |
 | Transport controls | `slots.transport(): string` | bind to it in `setup` | PHP, beside loop and repeat | Once per page |
-| Panels | `slots.panels(): string` | bind to it in `setup` | PHP, after the lyrics sheet, outside `<main>` | Once per page |
+| Panels | `slots.panels(): string` | bind to it in `setup` | PHP, after the lyrics panel, outside `<main>` | Once per page |
 | Before play | none | `beforePlay( context, signal )` | The script, before a track that was asked to play starts | Every time a track is loaded to play |
 | App badge | none | `badge( app ): number \| Promise<number>` | The script sums every contribution, then `setAppBadge( sum )`, or `clearAppBadge()` for zero | On ready, when the page becomes visible, and `callboard.invalidate( 'badge' )` |
 | Events | none | `events: { track: fn, … }` | wp.hooks actions (see [Events](#events)) | As they fire |
 | Commands | none | `commands: { name: fn }` | `callboard.run( 'ns/name/command', …args )` | When run |
-| REST routes | `rest: array( array( '/route', $args ) )` | none | `register_rest_route()` under `callboard/v1` | n/a |
+| REST routes | `rest: array( array( '/route', $args ) )` | none | `register_rest_route()` under `callboard/v1/ext/` (see [REST routes](#rest-routes)) | n/a |
 | Assets | `script`, `style`: a handle registered on `init`, or `array( 'src', 'deps', 'version' )` for Callboard to register | none | PHP enqueues them after Callboard's script and keeps them on the page | n/a |
 
-A `beforePlay` contribution gets `context`, which is `{ set, track, index, at }`. Return nothing to let the track start, `false` to stop it, or a promise of either. Contributions run one after another in priority order and the track starts once every one has said yes. `signal` aborts if the person presses Play (which starts the track at once), picks another track, or dismisses the deck; an extension that holds the start should stop what it is doing when that happens. The count-in is built on this.
+Track data, playlist data and app data are arrays in PHP and objects in the page. PHP encodes an empty array as `[]`, so the page turns an extension's empty data into `{}`. An extension that returned `array()` reads `{}` from `callboard.data( id )`, `set.ext[ id ]` and `track.ext[ id ]`, the same shape as one that returned fields.
 
-For REST routes, Callboard's own extensions get `callboard/v1/<name>/…`; anybody else gets `callboard/v1/<namespace>/<name>/…`, so `acme/call-sheet` declaring `/pages` answers at `/wp-json/callboard/v1/acme/call-sheet/pages`. These routes are open to signed-out visitors, which the rest of the REST API is not on a Callboard site. Their permission check runs `callboard_rest_can_view()` first, which applies the front-end gate, and then yours if you gave one.
+A `beforePlay` contribution gets `context`, which is `{ set, track, index, at }`. Return nothing to let the track start, `false` to stop it, or a promise of either. Contributions run one after another in priority order and the track starts once every one has said yes. `signal` aborts if the person presses Play (which starts the track at once), picks another track, or closes the player bar; an extension that holds the start should stop what it is doing when that happens. The count-in is built on this.
 
 Callboard removes every other script and style from its pages. An extension's assets are kept, depend on Callboard's script, load deferred, and are kept by the service worker for an offline start.
+
+## REST routes
+
+Callboard's own extensions get `callboard/v1/<name>/…`. Anybody else gets `callboard/v1/ext/<namespace>/<name>/…`, so `acme/call-sheet` declaring `/pages` answers at `/wp-json/callboard/v1/ext/acme/call-sheet/pages`. None of Callboard's own extensions can be called `ext`, so a plugin's routes and Callboard's never share a path, whatever Callboard adds later.
+
+In 2.3.0 a plugin's routes were at `callboard/v1/<namespace>/<name>/…`, with no `ext/`. That path still answers, as a deprecated copy of the new one: each request to it triggers a `_deprecated_function` notice naming the new path, which WordPress sends as an `X-WP-DeprecatedFunction` header when `WP_DEBUG` is on. It is not registered when one of Callboard's own extensions is called the same as your namespace (`callboard/acme` for `acme/call-sheet`), because Callboard's route comes first there. Move requests to the `ext/` path; the old one is removed in API version 2.
+
+These routes are open to signed-out visitors, which the rest of the REST API is not on a Callboard site. Their permission check runs `callboard_rest_can_view()` first, which applies the sign-in requirement, and then yours if you gave one.
+
+WordPress ignores the login cookie on a REST request that carries no nonce, and treats the request as signed out. On a site that requires sign-in, a signed-in user's request without a nonce gets a 401. For a signed-in user, app data carries `rest: { root, nonce }`, read in the page as `window.CALLBOARD.rest`. For anyone else it is `null`, and there is no nonce to send; pass `rest_url()` through your own `app_data` if you need the root then. Send the nonce in an `X-WP-Nonce` header, or as `_wpnonce` in the query string where you cannot set headers, as with `navigator.sendBeacon()`:
+
+```js
+const rest = window.CALLBOARD.rest;
+if ( rest ) {
+	fetch( `${ rest.root }callboard/v1/ext/acme/call-sheet/pages`, { headers: { 'X-WP-Nonce': rest.nonce } } );
+	navigator.sendBeacon( `${ rest.root }callboard/v1/ext/acme/call-sheet/seen?_wpnonce=${ rest.nonce }` );
+}
+```
 
 ## Items and markup
 
@@ -121,7 +144,7 @@ Badges, row metadata and Now Playing metadata take items, which are data and nev
 
 Callboard escapes them (`esc_html` and `esc_attr` in PHP, `textContent` in the script) and renders `<span class="cb-item" data-extension="ns/name">`. Class names are checked one at a time and anything that is not a class name is dropped. An unknown tone is dropped too.
 
-The set header, transport and panels take markup, passed through `wp_kses()` with `callboard_slot_allowed_html( $slot )`: buttons of type button, spans, labels, range and checkbox inputs, links, a few text elements, a small SVG subset, `class`, `id`, `title`, `role`, `hidden`, `data-*` and the common `aria-*` attributes. Scripts and styles are removed along with their contents, and so are event attributes. Behaviour belongs in the extension's script, bound to the markup. Filter `callboard_slot_allowed_html` to allow more.
+The playlist header, transport and panels take markup, passed through `wp_kses()` with `callboard_slot_allowed_html( $slot )`: buttons of type button, spans, labels, range and checkbox inputs, links, a few text elements, a small SVG subset, `class`, `id`, `title`, `role`, `hidden`, `data-*` and the common `aria-*` attributes. Scripts and styles are removed along with their contents, and so are event attributes. Behaviour belongs in the extension's script, bound to the markup. Filter `callboard_slot_allowed_html` to allow more.
 
 The script builds DOM nodes from items and never assigns extension strings to `innerHTML`.
 
@@ -134,7 +157,7 @@ Events are `wp.hooks` actions named `callboard.<event>`. Each also fires as a DO
 | `ready` | `{ view, set }`, once every deferred script, extensions included, has run |
 | `view` | `{ view: 'home' \| 'set', set: slug }`, after every extension's `init` |
 | `viewTeardown` | `{ view, set }`, before every extension's `teardown` |
-| `track` | `{ set, track, index }`, when a track loads into the deck, playing or not |
+| `track` | `{ set, track, index }`, when a track loads into the player bar, playing or not |
 | `play`, `pause`, `ended` | `{ set, track, index, position }` |
 | `seek` | `{ from, to }` in seconds |
 | `loop` | `{ a, b }` in seconds when an A-B loop is set, `null` when it is cleared |
@@ -144,9 +167,9 @@ Events are `wp.hooks` actions named `callboard.<event>`. Each also fires as a DO
 
 Listen with the `events` argument, which removes the listener when the extension is unregistered and keeps one extension's error from reaching another, or with `wp.hooks.addAction( 'callboard.track', 'acme/call-sheet', fn )`.
 
-An extension's own events are named `namespace.name.event` and fired with `callboard.emit( 'acme.call-sheet.turned', detail )`, which also fires `callboard:acme.call-sheet.turned` on `document`.
+An extension's own events are named `namespace.name.event` and fired with `callboard.emit( 'acme.call-sheet.turned', detail )`, which also fires `callboard:acme.call-sheet.turned` on `document`. `emit()` checks that the name belongs to a registered extension, not that the script calling it is that extension. Any script on the page can fire an event in another extension's name, so check an event's detail before acting on it.
 
-Tracks and sets in event details are frozen copies, so changing one has no effect on the player.
+Tracks and playlists in event details are frozen copies, so changing one has no effect on the player. That includes `track` in `callboard:track`, which was the player's own track object before 2.3.0.
 
 ## State and commands
 
@@ -155,16 +178,16 @@ Tracks and sets in event details are frozen copies, so changing one has no effec
 | Property | What |
 | --- | --- |
 | `view` | The slug of the view on screen, `''` for home |
-| `set` | The set in the deck, or `null` |
-| `track`, `index` | The track in the deck and its index, or `null` and `-1` |
+| `set` | The playlist in the player bar, or `null` |
+| `track`, `index` | The track in the player bar and its index, or `null` and `-1` |
 | `position`, `duration` | Seconds |
 | `paused` | Whether the element is paused |
 | `loop` | `{ a, b }` or `null` |
 | `online` | `navigator.onLine` |
 
-`callboard.commands` moves it: `play()`, `pause()`, `seek( seconds )`, `next()`, `prev()`, `goTo( slug, index = 0, { at = 0, play = true } )` (opens the set if it is not on screen, and resolves to `true` or `false`), `startAt( inSeconds, from = 0 )`, and `display( text | null, { detail, className } )`, which puts text on the deck's title line until it is called with `null`.
+`callboard.commands` moves it: `play()`, `pause()`, `seek( seconds )`, `next()`, `prev()`, `goTo( slug, index = 0, { at = 0, play = true } )` (opens the playlist if it is not on screen, and resolves to `true` or `false`), `startAt( inSeconds, from = 0 )`, and `display( text | null, { detail, className } )`, which puts text on the player bar's title line until it is called with `null`.
 
-`startAt` starts the track in the deck at a moment rather than now: `inSeconds` from the call, `from` seconds into the track. It plays a buffer started against `AudioContext.currentTime`, which lands on the sample where `play()` lands tens of milliseconds either way, so phones that agree on the time sound together. The element plays muted underneath, as it does for the gapless loop, and takes the sound back where the ear left off when the start ends, the track changes, somebody seeks or somebody pauses. Fetching and decoding are counted against the wait, and a phone that is late to the moment comes in where the others already are rather than starting late. It resolves to `false` where there is no track, no Web Audio, an autoplay policy has kept the audio context shut, or the moment has passed the end of the track, leaving the element playing or paused as it found it.
+`startAt` starts the track in the player bar at a moment rather than now: `inSeconds` from the call, `from` seconds into the track. It plays a buffer started against `AudioContext.currentTime`, which lands on the sample where `play()` lands tens of milliseconds either way, so phones that agree on the time sound together. The element plays muted underneath, as it does for the gapless loop, and takes the sound back where the ear left off when the start ends, the track changes, somebody seeks or somebody pauses. Fetching and decoding are counted against the wait, and a phone that is late to the moment comes in where the others already are rather than starting late. It resolves to `false` where there is no track, no Web Audio, an autoplay policy has kept the audio context shut, or the moment has passed the end of the track, leaving the element playing or paused as it found it.
 
 An extension adds commands with the `commands` argument or `callboard.registerCommand( 'ns/name/command', fn )`, and anybody runs them with `callboard.run( 'ns/name/command', …args )`.
 
@@ -211,7 +234,7 @@ A director turns on Lead in Now Playing, and each track they open becomes the cu
 
 ### Playing together
 
-Together, beside Lead, sends the track in the deck with a `start` three seconds off, and every phone following plays it then. The director's own phone is one of them: it holds where it is and comes back in on the moment, which is what a stand-by is. Anything that leaves that moment — a seek, a pause, another track — hands the sound back to the audio element where the ear left off. Nothing connects the phones to each other, the way nothing connects the cars in a multi-car light show: the content is already on the phone, the clocks agree, and the start time is written down.
+Together, beside Lead, sends the track in the player bar with a `start` three seconds off, and every phone following plays it then. The director's own phone is one of them: it holds where it is and comes back in on the moment, which is what a stand-by is. Anything that leaves that moment — a seek, a pause, another track — hands the sound back to the audio element where the ear left off. Nothing connects the phones to each other, the way nothing connects the cars in a multi-car light show: the content is already on the phone, the clocks agree, and the start time is written down.
 
 A phone agrees the clock by asking `callboard/v1/cue/time` five times and keeping the offset from the round trip that came back quickest, since a slow trip is one the network stretched, which is how NTP picks a sample. That reading stands for ten minutes. Turning Lead or Follow on takes it, so the clock is in hand before a start arrives rather than after. The moment itself is handed to [`callboard.commands.startAt`](#state-and-commands), which schedules the sound against the audio clock: thirty milliseconds of spread between two phones is an audible flam, and `play()` cannot promise better than that. Where that is not to be had — no Web Audio, or an autoplay policy holding the audio context shut until the next tap — the phone plays the track on the element's clock at the moment instead, tens of milliseconds out rather than silent.
 
@@ -229,20 +252,33 @@ The registry is built on the plugin's hooks, which do not change. A site that us
 | `beforePlay` | `wp.hooks` filter `callboard.beforePlay` |
 | `events` | `wp.hooks` actions `callboard.*` |
 
-In the script the extension id is the `wp.hooks` namespace, so a registry contribution and `wp.hooks.addFilter( 'callboard.slot.trackBadges', 'acme/call-sheet', fn )` are the same thing, and `removeFilter` with that namespace removes both. A hand-written slot filter receives the items so far and returns the list with its own added.
+The top-level `bpm` and `quality` on each track are also written inside `callboard_set_data` at priority 5, from the extensions' track data. Before 2.3.0 they were there from the start, so a filter on `callboard_set_data` at a priority below 5 no longer sees them. Read `ext[ 'callboard/count-in' ]` and `ext[ 'callboard/quality' ]` at priority 6 or later.
+
+In the script the extension id is the `wp.hooks` namespace, so a registry contribution and `wp.hooks.addFilter( 'callboard.slot.trackBadges', 'acme/call-sheet', fn )` are the same thing, and `removeFilter` with that namespace removes both. What a hand-written filter receives and must return:
+
+- A slot filter receives the items so far and the same arguments as the slot, and returns the list with its own items added.
+- `callboard.badge` receives the contributions so far (an array of numbers or promises of numbers) and `window.callboard`. Return the array with your own number or promise added. Callboard waits for every promise, counts anything that is not a positive number as zero, a rejected promise included, and sums the rest. If the result is not an array, or the array is empty, the badge is left alone.
+- `callboard.beforePlay` receives the holds so far and the context, `{ set, track, index, at }`. Return the array with your own entry added: `{ id, callback( context, signal ) }`, or a bare function with that signature. Callboard calls each entry in order, as described under [Contribution points](#contribution-points). If the result is not an array, or the array is empty, the track starts at once.
+
+```js
+wp.hooks.addFilter( 'callboard.badge', 'acme/call-sheet', ( counts, app ) => counts.concat( [ unreadPages() ] ) );
+wp.hooks.addFilter( 'callboard.beforePlay', 'acme/call-sheet', ( holds ) =>
+	holds.concat( [ { id: 'acme/call-sheet', callback: ( context, signal ) => turnToPage( context.track, signal ) } ] )
+);
+```
 
 Core's `wp-hooks` is the only WordPress script Callboard itself puts on the page. It ships with WordPress, so there is still no build step.
 
 ## The contract
 
 - **Versions.** Within API version 1, contribution points, arguments, event names and payload fields are only ever added. Renaming or removing one takes a deprecation that ships in at least one minor release first, and the removal waits for API version 2 and a major release of the plugin.
-- **Deprecations.** PHP uses `_deprecated_hook`, `_deprecated_function` and `_deprecated_argument`. The script uses `callboard.deprecated()`, which warns once per name in the shape of `@wordpress/deprecated`. Tracks still carry `bpm` and `quality` at the top level for API version 1; they belong to `ext[ 'callboard/count-in' ]` and `ext[ 'callboard/quality' ]` now, and reading the old ones warns where `SCRIPT_DEBUG` is on.
-- **Names.** Ids are `namespace/name`. Data sits under `ext[ id ]`. Script hooks and events are `namespace.name.*`. Classes an extension adds start with its namespace (`acme-`). `cb-` and the plugin's unprefixed classes are Callboard's; its own extensions keep the classes they always had (`bpm`, `quality-pill`), so existing styles and tests hold.
-- **Escaping.** Callboard escapes items and runs markup through kses. An extension sanitises its own data before returning it. Data is JSON and small: app data carries every set and every track on every page, so anything heavy belongs behind a route.
+- **Deprecations.** PHP uses `_deprecated_hook`, `_deprecated_function` and `_deprecated_argument`. The script uses `callboard.deprecated()`, which warns once per name in the shape of `@wordpress/deprecated`. Tracks still carry `bpm` and `quality` at the top level for API version 1; they belong to `ext[ 'callboard/count-in' ]` and `ext[ 'callboard/quality' ]` now. Every copy of a track an extension receives has both fields, whether `SCRIPT_DEBUG` is on or off. With it on, reading one from a copy logs a deprecation warning.
+- **Names.** Ids are `namespace/name`. Data sits under `ext[ id ]`. Script hooks and events are `namespace.name.*`. Classes an extension adds start with its namespace (`acme-`). `cb-` and the plugin's unprefixed classes are Callboard's; its own extensions keep the classes they always had (`bpm`, `quality-pill`). So that an extension's classes cannot collide with Callboard's, these namespaces are reserved, and since 2.4.0 registering under one is refused, in PHP and in the page: `callboard`, `cb`, `wp`, `core`, `ext`, `deck`, `set`, `seek`, `loop`, `track`, `lyrics`, `dl`, `wave`, `remote`, `sheet` and `quality`. `callboard/*` is for Callboard's own extensions, and none of them can be called `callboard/ext`. The PHP list is `Callboard\Extensions::RESERVED_NAMESPACES`.
+- **Escaping.** Callboard escapes items and runs markup through kses. An extension sanitises its own data before returning it. Data is JSON and small: app data carries every playlist and every track on every page, so anything heavy belongs behind a route.
 - **Strings.** Translate in PHP and pass strings through `app_data`. The page loads no `wp-i18n`.
 
-## Caching, offline and the gate
+## Caching, offline and sign-in
 
-- **Set data.** It is cached for a day and cleared whenever a set changes. The cache is keyed on the ids and versions of the extensions that contribute track or set data, so enabling, disabling or updating one rebuilds it. A decision that changes per request (per user, say) belongs in `app_data`, which is never cached.
+- **Playlist data.** It is cached for a day and cleared whenever a playlist changes. The cache is keyed on the ids and versions of the extensions that contribute track or playlist data, so enabling, disabling or updating one rebuilds it. A decision that changes per request (per user, say) belongs in `app_data`, which is never cached.
 - **Offline.** The service worker keeps extension assets at the URLs the page asks for, together with core's `wp-hooks`. It is rewritten when that list changes, which Callboard checks in the admin (where plugins are activated and updated), never on a front-end request, since a new worker starts a new shell cache for every visitor.
-- **The gate.** When a site requires sign-in, a signed-out visitor gets no app data, no extension scripts or data, and a 401 from extension routes.
+- **Sign-in.** When a site requires sign-in, a signed-out visitor gets no app data, no extension scripts or data, and a 401 from extension routes. A signed-in user's own requests need the REST nonce (see [REST routes](#rest-routes)).

@@ -161,4 +161,36 @@ class Test_Callboard_Art extends WP_UnitTestCase {
 
 		$this->assertNull( Art::tint( $file ) );
 	}
+
+	/**
+	 * A launcher may crop a maskable icon to any shape that holds the middle circle, 80% of the width.
+	 * A red band running edge to edge across the source must land inside that circle.
+	 */
+	public function test_a_maskable_icon_keeps_the_whole_image_inside_the_safe_circle(): void {
+		$src = imagecreatetruecolor( 64, 64 );
+		imagefill( $src, 0, 0, imagecolorallocate( $src, 30, 60, 200 ) );
+		imagefilledrectangle( $src, 0, 24, 63, 39, imagecolorallocate( $src, 220, 20, 20 ) );
+		$in = $this->temp( 'png' );
+		imagepng( $src, $in );
+		$out = $this->temp( 'png' );
+
+		$this->assertTrue( Art::maskable_icon( $in, $out ) );
+
+		$im = imagecreatefrompng( $out );
+		$this->assertSame( array( 512, 512 ), array( imagesx( $im ), imagesy( $im ) ) );
+		$this->assertSame( array( 30, 60, 200 ), array_values( array_slice( imagecolorsforindex( $im, imagecolorat( $im, 0, 0 ) ), 0, 3 ) ), 'the padding is the icon’s own background' );
+		$red     = 0;
+		$outside = 0;
+		for ( $x = 0; $x < 512; $x += 2 ) {
+			for ( $y = 0; $y < 512; $y += 2 ) {
+				$c = imagecolorsforindex( $im, imagecolorat( $im, $x, $y ) );
+				if ( $c['red'] > 150 && $c['blue'] < 100 ) {
+					++$red;
+					$outside += hypot( $x - 256, $y - 256 ) > 512 * 0.4 ? 1 : 0;
+				}
+			}
+		}
+		$this->assertGreaterThan( 0, $red, 'the image is drawn' );
+		$this->assertSame( 0, $outside, 'no part of it is outside the safe circle' );
+	}
 }

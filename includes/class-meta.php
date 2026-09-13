@@ -124,9 +124,11 @@ final class Meta {
 					'description' => 'Beats per minute for the count-in. Zero where no usable tempo was found.',
 					'sanitize'    => 'absint',
 				),
+				// Legacy shape. New notes are comments (Notes::TYPE); this array is still read as a
+				// fallback and left in place after migration so a downgrade still sees them.
 				'_callboard_notes'        => array(
 					'type'        => 'array',
-					'description' => 'Director\'s notes: a time in seconds, the note, and the date it was given.',
+					'description' => 'Legacy director\'s notes array. Prefer callboard_note comments; kept readable so a downgrade survives.',
 				),
 				'_callboard_practice'     => array(
 					'type'        => 'array',
