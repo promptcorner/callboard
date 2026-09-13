@@ -930,30 +930,6 @@ msgstr ""
 msgid "%d beats per minute, counts in"
 msgstr ""
 
-#: includes/extensions/class-cue.php:50
-msgid "Shared cue"
-msgstr ""
-
-#: includes/extensions/class-cue.php:165
-msgid "Send the track you open to everyone following"
-msgstr ""
-
-#: includes/extensions/class-cue.php:165
-msgid "Lead"
-msgstr ""
-
-#: includes/extensions/class-cue.php:167
-msgid "Open the track the director opens"
-msgstr ""
-
-#: includes/extensions/class-cue.php:167
-msgid "Follow"
-msgstr ""
-
-#: includes/extensions/class-cue.php:232
-msgid "That track is not in a published playlist."
-msgstr ""
-
 #: includes/extensions/class-practice.php:69
 msgid "Practice counts"
 msgstr ""

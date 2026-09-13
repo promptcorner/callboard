@@ -199,7 +199,6 @@ The rest of `window.callboard`: `version` (the plugin), `hooks` (`wp.hooks`), `e
 | `callboard/quality` | Track data `quality`, app data `format`, and a Now Playing item (class `quality-pill`) | Now Playing shows no quality |
 | `callboard/badging` | An app badge contribution of zero, so opening the app clears what a notification set | The page leaves the badge alone |
 | `callboard/practice` | App data `url` and, for signed-in users, `nonce`; a REST route, `POST callboard/v1/practice/counts`; and listeners on the `track`, `loop`, `play`, `pause` and `ended` events. Registered only when the **Count practice** setting is on | Nothing is counted or sent |
-| `callboard/cue` | App data `canLead`, `api` and, for signed-in users, `nonce`; Lead and Follow buttons in the transport controls; a REST route, `callboard/v1/cue/`; listeners on the `track`, `seek` and `view` events; and the `callboard.cue.changed` event (see [The shared cue](#the-shared-cue)) | No buttons, and the page never reads or sends the cue |
 
 They live in `includes/extensions/` and in their own sections at the bottom of `assets/app.js`, where they can reach `window.callboard` and nothing else. To replace one:
 
@@ -220,14 +219,6 @@ add_filter( 'callboard_extension_enabled', fn( bool $on, string $id ) => $on && 
 More of Callboard's features become extensions in later releases: offline saving, lyrics, director's notes and push.
 
 `tests/mu-plugins/callboard-example-extension.php` and `tests/mu-plugins/callboard-example/example.js` are a complete extension built on nothing but this API, exercising every point. `tests/e2e/extensions.spec.js` and `tests/php/test-extensions.php` hold it, and Callboard's own extensions, to this document.
-
-### The shared cue
-
-A director turns on Lead in Now Playing, and each track they open becomes the cue, as does each seek (except the jumps a running A-B loop makes). A phone with Follow on reads the cue every 2 seconds while the page is visible and opens that track, paused. Follow only shows while a cue is set.
-
-- `GET callboard/v1/cue/` returns `{ seq, set, track, position, at }`. `seq` goes up by one on every change. `set` is the playlist's slug, `track` is the track's index in the playlist (from 0), `position` is in seconds, and `at` is when the cue was set, in milliseconds on the server's clock. Two hours after the last change, `set`, `track` and `at` are `null`. With `?since=<seq>`, a cue that is still set and has not changed answers `204` with no body. Anyone who can view the site can read it.
-- `POST callboard/v1/cue/` with `set`, `track` and `position` sets the cue. It needs `edit_posts`. A track that is not in a published playlist gets a `400`.
-- `callboard.cue.changed` fires with the same object each time the page reads or sends a cue it had not seen, including the empty one when a cue runs out.
 
 ## The hooks underneath
 

@@ -427,17 +427,35 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 	}
 
 	public function test_a_third_party_route_never_shares_a_path_with_one_of_callboards_own(): void {
-		$this->assertNotNull( callboard_get_extension( 'callboard/cue' ), 'this test needs Callboard\'s own cue extension, which answers under /callboard/v1/cue/' );
-		// In 2.3.0, a plugin registered as cue/sync answered under /callboard/v1/cue/sync/, inside Callboard's /cue/.
+		// A stand-in for one of Callboard's own extensions, which answers under /callboard/v1/stand-in/.
+		$this->as_callboard(
+			fn() => $this->assertIsArray(
+				$this->register(
+					'callboard/stand-in',
+					array(
+						'rest' => array(
+							array(
+								'/',
+								array(
+									'methods'  => 'GET',
+									'callback' => static fn() => array( 'from' => 'callboard/stand-in' ),
+								),
+							),
+						),
+					)
+				)
+			)
+		);
+		// In 2.3.0, a plugin registered as stand-in/sync answered under /callboard/v1/stand-in/sync/, inside Callboard's /stand-in/.
 		$this->register(
-			'cue/sync',
+			'stand-in/sync',
 			array(
 				'rest' => array(
 					array(
 						'/state',
 						array(
 							'methods'  => 'GET',
-							'callback' => static fn() => array( 'from' => 'cue/sync' ),
+							'callback' => static fn() => array( 'from' => 'stand-in/sync' ),
 						),
 					),
 				),
@@ -447,11 +465,13 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 		rest_get_server();
 		wp_set_current_user( 0 );
 
-		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/callboard/v1/ext/cue/sync/state' ) );
-		$this->assertSame( array( 'from' => 'cue/sync' ), $response->get_data() );
-		$this->assertArrayNotHasKey( '/callboard/v1/cue/sync/state', rest_get_server()->get_routes(), 'the deprecated 2.3.0 path of cue/sync is not added under callboard/cue' );
-		$this->assertNull( Extensions::legacy_rest_base( 'cue/sync' ) );
-		$this->assertTrue( Extensions::is_extension_route( '/callboard/v1/ext/cue/sync/state' ) );
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/callboard/v1/stand-in' ) );
+		$this->assertSame( array( 'from' => 'callboard/stand-in' ), $response->get_data() );
+		$response = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/callboard/v1/ext/stand-in/sync/state' ) );
+		$this->assertSame( array( 'from' => 'stand-in/sync' ), $response->get_data() );
+		$this->assertArrayNotHasKey( '/callboard/v1/stand-in/sync/state', rest_get_server()->get_routes(), 'the deprecated 2.3.0 path of stand-in/sync is not added under callboard/stand-in' );
+		$this->assertNull( Extensions::legacy_rest_base( 'stand-in/sync' ) );
+		$this->assertTrue( Extensions::is_extension_route( '/callboard/v1/ext/stand-in/sync/state' ) );
 	}
 
 	public function test_a_third_party_route_still_answers_at_its_2_3_0_path_with_a_deprecation_notice(): void {
