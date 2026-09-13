@@ -245,7 +245,10 @@ final class Pwa {
 	}
 
 	/**
-	 * Where the maskable copy of the current site icon lives. The file name carries the attachment ID.
+	 * Where the maskable copy of the current site's icon lives.
+	 *
+	 * The file name carries the site ID and the attachment ID. Each network site normally has its
+	 * own uploads folder, but a filter on upload_dir can point every site at the same one.
 	 *
 	 * @since 2.4.0
 	 *
@@ -253,7 +256,7 @@ final class Pwa {
 	 */
 	public static function maskable_icon_location(): array {
 		$u    = wp_upload_dir( null, false );
-		$name = sprintf( '/callboard/icons/maskable-%d.png', (int) get_option( 'site_icon' ) );
+		$name = sprintf( '/callboard/icons/maskable-%d-%d.png', get_current_blog_id(), (int) get_option( 'site_icon' ) );
 		return array(
 			'file' => $u['basedir'] . $name,
 			'url'  => $u['baseurl'] . $name,
@@ -261,13 +264,13 @@ final class Pwa {
 	}
 
 	/**
-	 * Draw the maskable copy of the site icon, and delete copies of earlier site icons.
+	 * Draw the maskable copy of the site icon, and delete this site's copies of earlier icons.
 	 *
 	 * @since 2.4.0
 	 */
 	public static function write_maskable_icon(): void {
 		$loc   = self::maskable_icon_location();
-		$drawn = glob( dirname( $loc['file'] ) . '/maskable-*.png' );
+		$drawn = glob( sprintf( '%s/maskable-%d-*.png', dirname( $loc['file'] ), get_current_blog_id() ) );
 		foreach ( is_array( $drawn ) ? $drawn : array() as $old ) {
 			if ( $old !== $loc['file'] ) {
 				wp_delete_file( $old );

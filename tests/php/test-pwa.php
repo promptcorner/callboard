@@ -85,7 +85,7 @@ class Test_Callboard_Pwa extends WP_UnitTestCase {
 		$this->assertSame( wp_make_link_relative( get_site_icon_url( 512 ) ), $icons[1]['src'] );
 		$this->assertSame( '512x512', $icons[1]['sizes'] );
 		$this->assertSame( 'maskable', $icons[2]['purpose'] );
-		$this->assertStringContainsString( "/callboard/icons/maskable-{$id}.png", $icons[2]['src'] );
+		$this->assertStringContainsString( '/callboard/icons/maskable-' . get_current_blog_id() . "-{$id}.png", $icons[2]['src'] );
 		foreach ( $this->srcs( $icons ) as $src ) {
 			$this->assertStringNotContainsString( 'assets/icon-', $src, 'no bundled icon beside a site icon' );
 		}

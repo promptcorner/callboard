@@ -165,6 +165,48 @@ class Test_Callboard_Multisite extends WP_UnitTestCase {
 		restore_current_blog();
 	}
 
+	/**
+	 * An image attachment on the current site, to use as its site icon.
+	 */
+	private function site_icon(): int {
+		$file = get_temp_dir() . 'callboard-site-icon-' . wp_generate_password( 8, false ) . '.png';
+		$im   = imagecreatetruecolor( 64, 64 );
+		imagefill( $im, 0, 0, imagecolorallocate( $im, 30, 60, 200 ) );
+		imagepng( $im, $file );
+		$id = self::factory()->attachment->create_upload_object( $file );
+		wp_delete_file( $file );
+		return $id;
+	}
+
+	public function test_each_site_uses_its_own_site_icon(): void {
+		$choir = self::factory()->blog->create( array( 'title' => 'Youth Choir' ) );
+
+		update_option( 'site_icon', $this->site_icon() );
+		$main_icon     = wp_make_link_relative( get_site_icon_url( 512 ) );
+		$main_maskable = Pwa::maskable_icon_location()['file'];
+
+		switch_to_blog( $choir );
+		$this->assertStringContainsString( 'assets/icon-180.png', Pwa::icon_url( 180 ), 'a site without an icon keeps the bundled one' );
+		update_option( 'site_icon', $this->site_icon() );
+		$choir_icon     = wp_make_link_relative( get_site_icon_url( 512 ) );
+		$choir_maskable = Pwa::maskable_icon_location()['file'];
+		$choir_manifest = json_decode( Pwa::contents( 'manifest.json' ), true );
+		$choir_sw       = Pwa::contents( 'sw.js' );
+		restore_current_blog();
+
+		$main_manifest = json_decode( Pwa::contents( 'manifest.json' ), true );
+		$this->assertContains( $main_icon, array_column( $main_manifest['icons'], 'src' ) );
+		$this->assertNotContains( $choir_icon, array_column( $main_manifest['icons'], 'src' ) );
+		$this->assertContains( $choir_icon, array_column( $choir_manifest['icons'], 'src' ) );
+		$this->assertNotContains( $main_icon, array_column( $choir_manifest['icons'], 'src' ) );
+		$this->assertStringContainsString( wp_json_encode( $choir_icon, JSON_UNESCAPED_SLASHES ), $choir_sw, "the choir's worker precaches its icon" );
+
+		$this->assertNotSame( $main_maskable, $choir_maskable );
+		$this->assertFileExists( $main_maskable, "drawing the choir's maskable icon left the main site's copy alone" );
+		$this->assertFileExists( $choir_maskable );
+		$this->assertStringContainsString( wp_basename( $choir_maskable ), (string) end( $choir_manifest['icons'] )['src'] );
+	}
+
 	public function test_uninstall_clears_every_site(): void {
 		$choir = self::factory()->blog->create();
 		$sites = array( get_main_site_id(), $choir );
