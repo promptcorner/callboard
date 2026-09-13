@@ -200,7 +200,14 @@ final class Admin {
 			$bpms = array_map( 'intval', (array) ( $_POST['callboard_bpm'] ?? array() ) );
 			update_post_meta( $track_id, '_callboard_bpm', Importer::clamp_bpm( (int) ( $bpms[ $track_id ] ? $bpms[ $track_id ] : 0 ) ) );
 			$raw = isset( $_POST['callboard_notes'][ $track_id ] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['callboard_notes'][ $track_id ] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized here.
-			Notes::set( $track_id, self::parse_notes( $raw, Notes::get( $track_id ) ) );
+			// Notes::set() returns only the notes this save added.
+			foreach ( Notes::set( $track_id, self::parse_notes( $raw, Notes::get( $track_id ) ) ) as $note ) {
+				$notes_to_notify[] = array(
+					'index' => $i,
+					'title' => (string) get_post_field( 'post_title', $track_id ),
+					'note'  => $note,
+				);
+			}
 		}
 		$credits = isset( $_POST['callboard_credits'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_credits'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
 		update_post_meta(
@@ -225,6 +232,10 @@ final class Admin {
 			Importer::import_all();
 		}
 		Sets::flush();
+		// Only a published set has a page for the notification to open.
+		if ( 'publish' !== get_post_status( $post_id ) ) {
+			return;
+		}
 		foreach ( $notes_to_notify as $item ) {
 			$note = $item['note'];
 			$url  = add_query_arg(

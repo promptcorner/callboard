@@ -55,9 +55,13 @@ test.describe( 'Front end', () => {
 	test( 'a director note link opens its track at the note time', async ( {
 		page,
 	} ) => {
+		// The demo set's third track has a note at 0:04, "Softer here".
 		await page.goto( '/demo-set/?track=2&at=4' );
+		await expect(
+			page.locator( '.track[aria-current="true"]' )
+		).toContainText( 'Sonnets 21–30' );
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 21–30'
+			'Softer here'
 		);
 		await expect
 			.poll( () =>
@@ -66,6 +70,31 @@ test.describe( 'Front end', () => {
 					.evaluate( ( audio ) => audio.currentTime )
 			)
 			.toBeGreaterThanOrEqual( 4 );
+		// The parameters are dropped, so reloading does not jump back to the note.
+		await expect( page ).toHaveURL( /\/demo-set\/$/ );
+	} );
+
+	test( 'a set page without a note link still opens where the listener left off', async ( {
+		page,
+	} ) => {
+		await page.addInitScript( () =>
+			localStorage.setItem(
+				'callboard:demo-set',
+				JSON.stringify( { i: 3, t: 20 } )
+			)
+		);
+		await page.goto( '/demo-set/' );
+		await expect( page.locator( '.track' ).nth( 3 ) ).toHaveAttribute(
+			'aria-current',
+			'true'
+		);
+		await expect
+			.poll( () =>
+				page
+					.locator( '#audio' )
+					.evaluate( ( audio ) => audio.currentTime )
+			)
+			.toBeGreaterThanOrEqual( 20 );
 	} );
 
 	test( 'loading a set from files fills the offline copies without the network', async ( {

@@ -2,21 +2,21 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Callboard 2.2.0\n"
+"Project-Id-Version: Callboard 2.3.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/callboard\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-12T19:55:32+00:00\n"
+"POT-Creation-Date: 2026-09-13T19:27:48+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: callboard\n"
 
 #. Plugin Name of the plugin
 #: callboard.php
-#: includes/class-admin.php:361
+#: includes/class-admin.php:389
 #: templates/board.php:15
 msgid "Callboard"
 msgstr ""
@@ -42,7 +42,7 @@ msgid "https://josephfus.co/"
 msgstr ""
 
 #: includes/class-admin.php:39
-#: includes/class-admin.php:550
+#: includes/class-admin.php:578
 #: templates/set.php:40
 msgid "Tracks"
 msgstr ""
@@ -53,8 +53,8 @@ msgstr ""
 
 #. translators: %s: track title.
 #: includes/class-admin.php:41
-#: includes/class-frontend.php:75
-#: includes/class-frontend.php:84
+#: includes/class-frontend.php:79
+#: includes/class-frontend.php:88
 #: templates/deck.php:71
 msgid "Lyrics"
 msgstr ""
@@ -102,12 +102,12 @@ msgid "With a tempo, Play from the top counts in four beats."
 msgstr ""
 
 #: includes/class-admin.php:85
-#: includes/class-frontend.php:78
+#: includes/class-frontend.php:82
 msgid "Director notes"
 msgstr ""
 
 #: includes/class-admin.php:87
-msgid "One per line: a time, then the note. Each note is dated the day it is first saved and pinned at that time on the player."
+msgid "One per line: a time, then the note. Each note is saved in your name, dated the day it is first saved, and pinned at that time on the player."
 msgstr ""
 
 #: includes/class-admin.php:101
@@ -166,263 +166,269 @@ msgstr ""
 msgid "Used only for the cover Callboard draws. A featured image always wins."
 msgstr ""
 
-#: includes/class-admin.php:264
+#. translators: %s: track title.
+#: includes/class-admin.php:250
+#, php-format
+msgid "Director's note: %s"
+msgstr ""
+
+#: includes/class-admin.php:292
 msgid "Import"
 msgstr ""
 
-#: includes/class-admin.php:265
-#: includes/class-admin.php:380
+#: includes/class-admin.php:293
+#: includes/class-admin.php:408
 msgid "Notices"
 msgstr ""
 
-#: includes/class-admin.php:266
+#: includes/class-admin.php:294
 msgid "Callboard Settings"
 msgstr ""
 
-#: includes/class-admin.php:266
+#: includes/class-admin.php:294
 msgid "Settings"
 msgstr ""
 
-#: includes/class-admin.php:302
+#: includes/class-admin.php:330
 msgid "Tagline"
 msgstr ""
 
-#: includes/class-admin.php:302
+#: includes/class-admin.php:330
 msgid "Shown under the title and in link previews."
 msgstr ""
 
-#: includes/class-admin.php:303
+#: includes/class-admin.php:331
 msgid "Home page footer"
 msgstr ""
 
-#: includes/class-admin.php:303
+#: includes/class-admin.php:331
 msgid "A short disclosure, e.g. \"For rehearsal use only.\""
 msgstr ""
 
-#: includes/class-admin.php:304
+#: includes/class-admin.php:332
 msgid "Badge on the playing track"
 msgstr ""
 
-#: includes/class-admin.php:304
+#: includes/class-admin.php:332
 msgid "An emoji, or leave empty."
 msgstr ""
 
-#: includes/class-admin.php:305
+#: includes/class-admin.php:333
 msgid "Accent colour"
 msgstr ""
 
-#: includes/class-admin.php:305
+#: includes/class-admin.php:333
 msgid "A hex colour such as #3b82f6 for the played wave, the filament, and the marks. Empty keeps the house orange."
 msgstr ""
 
-#: includes/class-admin.php:306
+#: includes/class-admin.php:334
 msgid "Confetti text"
 msgstr ""
 
-#: includes/class-admin.php:306
+#: includes/class-admin.php:334
 msgid "Triple-tap the big title to release it. A lucky number, a name. Empty turns it off."
 msgstr ""
 
-#: includes/class-admin.php:307
+#: includes/class-admin.php:335
 msgid "Mix hearts into the confetti"
 msgstr ""
 
-#: includes/class-admin.php:308
+#: includes/class-admin.php:336
 msgid "Show the \"Add to Home Screen\" hint on iPhone"
 msgstr ""
 
-#: includes/class-admin.php:309
+#: includes/class-admin.php:337
 msgid "Offer \"Save offline\""
 msgstr ""
 
-#: includes/class-admin.php:310
+#: includes/class-admin.php:338
 msgid "Offer notifications"
 msgstr ""
 
-#: includes/class-admin.php:310
+#: includes/class-admin.php:338
 msgid "A bell on the home page lets the cast opt in. On iPhone this needs the app added to the Home Screen."
 msgstr ""
 
-#: includes/class-admin.php:311
+#: includes/class-admin.php:339
 msgid "Notify when a set is published"
 msgstr ""
 
-#: includes/class-admin.php:312
+#: includes/class-admin.php:340
 msgid "Notify when a call is posted"
 msgstr ""
 
-#: includes/class-admin.php:312
+#: includes/class-admin.php:340
 msgid "Calls live under Sets. Publishing one, or a scheduled one going live, sends it to the cast."
 msgstr ""
 
-#: includes/class-admin.php:313
+#: includes/class-admin.php:341
 msgid "Count in tracks that have a tempo"
 msgstr ""
 
-#: includes/class-admin.php:313
+#: includes/class-admin.php:341
 msgid "Four clicks at the marked tempo before a track starts from the top, so singers come in on the beat. Off, the tempo still shows on the track."
 msgstr ""
 
-#: includes/class-admin.php:314
+#: includes/class-admin.php:342
 msgid "Count practice"
 msgstr ""
 
-#: includes/class-admin.php:314
+#: includes/class-admin.php:342
 msgid "Counts how many times each track is opened, how many loops are set on it, and how many minutes it plays. Counts are anonymous: no names, accounts, IP addresses or cookies are stored. They are grouped by hour and shown on each call in the editor."
 msgstr ""
 
-#: includes/class-admin.php:315
+#: includes/class-admin.php:343
 msgid "Require a WordPress sign-in"
 msgstr ""
 
-#: includes/class-admin.php:315
+#: includes/class-admin.php:343
 msgid "Off, anyone with the address can open the site, which is usually what a cast wants. On, the front end asks for a signed-in user, so whatever sign-in the site already has — Apple, Google, a membership plugin, passkeys through Two Factor — guards it too. Audio files keep their own upload addresses either way."
 msgstr ""
 
-#: includes/class-admin.php:316
+#: includes/class-admin.php:344
 msgid "Only let in users with access to Callboard"
 msgstr ""
 
-#: includes/class-admin.php:316
-msgid "Needs the sign-in setting above. On, a signed-in user also needs the view_callboard capability. The Cast member, Director, Editor and Administrator roles have it. Subscribers do not."
+#: includes/class-admin.php:344
+msgid "Needs the sign-in setting above. On, a signed-in user also needs the view_callboard capability. Cast members, directors and anyone who can edit posts have it. Subscribers do not."
 msgstr ""
 
-#: includes/class-admin.php:362
+#: includes/class-admin.php:390
 msgid "The site title (Settings → General) is the app name and the home page heading."
 msgstr ""
 
-#: includes/class-admin.php:382
+#: includes/class-admin.php:410
 msgid "Push is not available on this server (needs OpenSSL and GMP or BCMath)."
 msgstr ""
 
 #. translators: %d: subscriber count.
-#: includes/class-admin.php:387
+#: includes/class-admin.php:415
 #, php-format
 msgid "%d device is subscribed."
 msgid_plural "%d devices are subscribed."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-admin.php:389
+#: includes/class-admin.php:417
 msgid "A notice goes to all of them and opens the link when tapped."
 msgstr ""
 
-#: includes/class-admin.php:394
+#: includes/class-admin.php:422
 msgid "Title"
 msgstr ""
 
-#: includes/class-admin.php:395
+#: includes/class-admin.php:423
 msgid "Message"
 msgstr ""
 
-#: includes/class-admin.php:396
+#: includes/class-admin.php:424
 msgid "Link (optional)"
 msgstr ""
 
-#: includes/class-admin.php:397
+#: includes/class-admin.php:425
 msgid "Send to the cast"
 msgstr ""
 
-#: includes/class-admin.php:411
+#: includes/class-admin.php:439
 msgid "Import sets"
 msgstr ""
 
-#: includes/class-admin.php:413
+#: includes/class-admin.php:441
 msgid "From a file"
 msgstr ""
 
-#: includes/class-admin.php:414
+#: includes/class-admin.php:442
 msgid "A .callboard file holds a whole set: the audio, the order, the levels, and anything written about it. Somebody can send you one."
 msgstr ""
 
-#: includes/class-admin.php:418
+#: includes/class-admin.php:446
 msgid "Set file"
 msgstr ""
 
-#: includes/class-admin.php:419
+#: includes/class-admin.php:447
 msgid "Import the file"
 msgstr ""
 
-#: includes/class-admin.php:423
+#: includes/class-admin.php:451
 msgid "From a folder on this server"
 msgstr ""
 
 #. translators: %s: directory path.
-#: includes/class-admin.php:428
+#: includes/class-admin.php:456
 #, php-format
 msgid "Drop a set folder (audio files plus manifest.json) into %s and import. Folders are re-imported automatically after each deploy stamp change."
 msgstr ""
 
-#: includes/class-admin.php:436
+#: includes/class-admin.php:464
 msgid "Import now"
 msgstr ""
 
-#: includes/class-admin.php:439
+#: includes/class-admin.php:467
 msgid "From YouTube"
 msgstr ""
 
-#: includes/class-admin.php:440
+#: includes/class-admin.php:468
 msgid "Paste a video or playlist URL. The next `wp callboard run` fetches audio only, draws the artwork, and the set appears here."
 msgstr ""
 
-#: includes/class-admin.php:444
+#: includes/class-admin.php:472
 msgid "YouTube URL"
 msgstr ""
 
-#: includes/class-admin.php:445
+#: includes/class-admin.php:473
 msgid "Set name"
 msgstr ""
 
-#: includes/class-admin.php:446
+#: includes/class-admin.php:474
 msgid "Queue it"
 msgstr ""
 
-#: includes/class-admin.php:450
+#: includes/class-admin.php:478
 msgid "How fetching works"
 msgstr ""
 
-#: includes/class-admin.php:452
+#: includes/class-admin.php:480
 msgid "This server has yt-dlp. Drain the queue with WP-CLI:"
 msgstr ""
 
-#: includes/class-admin.php:455
+#: includes/class-admin.php:483
 msgid "This host cannot run yt-dlp, which is normal for managed hosting. Fetch on a machine that has it, with the same plugin installed (wp-env works well), then deploy the finished set folder here and import."
 msgstr ""
 
-#: includes/class-admin.php:457
+#: includes/class-admin.php:485
 msgid "# or drain everything queued above"
 msgstr ""
 
-#: includes/class-admin.php:459
+#: includes/class-admin.php:487
 msgid "wp callboard doctor reports what the current environment can do."
 msgstr ""
 
-#: includes/class-admin.php:474
+#: includes/class-admin.php:502
 #: includes/class-post-types.php:35
 msgid "Set"
 msgstr ""
 
-#: includes/class-admin.php:474
+#: includes/class-admin.php:502
 msgid "Source"
 msgstr ""
 
-#: includes/class-admin.php:474
+#: includes/class-admin.php:502
 msgid "Status"
 msgstr ""
 
-#: includes/class-admin.php:487
+#: includes/class-admin.php:515
 msgid "Remove"
 msgstr ""
 
-#: includes/class-admin.php:534
+#: includes/class-admin.php:562
 msgid "Export"
 msgstr ""
 
-#: includes/class-admin.php:535
+#: includes/class-admin.php:563
 msgid "Export for a car"
 msgstr ""
 
-#: includes/class-admin.php:551
+#: includes/class-admin.php:579
 msgid "Link"
 msgstr ""
 
@@ -509,62 +515,68 @@ msgstr ""
 msgid "Notice, no time"
 msgstr ""
 
-#: includes/class-exporter.php:157
-#: includes/class-exporter.php:276
+#. translators: 1: number of tracks, 2: number of notes, 3: number of tracks skipped.
+#: includes/class-cli.php:293
+#, php-format
+msgid "%1$d tracks, %2$d notes, %3$d already migrated."
+msgstr ""
+
+#: includes/class-exporter.php:165
+#: includes/class-exporter.php:284
 msgid "This server has no ZipArchive, so sets cannot be exported."
 msgstr ""
 
-#: includes/class-exporter.php:162
-#: includes/class-exporter.php:216
+#: includes/class-exporter.php:170
+#: includes/class-exporter.php:224
 msgid "That set has no audio to export."
 msgstr ""
 
-#: includes/class-exporter.php:167
-#: includes/class-exporter.php:288
+#: includes/class-exporter.php:175
+#: includes/class-exporter.php:296
 msgid "Could not create the file."
 msgstr ""
 
-#: includes/class-exporter.php:222
-#: includes/class-exporter.php:227
+#: includes/class-exporter.php:230
+#: includes/class-exporter.php:235
 msgid "Could not create the folder."
 msgstr ""
 
-#: includes/class-exporter.php:382
+#: includes/class-exporter.php:390
 msgid "This server has no ZipArchive, so sets cannot be imported from a file."
 msgstr ""
 
-#: includes/class-exporter.php:387
+#: includes/class-exporter.php:395
 msgid "That file is not readable as a zip."
 msgstr ""
 
-#: includes/class-exporter.php:393
+#: includes/class-exporter.php:401
 msgid "That file has no manifest.json, so it is not a set."
 msgstr ""
 
-#: includes/class-exporter.php:399
+#: includes/class-exporter.php:407
 msgid "That file's manifest is unreadable."
 msgstr ""
 
 #. translators: %d: format version found in the file.
-#: includes/class-exporter.php:404
+#: includes/class-exporter.php:412
 #, php-format
 msgid "That file is format version %d, which this version of Callboard cannot read. Update the plugin."
 msgstr ""
 
-#: includes/class-exporter.php:410
+#: includes/class-exporter.php:418
 msgid "That set has no usable slug."
 msgstr ""
 
-#: includes/class-exporter.php:416
+#: includes/class-exporter.php:424
 #: includes/class-fetcher.php:75
 msgid "Could not create the set folder."
 msgstr ""
 
-#: includes/class-exporter.php:489
+#: includes/class-exporter.php:497
 msgid "You cannot export that set."
 msgstr ""
 
-#: includes/class-exporter.php:494
+#: includes/class-exporter.php:502
 msgid "That is not a set."
 msgstr ""
 
@@ -610,179 +622,179 @@ msgstr ""
 msgid "Could not start the fetch tool."
 msgstr ""
 
-#: includes/class-frontend.php:56
+#: includes/class-frontend.php:60
 #: templates/set.php:21
 msgid "Play all"
 msgstr ""
 
-#: includes/class-frontend.php:57
+#: includes/class-frontend.php:61
 msgid "Link copied"
 msgstr ""
 
-#: includes/class-frontend.php:58
+#: includes/class-frontend.php:62
 msgid "Pause"
 msgstr ""
 
-#: includes/class-frontend.php:59
+#: includes/class-frontend.php:63
 #: templates/deck.php:51
 msgid "Play"
 msgstr ""
 
-#: includes/class-frontend.php:60
+#: includes/class-frontend.php:64
 msgid "Install this as an app to keep it a tap away."
 msgstr ""
 
-#: includes/class-frontend.php:61
+#: includes/class-frontend.php:65
 msgid "Add"
 msgstr ""
 
-#: includes/class-frontend.php:62
+#: includes/class-frontend.php:66
 msgid "Open this in Safari to add it to your Home Screen."
 msgstr ""
 
-#: includes/class-frontend.php:63
+#: includes/class-frontend.php:67
 msgid "Open in Safari"
 msgstr ""
 
-#: includes/class-frontend.php:64
+#: includes/class-frontend.php:68
 #: templates/set.php:23
 msgid "Save offline"
 msgstr ""
 
-#: includes/class-frontend.php:65
+#: includes/class-frontend.php:69
 msgid "Saved offline"
 msgstr ""
 
 #. translators: 1: tracks saved so far, 2: total tracks.
-#: includes/class-frontend.php:67
+#: includes/class-frontend.php:71
 #, php-format
 msgid "Saving offline, %1$s of %2$s"
 msgstr ""
 
 #. translators: 1: tracks saved so far, 2: total tracks.
-#: includes/class-frontend.php:69
+#: includes/class-frontend.php:73
 #, php-format
 msgid "Save the rest, %1$s of %2$s saved"
 msgstr ""
 
-#: includes/class-frontend.php:70
+#: includes/class-frontend.php:74
 msgid "Hold to remove"
 msgstr ""
 
-#: includes/class-frontend.php:71
+#: includes/class-frontend.php:75
 msgid "Saved offline. Press and hold, or press Delete, to remove the copies."
 msgstr ""
 
 #. translators: 1: tracks saved so far, 2: total tracks.
-#: includes/class-frontend.php:73
+#: includes/class-frontend.php:77
 #, php-format
 msgid "Saving %1$s/%2$s · Cancel"
 msgstr ""
 
-#: includes/class-frontend.php:76
+#: includes/class-frontend.php:80
 #: templates/deck.php:73
 msgid "Lyrics · auto-captions, may be rough"
 msgstr ""
 
-#: includes/class-frontend.php:77
+#: includes/class-frontend.php:81
 msgid "Notes"
 msgstr ""
 
-#: includes/class-frontend.php:79
+#: includes/class-frontend.php:83
 msgid "Show director notes"
 msgstr ""
 
-#: includes/class-frontend.php:80
+#: includes/class-frontend.php:84
 msgid "Hide director notes"
 msgstr ""
 
 #. translators: %d: beats per minute.
-#: includes/class-frontend.php:82
+#: includes/class-frontend.php:86
 msgid "Show lyrics"
 msgstr ""
 
-#: includes/class-frontend.php:85
+#: includes/class-frontend.php:89
 msgid "Hide lyrics"
 msgstr ""
 
-#: includes/class-frontend.php:86
+#: includes/class-frontend.php:90
 #: templates/deck.php:28
 msgid "Show current track"
 msgstr ""
 
-#: includes/class-frontend.php:87
+#: includes/class-frontend.php:91
 #: templates/deck.php:23
 msgid "Play on another device"
 msgstr ""
 
-#: includes/class-frontend.php:88
+#: includes/class-frontend.php:92
 msgid "Playing on another device, tap to change"
 msgstr ""
 
 #. translators: %s: track title.
-#: includes/class-frontend.php:90
+#: includes/class-frontend.php:94
 #: templates/set.php:52
 #, php-format
 msgid "Save %s offline"
 msgstr ""
 
 #. translators: %s: track title.
-#: includes/class-frontend.php:92
+#: includes/class-frontend.php:96
 #, php-format
 msgid "%s is saved offline"
 msgstr ""
 
-#: includes/class-frontend.php:93
+#: includes/class-frontend.php:97
 msgid "Remove offline copies? Tap again"
 msgstr ""
 
 #. translators: %s: free space such as 40 MB.
-#: includes/class-frontend.php:95
+#: includes/class-frontend.php:99
 #, php-format
 msgid "Not enough space, %s free"
 msgstr ""
 
 #. translators: %s: track title.
-#: includes/class-frontend.php:97
+#: includes/class-frontend.php:101
 #, php-format
 msgid "Saving %s, tap to cancel"
 msgstr ""
 
-#: includes/class-frontend.php:98
+#: includes/class-frontend.php:102
 msgid "Nothing matched a track in this set"
 msgstr ""
 
 #. translators: 1: files loaded, 2: files chosen.
-#: includes/class-frontend.php:100
+#: includes/class-frontend.php:104
 #, php-format
 msgid "Loaded %1$s of %2$s"
 msgstr ""
 
-#: includes/class-frontend.php:101
+#: includes/class-frontend.php:105
 #: templates/home.php:20
 msgid "Notify me about new sets"
 msgstr ""
 
 #. translators: %s: track title.
-#: includes/class-frontend.php:103
+#: includes/class-frontend.php:107
 #, php-format
 msgid "Left off at %s"
 msgstr ""
 
-#: includes/class-frontend.php:104
+#: includes/class-frontend.php:108
 msgid "Notifications on"
 msgstr ""
 
-#: includes/class-frontend.php:105
+#: includes/class-frontend.php:109
 msgid "Add to Home Screen first, then turn on notifications from there."
 msgstr ""
 
-#: includes/class-frontend.php:106
+#: includes/class-frontend.php:110
 msgid "Notifications are blocked in your browser settings."
 msgstr ""
 
 #. translators: %d: number of sets.
-#: includes/class-frontend.php:225
+#: includes/class-frontend.php:229
 #, php-format
 msgid "%d set."
 msgid_plural "%d sets."
@@ -888,11 +900,11 @@ msgstr ""
 msgid "Queued. It will appear as a set once a runner has fetched it."
 msgstr ""
 
-#: includes/class-roles.php:133
+#: includes/class-roles.php:155
 msgid "Director"
 msgstr ""
 
-#: includes/class-roles.php:134
+#: includes/class-roles.php:156
 msgid "Cast member"
 msgstr ""
 
@@ -916,6 +928,30 @@ msgstr ""
 #: includes/extensions/class-count-in.php:82
 #, php-format
 msgid "%d beats per minute, counts in"
+msgstr ""
+
+#: includes/extensions/class-cue.php:50
+msgid "Shared cue"
+msgstr ""
+
+#: includes/extensions/class-cue.php:165
+msgid "Send the track you open to everyone following"
+msgstr ""
+
+#: includes/extensions/class-cue.php:165
+msgid "Lead"
+msgstr ""
+
+#: includes/extensions/class-cue.php:167
+msgid "Open the track the director opens"
+msgstr ""
+
+#: includes/extensions/class-cue.php:167
+msgid "Follow"
+msgstr ""
+
+#: includes/extensions/class-cue.php:232
+msgid "That track is not in a published playlist."
 msgstr ""
 
 #: includes/extensions/class-practice.php:69

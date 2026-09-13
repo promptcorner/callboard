@@ -102,10 +102,12 @@ final class Notes {
 	 *
 	 * @param int               $track_id Attachment ID.
 	 * @param array<int, mixed> $notes    Raw notes: t, text, optional date.
+	 * @return array<int, array{t: float, text: string, date: string}> The notes this call added. Notes copied
+	 *                                                                  over from the old post meta are not included.
 	 */
-	public static function set( int $track_id, array $notes ): void {
+	public static function set( int $track_id, array $notes ): array {
 		if ( $track_id <= 0 ) {
-			return;
+			return array();
 		}
 
 		$notes    = Importer::sanitize_notes( $notes );
@@ -116,7 +118,18 @@ final class Notes {
 			$by_key[ self::key( $note['t'], $note['text'] ) ] = $comment;
 		}
 
-		$kept = array();
+		// A track with no note comments yet may still have notes in the old post meta. Copying those
+		// into comments does not make them new.
+		$legacy = array();
+		if ( ! $existing ) {
+			$old = get_post_meta( $track_id, self::META_LEGACY, true );
+			foreach ( is_array( $old ) ? Importer::sanitize_notes( $old ) : array() as $note ) {
+				$legacy[ self::key( $note['t'], $note['text'] ) ] = true;
+			}
+		}
+
+		$kept  = array();
+		$added = array();
 		foreach ( $notes as $note ) {
 			$key = self::key( $note['t'], $note['text'] );
 			if ( isset( $by_key[ $key ] ) ) {
@@ -129,6 +142,9 @@ final class Notes {
 				continue;
 			}
 			$kept[] = self::insert( $track_id, $note );
+			if ( ! isset( $legacy[ $key ] ) ) {
+				$added[] = $note;
+			}
 		}
 
 		foreach ( $existing as $comment ) {
@@ -136,6 +152,8 @@ final class Notes {
 				wp_delete_comment( (int) $comment->comment_ID, true );
 			}
 		}
+
+		return $added;
 	}
 
 	/**

@@ -2578,17 +2578,28 @@
 			paintCalls();
 		}
 		if ( set?.tracks.length ) {
+			// A director's note notification links to ?track=2&at=72: open that track at that time.
 			const params = new URLSearchParams( location.search ),
-				noteIndex = Number( params.get( 'track' ) ),
-				noteAt = Number( params.get( 'at' ) ),
+				noteIndex = /^\d+$/.test( params.get( 'track' ) || '' )
+					? Number( params.get( 'track' ) )
+					: -1,
+				noteAt = Number( params.get( 'at' ) || 0 ),
 				noteStart =
-					Number.isInteger( noteIndex ) &&
 					noteIndex >= 0 &&
 					noteIndex < set.tracks.length &&
 					Number.isFinite( noteAt ) &&
 					noteAt >= 0
 						? { index: noteIndex, at: noteAt }
 						: null;
+			if ( params.has( 'track' ) || params.has( 'at' ) ) {
+				// Drop the parameters so a reload or a later visit to this entry does not jump back.
+				params.delete( 'track' );
+				params.delete( 'at' );
+				const clean = `${ location.pathname }${
+					params.size ? `?${ params }` : ''
+				}${ location.hash }`;
+				history.replaceState( history.state, '', clean );
+			}
 			if ( ! queue ) {
 				queue = set;
 				if ( noteStart ) {
