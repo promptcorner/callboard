@@ -191,17 +191,7 @@ final class Art {
 			return null;
 		}
 
-		$src = @getimagesize( $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- a file that is not an image is a null, not a warning.
-		if ( ! $src ) {
-			return null;
-		}
-
-		$im = match ( $src[2] ) {
-			IMAGETYPE_PNG  => @imagecreatefrompng( $file ),  // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- same.
-			IMAGETYPE_JPEG => @imagecreatefromjpeg( $file ), // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- same.
-			IMAGETYPE_WEBP => @imagecreatefromwebp( $file ), // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- same.
-			default        => false,
-		};
+		$im = self::load( $file );
 		if ( ! $im ) {
 			return null;
 		}
@@ -242,6 +232,79 @@ final class Art {
 			(int) round( $g_sum / $weight ),
 			(int) round( $b_sum / $weight )
 		);
+	}
+
+	/**
+	 * Open a PNG, JPEG or WebP file with GD.
+	 *
+	 * @since 2.4.0
+	 *
+	 * @param string $file Absolute path to an image.
+	 * @return \GdImage|null Null when GD is missing or cannot read the file.
+	 */
+	public static function load( string $file ) {
+		if ( ! function_exists( 'imagecreatetruecolor' ) || ! is_readable( $file ) ) {
+			return null;
+		}
+		$src = @getimagesize( $file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- a file that is not an image is a null, not a warning.
+		if ( ! $src ) {
+			return null;
+		}
+		$im = match ( $src[2] ) {
+			IMAGETYPE_PNG  => @imagecreatefrompng( $file ),  // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- same.
+			IMAGETYPE_JPEG => @imagecreatefromjpeg( $file ), // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- same.
+			IMAGETYPE_WEBP => @imagecreatefromwebp( $file ), // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- same.
+			default        => false,
+		};
+		return $im ? $im : null;
+	}
+
+	/**
+	 * Copy an image onto another, scaled to fit a square box centered on a point.
+	 *
+	 * @since 2.4.0
+	 *
+	 * @param \GdImage $dst Image to draw on.
+	 * @param \GdImage $src Image to copy.
+	 * @param int      $cx  Center x.
+	 * @param int      $cy  Center y.
+	 * @param int      $box Width and height of the box.
+	 */
+	public static function place( $dst, $src, int $cx, int $cy, int $box ): void {
+		$sw    = imagesx( $src );
+		$sh    = imagesy( $src );
+		$scale = $box / max( $sw, $sh );
+		$w     = max( 1, (int) round( $sw * $scale ) );
+		$h     = max( 1, (int) round( $sh * $scale ) );
+		imagealphablending( $dst, true );
+		imagecopyresampled( $dst, $src, (int) round( $cx - $w / 2 ), (int) round( $cy - $h / 2 ), 0, 0, $w, $h, $sw, $sh );
+	}
+
+	/**
+	 * 512×512 maskable app icon drawn from another image.
+	 *
+	 * Android crops a maskable icon to a circle or other shape, and only the circle in the middle 80%
+	 * is safe. The image is scaled to the largest square inside that circle. The rest is filled with
+	 * the image's top-left color when that pixel is opaque, or the app background when it is not.
+	 *
+	 * @since 2.4.0
+	 *
+	 * @param string $src Absolute path to the source image.
+	 * @param string $out Output path.
+	 * @return bool Whether the file was written.
+	 */
+	public static function maskable_icon( string $src, string $out ): bool {
+		$icon = self::load( $src );
+		if ( ! $icon ) {
+			return false;
+		}
+		$s      = 512;
+		$corner = imagecolorsforindex( $icon, imagecolorat( $icon, 0, 0 ) );
+		$bg     = 0 === $corner['alpha'] ? array( $corner['red'], $corner['green'], $corner['blue'] ) : array( 236, 234, 229 );
+		$im     = imagecreatetruecolor( $s, $s );
+		imagefill( $im, 0, 0, imagecolorallocate( $im, ...$bg ) );
+		self::place( $im, $icon, (int) ( $s / 2 ), (int) ( $s / 2 ), (int) floor( $s * 0.4 * M_SQRT2 ) );
+		return imagepng( $im, $out, 6 );
 	}
 
 	/**
