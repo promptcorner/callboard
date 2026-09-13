@@ -108,14 +108,14 @@ class Test_Callboard_Pwa extends WP_UnitTestCase {
 		update_option( 'site_icon', $id );
 
 		$icon     = wp_make_link_relative( get_site_icon_url( 512 ) );
-		$manifest = json_decode( (string) file_get_contents( ABSPATH . 'manifest.json' ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$sw       = (string) file_get_contents( ABSPATH . 'sw.js' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$manifest = json_decode( Pwa::contents( 'manifest.json' ), true );
+		$sw       = Pwa::contents( 'sw.js' );
 		$this->assertContains( $icon, $this->srcs( $manifest['icons'] ), 'manifest.json lists the new icon' );
 		$this->assertStringContainsString( wp_json_encode( wp_make_link_relative( get_site_icon_url( 180 ) ), JSON_UNESCAPED_SLASHES ), $sw, 'sw.js precaches it' );
 
 		update_option( 'site_icon', 0 );
 
-		$manifest = json_decode( (string) file_get_contents( ABSPATH . 'manifest.json' ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$manifest = json_decode( Pwa::contents( 'manifest.json' ), true );
 		$this->assertNotContains( $icon, $this->srcs( $manifest['icons'] ), 'and drops it when the site icon is removed' );
 	}
 }
