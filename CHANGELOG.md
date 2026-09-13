@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.4.0](https://github.com/promptcorner/callboard/compare/v2.3.0...v2.4.0) (2026-09-13)
+
+
+### Features
+
+* let the director pick the track that every following phone opens ([#183](https://github.com/promptcorner/callboard/issues/183)) ([de14c2b](https://github.com/promptcorner/callboard/commit/de14c2b7363c75539d17cf71c1d8bd3a6e001cb7))
+* store director notes as callboard_note comments ([#186](https://github.com/promptcorner/callboard/issues/186)) ([857dbf8](https://github.com/promptcorner/callboard/commit/857dbf8e57ff62bc4a6936d5e92dfbef4583626e))
+* support multisite networks, with a service worker and manifest for each site ([#179](https://github.com/promptcorner/callboard/issues/179)) ([f48b7d7](https://github.com/promptcorner/callboard/commit/f48b7d71139b75167fae5af59a98687379195851))
+* use the site icon for the app icon and splash screens ([#175](https://github.com/promptcorner/callboard/issues/175)) ([b96111a](https://github.com/promptcorner/callboard/commit/b96111a0fb03081d23bf2483e383c6636450620b))
+
+
+### Bug Fixes
+
+* move third-party extension routes under ext/, reserve namespaces, and add the REST nonce to app data ([#189](https://github.com/promptcorner/callboard/issues/189)) ([0350a84](https://github.com/promptcorner/callboard/commit/0350a84e5162ce2447a616e794b1d957f0e19367))
+* notify cast about director notes ([#187](https://github.com/promptcorner/callboard/issues/187)) ([c651c1d](https://github.com/promptcorner/callboard/commit/c651c1de7539b1a618da4dca8d8ee8eeb45aa4ff))
+
 ## [2.3.0](https://github.com/promptcorner/callboard/compare/v2.2.0...v2.3.0) (2026-09-12)
 
 
