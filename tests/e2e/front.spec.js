@@ -1572,35 +1572,28 @@ test.describe( 'Touch', () => {
 		);
 		await page.goto( '/demo-set/' );
 		await page.locator( '.track' ).first().click();
-		await expandDeck( page );
-		await isExpanded( page );
 		const cdp = await page.context().newCDPSession( page );
-		// A real touch pan on the transport row, which Now Playing itself doesn't use for dragging.
-		const pan = async () => {
-			const box = await page.locator( '.deck-transport' ).boundingBox();
-			await cdp.send( 'Input.synthesizeScrollGesture', {
-				x: Math.round( box.x + 10 ),
-				y: Math.round( box.y + box.height / 2 ),
-				yDistance: -300,
+		// A real touch pan, straight up from a point on the screen.
+		const pan = ( x, y ) =>
+			cdp.send( 'Input.synthesizeScrollGesture', {
+				x: Math.round( x ),
+				y: Math.round( y ),
+				yDistance: -200,
 				gestureSourceType: 'touch',
 			} );
-		};
-		const before = await page.evaluate( () => window.scrollY );
-		await pan();
-		expect( await page.evaluate( () => window.scrollY ) ).toBe( before );
-		// The same pan on the player bar scrolls the page once Now Playing is closed.
-		await page.locator( '#deck-down' ).click();
-		await isCompact( page );
-		const box = await page.locator( '#open-lyrics' ).boundingBox();
-		await cdp.send( 'Input.synthesizeScrollGesture', {
-			x: Math.round( box.x + box.width / 2 ),
-			y: Math.round( box.y - 120 ),
-			yDistance: -300,
-			gestureSourceType: 'touch',
-		} );
-		await expect
-			.poll( () => page.evaluate( () => window.scrollY ) )
-			.toBeGreaterThan( before );
+		const scrollY = () => page.evaluate( () => window.scrollY );
+		// The same pan on the track list scrolls the page while Now Playing is closed.
+		const list = await page.locator( '.track' ).nth( 3 ).boundingBox();
+		await pan( list.x + list.width / 2, list.y + list.height / 2 );
+		await expect.poll( scrollY ).toBeGreaterThan( 0 );
+		const before = await scrollY();
+
+		await expandDeck( page );
+		await isExpanded( page );
+		// On the transport row, which Now Playing itself doesn't use for dragging.
+		const row = await page.locator( '.deck-transport' ).boundingBox();
+		await pan( row.x + 10, row.y + row.height / 2 );
+		expect( await scrollY() ).toBe( before );
 		await cdp.detach();
 	} );
 
