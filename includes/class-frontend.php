@@ -176,8 +176,8 @@ final class Frontend {
 		<meta name="theme-color" content="#161616" media="(prefers-color-scheme: dark)">
 		<meta name="color-scheme" content="light dark">
 		<link rel="manifest" href="<?php echo esc_url( Pwa::manifest_url() ); ?>">
-		<link rel="icon" sizes="192x192" href="<?php echo esc_url( Pwa::icon_url( 192 ) ); ?>">
-		<link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url( Pwa::icon_url( 180 ) ); ?>">
+		<link rel="icon" type="image/png" sizes="192x192" href="<?php echo esc_url( callboard_asset( 'assets/icon-192.png' ) ); ?>">
+		<link rel="apple-touch-icon" sizes="180x180" href="<?php echo esc_url( callboard_asset( 'assets/icon-180.png' ) ); ?>">
 		<meta name="apple-mobile-web-app-capable" content="yes">
 		<meta name="mobile-web-app-capable" content="yes">
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -262,7 +262,6 @@ final class Frontend {
 			remove_action( 'wp_head', 'rest_output_link_wp_head' );
 			remove_action( 'template_redirect', 'rest_output_link_header', 11 );
 		}
-		remove_action( 'wp_head', 'wp_site_icon', 99 ); // app_meta() prints the site icon, so the page has one apple-touch-icon.
 		remove_action( 'wp_head', 'feed_links', 2 );
 		remove_action( 'wp_head', 'feed_links_extra', 3 );
 		remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
