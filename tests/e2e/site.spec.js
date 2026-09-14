@@ -229,6 +229,41 @@ test.describe( 'Landing page live demo', () => {
 } );
 
 test.describe( 'Landing page', () => {
+	test( 'the text in the dark sections is readable', async ( { page } ) => {
+		await page.goto( base );
+		const ratios = await page
+			.locator( '.dark .lede' )
+			.evaluateAll( ( ledes ) =>
+				ledes.map( ( p ) => {
+					// Relative luminance, and the WCAG contrast ratio between the text and its section.
+					const lum = ( color ) => {
+						const [ r, g, b ] = color
+							.match( /\d+(\.\d+)?/g )
+							.slice( 0, 3 )
+							.map( ( v ) => {
+								const c = Number( v ) / 255;
+								return c <= 0.03928
+									? c / 12.92
+									: ( ( c + 0.055 ) / 1.055 ) ** 2.4;
+							} );
+						return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+					};
+					const text = lum( getComputedStyle( p ).color );
+					const ground = lum(
+						getComputedStyle( p.closest( '.dark' ) ).backgroundColor
+					);
+					return (
+						( Math.max( text, ground ) + 0.05 ) /
+						( Math.min( text, ground ) + 0.05 )
+					);
+				} )
+			);
+		expect( ratios.length ).toBeGreaterThan( 0 );
+		for ( const ratio of ratios ) {
+			expect( ratio ).toBeGreaterThanOrEqual( 4.5 );
+		}
+	} );
+
 	test( 'shows the Now Playing screen and says what it does', async ( {
 		page,
 	} ) => {
