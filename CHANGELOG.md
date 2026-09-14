@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.5.0](https://github.com/promptcorner/callboard/compare/v2.4.0...v2.5.0) (2026-09-14)
+
+
+### Features
+
+* close Now Playing by dragging it down, and size the player like Tidal's ([#199](https://github.com/promptcorner/callboard/issues/199)) ([c94d7d3](https://github.com/promptcorner/callboard/commit/c94d7d30a5ad0588dd60970f836778395f972e5e))
+* register abilities to list playlists, list upcoming calls and post a call ([#201](https://github.com/promptcorner/callboard/issues/201)) ([aa42f9d](https://github.com/promptcorner/callboard/commit/aa42f9d199ae12ed6b3172f6041d623ed4bdd25e))
+
+
+### Bug Fixes
+
+* keep each network site's maskable icon separate ([#193](https://github.com/promptcorner/callboard/issues/193)) ([382f6bb](https://github.com/promptcorner/callboard/commit/382f6bb36b69384dbeb52581075edef1e030fb33))
+* keep extension scripts loading and available offline ([#202](https://github.com/promptcorner/callboard/issues/202)) ([af95d81](https://github.com/promptcorner/callboard/commit/af95d81b2e5bba97a49e29f460753596cc26d42f))
+* keep the A-B loop working after moving to another track ([#200](https://github.com/promptcorner/callboard/issues/200)) ([77a6be2](https://github.com/promptcorner/callboard/commit/77a6be25733fbcf2a25a484360af409bdabcfd01))
+
 ## [2.4.0](https://github.com/promptcorner/callboard/compare/v2.3.0...v2.4.0) (2026-09-13)
 
 
