@@ -396,6 +396,7 @@
 	// to dismiss before you can use the app. Every media player treats Now Playing as somewhere you
 	// go, never somewhere you land.
 	function setDeckView( mode ) {
+		deck.style.transform = ''; // drops any drag offset (see the drag to close below) in the same frame
 		deck.classList.toggle( 'is-compact', mode !== 'expanded' );
 		deck.classList.toggle( 'is-expanded', mode === 'expanded' );
 		document.body.classList.toggle( 'now-playing', mode === 'expanded' );
@@ -404,9 +405,13 @@
 	// Opening Now Playing pushes a history entry at the same URL, so the browser's or system back
 	// (Android back, Safari's edge swipe) closes it. See the popstate handler.
 	const nowPlayingEntry = () => !! history.state?.nowPlaying;
+	let barHeight = 0; // the player bar's height, measured before Now Playing opens, for the drag to close
 	function expandDeck( push = true ) {
 		if ( deck.classList.contains( 'is-expanded' ) ) {
 			return;
+		}
+		if ( ! deck.hidden ) {
+			barHeight = window.innerHeight - deck.getBoundingClientRect().top;
 		}
 		if ( push ) {
 			haptic();
@@ -430,16 +435,16 @@
 		}
 		setDeckView( 'compact' );
 	}
-	// Close button and Escape: go back through the history entry so it isn't left behind.
+	// The grabber (click or drag) and Escape: close now, then go back through the history entry so it
+	// isn't left behind. Waiting for popstate to close it left the screen up for another frame or more.
 	function closeNowPlaying() {
 		if ( ! deck.classList.contains( 'is-expanded' ) ) {
 			return;
 		}
+		collapseDeck();
 		if ( nowPlayingEntry() ) {
 			history.back();
-			return;
 		}
-		collapseDeck();
 	}
 	let sheetKind = ''; // set by renderSheet(); declared here so syncOpenLyricsA11y() above can read it early
 	// After a reload, Now Playing starts closed, so clear the flag on the current entry.
@@ -777,8 +782,6 @@
 		if ( ! seekWidth ) {
 			measureSeek();
 		}
-		// the filament's lit length is also the compact bar's position line — see .deck-glow* in app.css
-		deck.style.setProperty( '--progress', ratio );
 		seekFill.style.transform = `scaleX(${ ratio })`;
 		if ( waveReveal ) {
 			const off = ( ( 1 - ratio ) * 100 ).toFixed( 3 );
@@ -1552,17 +1555,19 @@
 		}
 	} );
 
-	// The deck's height is a token the page padding and the lyrics sheet read. Measured rather than assumed,
-	// so Dynamic Type on iPhone, a landscape inset, or a longer row never leaves the last track under the deck.
+	// The player bar's height is a token the page padding and the lyrics sheet read. Measured rather than
+	// assumed, so Dynamic Type on iPhone, a landscape inset, or a longer row never leaves the last track under
+	// the bar, and a short bar doesn't leave a gap under the last track. Now Playing is the whole screen, so it
+	// isn't measured.
 	if ( window.ResizeObserver ) {
 		new ResizeObserver( () => {
-			if ( deck.hidden ) {
+			if ( deck.hidden || ! deck.classList.contains( 'is-compact' ) ) {
 				return;
 			}
 			const h =
 				deck.offsetHeight -
 				parseFloat( getComputedStyle( deck ).paddingBottom ); // the overscroll run-off and the safe area are not height
-			if ( h > 80 ) {
+			if ( h > 0 ) {
 				document.documentElement.style.setProperty(
 					'--deck-h',
 					`${ Math.round( h ) }px`
@@ -1901,7 +1906,10 @@
 		}
 	} );
 	document.addEventListener( 'keydown', ( e ) => {
-		if ( e.target.matches( 'input,select,textarea' ) ) {
+		if (
+			e.target.matches( 'input,select,textarea' ) ||
+			( e.key === ' ' && e.target.id === 'deck-down' ) // Space presses the grabber
+		) {
 			return;
 		}
 		if ( e.key === ' ' ) {
@@ -2154,7 +2162,177 @@
 			hideLyrics();
 		}
 	} );
+	// Drag Now Playing down to close it, starting on the grabber, the top row, or the cover. The thresholds
+	// and easing come from Vaul (the shadcn/ui drawer): release faster than 0.4px/ms or past a quarter of
+	// the screen to close, otherwise it springs back; a drag up is dampened. The speed is measured over the
+	// last 100ms, so holding still before letting go is not a flick.
+	const DRAG_FROM = '.deck-down, .deck-top, .deck-cover',
+		NO_DRAG = 'a, input, select, textarea, label, button:not(.deck-down)';
+	let pull = null, // the drag in progress
+		slide = null, // the release animation in progress: { closing, stop }
+		pulled = false; // true for the click that ends a drag, so it does not close as well
+	const setOffset = ( y ) =>
+		( deck.style.transform = y ? `translate3d(0,${ y }px,0)` : '' );
+	const offset = () => {
+		try {
+			return new DOMMatrix( getComputedStyle( deck ).transform ).m42;
+		} catch {
+			return 0;
+		}
+	};
+	const dampen = ( d ) => Math.min( -8 * ( Math.log( d + 1 ) - 2 ), 0 );
+	const scrolledDown = ( el ) => {
+		for ( ; el && el !== deck; el = el.parentElement ) {
+			if ( el.scrollHeight > el.clientHeight && el.scrollTop > 0 ) {
+				return true;
+			}
+		}
+		return false;
+	};
+	// Animates to y, then runs done unless something else cleared the offset first. A close is shorter than
+	// a spring back: the easing covers most of the distance early, and the rest reads as the screen parked.
+	const slideTo = ( y, done ) => {
+		let timer = 0;
+		const stop = () => {
+			clearTimeout( timer );
+			deck.removeEventListener( 'transitionend', end );
+			deck.classList.remove( 'is-settling', 'is-closing' );
+			slide = null;
+		};
+		const end = ( e ) => {
+			if (
+				e &&
+				( e.target !== deck || e.propertyName !== 'transform' )
+			) {
+				return;
+			}
+			stop();
+			if ( done && deck.style.transform ) {
+				done();
+			}
+		};
+		slide?.stop();
+		if ( done && Math.abs( offset() - y ) < 1 ) {
+			done(); // already there: nothing would transition, so transitionend would never come
+			return;
+		}
+		slide = { closing: !! done, stop };
+		deck.addEventListener( 'transitionend', end );
+		timer = setTimeout( end, done ? 330 : 550 ); // in case transitionend never comes
+		deck.classList.add( 'is-settling' );
+		deck.classList.toggle( 'is-closing', !! done );
+		setOffset( y );
+	};
+	deck.addEventListener( 'pointerdown', ( e ) => {
+		if (
+			pull ||
+			slide?.closing ||
+			! e.isPrimary ||
+			e.button !== 0 ||
+			! deck.classList.contains( 'is-expanded' ) ||
+			sheetOpen() ||
+			! e.target.closest( DRAG_FROM ) ||
+			e.target.closest( NO_DRAG ) ||
+			scrolledDown( e.target )
+		) {
+			return;
+		}
+		if ( e.pointerType === 'mouse' ) {
+			e.preventDefault(); // no text selection or image drag
+		}
+		try {
+			e.target.setPointerCapture( e.pointerId );
+		} catch {} // a synthetic event has no pointer to capture
+		// Caught while springing back: carry on from where it is.
+		let from = 0;
+		if ( slide ) {
+			from = Math.max( 0, offset() );
+			slide.stop();
+			setOffset( from );
+		}
+		pull = {
+			id: e.pointerId,
+			start: e.clientY,
+			y: e.clientY - from,
+			dy: from,
+			moved: false,
+			still: reduce(),
+			track: [ [ e.timeStamp, e.clientY ] ],
+		};
+		pulled = false;
+	} );
+	deck.addEventListener( 'pointermove', ( e ) => {
+		if ( ! pull || e.pointerId !== pull.id ) {
+			return;
+		}
+		pull.dy = e.clientY - pull.y;
+		pull.moved = pull.moved || Math.abs( e.clientY - pull.start ) > 10;
+		pull.track.push( [ e.timeStamp, e.clientY ] );
+		if ( pull.track.length > 20 ) {
+			pull.track.shift();
+		}
+		// Written straight away: browsers already send one pointermove per frame, and waiting for the next
+		// frame put the screen a frame behind the finger.
+		if ( ! pull.still && deck.classList.contains( 'is-expanded' ) ) {
+			setOffset( pull.dy > 0 ? pull.dy : dampen( -pull.dy ) );
+		}
+	} );
+	const release = ( e ) => {
+		if ( ! pull || e.pointerId !== pull.id ) {
+			return;
+		}
+		const p = pull;
+		pull = null;
+		if ( ! deck.classList.contains( 'is-expanded' ) ) {
+			return;
+		}
+		if ( p.moved ) {
+			pulled = true;
+			setTimeout( () => ( pulled = false ) );
+		}
+		let speed = 0;
+		if ( e.type === 'pointerup' ) {
+			p.dy = e.clientY - p.y;
+			const [ t, y ] = p.track.find(
+				( [ at ] ) => e.timeStamp - at <= 100
+			) || [ e.timeStamp, e.clientY ];
+			speed = ( e.clientY - y ) / Math.max( e.timeStamp - t, 1 );
+		}
+		const close =
+			e.type === 'pointerup' &&
+			p.moved &&
+			p.dy > 0 &&
+			( speed > 0.4 || p.dy >= window.innerHeight * 0.25 );
+		if ( close ) {
+			haptic(); // inside the pointerup, which counts as an activation
+		}
+		if ( p.still ) {
+			if ( close ) {
+				closeNowPlaying();
+			}
+			return;
+		}
+		if ( ! close ) {
+			if ( deck.style.transform ) {
+				slideTo( 0 );
+			}
+			return;
+		}
+		// Slide down to where the player bar sits, then close. closeNowPlaying() switches to the bar and
+		// clears the offset in the same frame, so the screen never waits there for the history back.
+		const bar =
+			barHeight > 0 && barHeight < window.innerHeight / 2
+				? window.innerHeight - barHeight
+				: deck.offsetHeight;
+		slideTo( Math.max( bar, p.dy ), closeNowPlaying );
+	};
+	deck.addEventListener( 'pointerup', release );
+	deck.addEventListener( 'pointercancel', release );
+	deck.addEventListener( 'lostpointercapture', release );
 	$( 'deck-down' )?.addEventListener( 'click', () => {
+		if ( pulled ) {
+			return;
+		}
 		haptic();
 		closeNowPlaying();
 	} );

@@ -17,11 +17,11 @@ defined( 'ABSPATH' ) || exit;
 <section class="deck" id="deck" aria-label="<?php esc_attr_e( 'Player', 'callboard' ); ?>" hidden>
 	<i class="deck-glow-halo" id="deck-glow-halo" aria-hidden="true"></i><i class="deck-glow" id="deck-glow" aria-hidden="true"></i><i class="deck-glow-hot" id="deck-glow-hot" aria-hidden="true"></i>
 	<?php /* Now Playing: the expanded deck is a full screen, not a taller bar. Same controls, same element — only the layout changes, so nothing has two copies of its state. */ ?>
-	<?php /* Close button. Now Playing also closes with Escape and the browser's back. */ ?>
-	<button type="button" class="deck-down" id="deck-down" aria-label="<?php esc_attr_e( 'Close the player', 'callboard' ); ?>"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+	<?php /* Grabber bar. Click, Enter or Space closes Now Playing; so does dragging it down (app.js), Escape, and the browser's back. */ ?>
+	<button type="button" class="deck-down" id="deck-down" aria-label="<?php esc_attr_e( 'Close player', 'callboard' ); ?>"><i aria-hidden="true"></i></button>
 	<?php /* A generic set cover tells a cast nothing about the sonnet they are on. Where a track carries words — captions, or the director's notes — the words are the useful thing, so the way to them is a control, not a hidden tap on the title. */ ?>
 	<div class="deck-top"><button type="button" class="remote-chip is-away" id="remote" data-state="" aria-label="<?php esc_attr_e( 'Play on another device', 'callboard' ); ?>"><?php echo callboard_icon( 'cast' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG shipped with the plugin. ?></button><button type="button" class="sheet-pill" id="sheet-pill" hidden aria-controls="lyrics" aria-expanded="false"></button></div>
-	<div class="deck-cover" aria-hidden="true"><img id="deck-cover" alt="" decoding="async" sizes="(max-width:700px) 74vw, 380px"></div>
+	<div class="deck-cover" aria-hidden="true"><img id="deck-cover" alt="" draggable="false" decoding="async" sizes="(max-width:700px) 74vw, 380px"></div>
 	<div class="deck-inner deck-display">
 		<div class="deck-text">
 			<?php /* Doubles as the compact bar's tap-to-expand target; app.js switches its job (and label) by deck state. */ ?>
