@@ -1582,8 +1582,9 @@ test.describe( 'Touch', () => {
 				gestureSourceType: 'touch',
 			} );
 		const scrollY = () => page.evaluate( () => window.scrollY );
-		// The same pan on the track list scrolls the page while Now Playing is closed.
-		const list = await page.locator( '.track' ).nth( 3 ).boundingBox();
+		// The same pan on the track list scrolls the page while Now Playing is closed. The first row, which the
+		// Add to Home Screen hint near the bottom never covers.
+		const list = await page.locator( '.track' ).first().boundingBox();
 		await pan( list.x + list.width / 2, list.y + list.height / 2 );
 		await expect.poll( scrollY ).toBeGreaterThan( 0 );
 		const before = await scrollY();
