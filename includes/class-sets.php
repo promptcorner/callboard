@@ -177,6 +177,7 @@ final class Sets {
 			$by       = (string) get_post_meta( $track->ID, '_callboard_uploader', true );
 			$tracks[] = array(
 				'id'       => $track->ID,
+				'key'      => Exporter::track_key( $track->ID, $file ), // How a .callboard file names this track.
 				'index'    => ++$index,
 				'title'    => $track->post_title,
 				'url'      => esc_url_raw( wp_get_attachment_url( $track->ID ) ),

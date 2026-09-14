@@ -2748,10 +2748,34 @@
 			homeOffTimer = setTimeout( paintHomeOffline, 800 );
 		}
 	}
+	// Home's Open a set file: for a set that came on a stick rather than over the network.
+	function bindOpenSet() {
+		const input = $( 'open-set' );
+		if ( ! input ) {
+			return;
+		}
+		if ( ! ( 'caches' in window ) ) {
+			$( 'open-set-label' ).hidden = true; // no store to open it into
+			return;
+		}
+		input.onchange = async () => {
+			const files = [ ...( input.files || [] ) ];
+			input.value = ''; // so picking the same file twice still fires
+			for ( const file of files ) {
+				const r = await openSetFile( file );
+				toast(
+					r.error ||
+						tpl( T.loaded_set, r.loaded, r.total, r.set.name )
+				);
+			}
+			paintHomeOffline().catch( () => {} );
+		};
+	}
 	function bindView() {
 		const set = setBy( view() );
 		$( 'topbar-title' ).textContent = set ? set.name : G.site;
 		if ( ! set ) {
+			bindOpenSet();
 			bindNotify().catch( () => {} );
 			paintHomeOffline().catch( () => {} );
 			paintHomeResume();
@@ -3078,6 +3102,308 @@
 		 */
 		doAction( 'callboard.unsave', savedDetail( t, '' ) );
 	}
+
+	// ---- Set files: a .callboard file written from the offline copy, and read back into it. The same
+	// format Exporter writes and the importer reads in wp-admin, so a phone can hand a set to another
+	// phone on a USB stick, and a stick from wp-admin opens on a phone. See includes/class-exporter.php.
+	const SET_FORMAT = 1; // Exporter::VERSION
+	const CRC_TABLE = Array.from( { length: 256 }, ( _, n ) => {
+		let c = n;
+		for ( let k = 0; k < 8; k++ ) {
+			c = c & 1 ? 0xedb88320 ^ ( c >>> 1 ) : c >>> 1;
+		}
+		return c >>> 0;
+	} );
+	const crc32 = ( bytes ) => {
+		let c = 0xffffffff;
+		for ( let n = 0; n < bytes.length; n++ ) {
+			c = CRC_TABLE[ ( c ^ bytes[ n ] ) & 0xff ] ^ ( c >>> 8 );
+		}
+		return ( c ^ 0xffffffff ) >>> 0;
+	};
+	// A zip with every entry stored: the audio is compressed already, and stored entries need no library.
+	async function zipWrite( entries ) {
+		const parts = [],
+			central = [],
+			enc = new TextEncoder();
+		let pos = 0;
+		for ( const { name, blob } of entries ) {
+			const bytes = new Uint8Array( await blob.arrayBuffer() );
+			const nameBytes = enc.encode( name );
+			const crc = crc32( bytes );
+			const head = ( sig, extra ) => {
+				const h = new DataView( new ArrayBuffer( extra ) );
+				h.setUint32( 0, sig, true );
+				return h;
+			};
+			const local = head( 0x04034b50, 30 );
+			local.setUint16( 4, 20, true ); // version needed
+			local.setUint16( 6, 0x0800, true ); // names are UTF-8
+			local.setUint32( 14, crc, true );
+			local.setUint32( 18, bytes.length, true );
+			local.setUint32( 22, bytes.length, true );
+			local.setUint16( 26, nameBytes.length, true );
+			parts.push( local, nameBytes, bytes );
+			const dir = head( 0x02014b50, 46 );
+			dir.setUint16( 4, 20, true );
+			dir.setUint16( 6, 20, true );
+			dir.setUint16( 8, 0x0800, true );
+			dir.setUint32( 16, crc, true );
+			dir.setUint32( 20, bytes.length, true );
+			dir.setUint32( 24, bytes.length, true );
+			dir.setUint16( 28, nameBytes.length, true );
+			dir.setUint32( 42, pos, true );
+			central.push( dir, nameBytes );
+			pos += 30 + nameBytes.length + bytes.length;
+		}
+		const size = central.reduce( ( a, p ) => a + p.byteLength, 0 );
+		const end = new DataView( new ArrayBuffer( 22 ) );
+		end.setUint32( 0, 0x06054b50, true );
+		end.setUint16( 8, entries.length, true );
+		end.setUint16( 10, entries.length, true );
+		end.setUint32( 12, size, true );
+		end.setUint32( 16, pos, true );
+		return new Blob( [ ...parts, ...central, end ], {
+			type: 'application/zip',
+		} );
+	}
+	// The entries of a zip, by name, each read only when asked for. Stored and deflated entries, which is
+	// everything ZipArchive writes for a set.
+	async function zipRead( blob ) {
+		const tail = new DataView(
+			await blob.slice( Math.max( 0, blob.size - 65557 ) ).arrayBuffer()
+		);
+		let e = tail.byteLength - 22;
+		while ( e >= 0 && tail.getUint32( e, true ) !== 0x06054b50 ) {
+			e--;
+		}
+		if ( e < 0 ) {
+			throw new Error( 'not a zip' );
+		}
+		const count = tail.getUint16( e + 10, true ),
+			dirSize = tail.getUint32( e + 12, true ),
+			dirAt = tail.getUint32( e + 16, true );
+		const dir = new DataView(
+			await blob.slice( dirAt, dirAt + dirSize ).arrayBuffer()
+		);
+		const dec = new TextDecoder();
+		const out = new Map();
+		for ( let p = 0, n = 0; n < count; n++ ) {
+			if ( dir.getUint32( p, true ) !== 0x02014b50 ) {
+				throw new Error( 'bad zip directory' );
+			}
+			const method = dir.getUint16( p + 10, true ),
+				packed = dir.getUint32( p + 20, true ),
+				nameLen = dir.getUint16( p + 28, true ),
+				extraLen = dir.getUint16( p + 30, true ),
+				commentLen = dir.getUint16( p + 32, true ),
+				at = dir.getUint32( p + 42, true );
+			const name = dec.decode(
+				new Uint8Array( dir.buffer, p + 46, nameLen )
+			);
+			out.set( name, async () => {
+				const local = new DataView(
+					await blob.slice( at, at + 30 ).arrayBuffer()
+				);
+				const start =
+					at +
+					30 +
+					local.getUint16( 26, true ) +
+					local.getUint16( 28, true );
+				const data = blob.slice( start, start + packed );
+				if ( method === 0 ) {
+					return data;
+				}
+				if ( method !== 8 || ! window.DecompressionStream ) {
+					throw new Error( 'unsupported zip entry' );
+				}
+				return new Response(
+					data
+						.stream()
+						.pipeThrough( new DecompressionStream( 'deflate-raw' ) )
+				).blob();
+			} );
+			p += 46 + nameLen + extraLen + commentLen;
+		}
+		return out;
+	}
+	const AUDIO_TYPES = {
+		mp3: 'audio/mpeg',
+		m4a: 'audio/mp4',
+		mp4: 'audio/mp4',
+		aac: 'audio/aac',
+		ogg: 'audio/ogg',
+		oga: 'audio/ogg',
+		opus: 'audio/ogg',
+		webm: 'audio/webm',
+		wav: 'audio/wav',
+		flac: 'audio/flac',
+	};
+	const audioType = ( name ) =>
+		AUDIO_TYPES[
+			( /\.([a-z0-9]+)$/i.exec( name )?.[ 1 ] || '' ).toLowerCase()
+		] || 'application/octet-stream';
+	const isSetFile = ( file ) =>
+		/\.(callboard|zip)$/i.test( file.name ) ||
+		file.type === 'application/zip';
+	// The set as a .callboard file, from the audio saved on this phone. Null when a track isn't saved.
+	async function writeSetFile( set ) {
+		const c = await caches.open( CACHE );
+		const manifest = {
+			version: SET_FORMAT,
+			generator: `callboard/${ G.version || '' }`,
+			name: set.name,
+			slug: set.slug,
+			order: 0,
+			playlist_url: set.credits?.playlist_url || '',
+			curator: set.credits?.curator || '',
+			curator_url: set.credits?.curator_url || '',
+			tracks: [],
+		};
+		const side = { levels: {}, lyrics: {}, notes: {}, tempo: {} };
+		const entries = [],
+			names = new Set();
+		for ( const t of set.tracks ) {
+			const res = await c.match( norm( t.url ) );
+			if ( ! res ) {
+				return null;
+			}
+			let file = fileBase( t.url ) || `${ t.index }.mp3`;
+			if ( names.has( file ) ) {
+				file = `${ t.index } ${ file }`;
+			}
+			names.add( file );
+			const trackKey = t.key || `cb-${ t.id }`;
+			manifest.tracks.push( {
+				index: t.index,
+				id: trackKey,
+				title: t.title,
+				file,
+				duration: t.duration || null,
+				url: '',
+				uploader: t.artist || '',
+				uploader_url: '',
+			} );
+			entries.push( { name: file, blob: await res.blob() } );
+			if ( t.levels ) {
+				side.levels[ trackKey ] = t.levels;
+			}
+			const trackCues = set.lyrics?.[ t.id ];
+			if ( trackCues?.length ) {
+				side.lyrics[ trackKey ] = trackCues;
+			}
+			if ( t.notes?.length ) {
+				side.notes[ trackKey ] = t.notes.map( ( n ) => ( {
+					t: n.t,
+					text: n.text,
+					date: n.date,
+				} ) );
+			}
+			const bpm = t.ext?.[ 'callboard/count-in' ]?.bpm || t.bpm;
+			if ( bpm ) {
+				side.tempo[ trackKey ] = bpm;
+			}
+		}
+		const json = ( data ) =>
+			new Blob( [ JSON.stringify( data, null, 2 ) ], {
+				type: 'application/json',
+			} );
+		entries.unshift( { name: 'manifest.json', blob: json( manifest ) } );
+		for ( const [ name, data ] of Object.entries( side ) ) {
+			if ( Object.keys( data ).length ) {
+				entries.push( { name: `${ name }.json`, blob: json( data ) } );
+			}
+		}
+		if ( Object.keys( side.lyrics ).length ) {
+			entries.push( { name: 'lyrics.approved', blob: new Blob( [] ) } ); // the page only has approved lyrics
+		}
+		return new File(
+			[ await zipWrite( entries ) ],
+			`${ set.slug }.callboard`,
+			{
+				type: 'application/zip',
+			}
+		);
+	}
+	// Hand a file to the share sheet, where Save to Files reaches a USB drive, or download it where the sheet
+	// won't take it (Android's refuses zip files). Returns false when the tap that started this has expired,
+	// so the caller can ask for another.
+	async function handOver( file ) {
+		if ( navigator.canShare?.( { files: [ file ] } ) ) {
+			try {
+				await navigator.share( { files: [ file ], title: file.name } );
+				return true;
+			} catch ( err ) {
+				if ( err?.name === 'NotAllowedError' ) {
+					return false;
+				}
+				return true; // dismissed
+			}
+		}
+		const a = document.createElement( 'a' );
+		a.href = URL.createObjectURL( file );
+		a.download = file.name;
+		document.body.append( a );
+		a.click();
+		a.remove();
+		setTimeout( () => URL.revokeObjectURL( a.href ), 60000 );
+		return true;
+	}
+	// Read a .callboard file into the offline copy of the set it describes. Returns { set, loaded, total },
+	// or { error } with a message to show.
+	async function openSetFile( file ) {
+		let entries, manifest;
+		try {
+			entries = await zipRead( file );
+			manifest = JSON.parse(
+				await ( await entries.get( 'manifest.json' )?.() )?.text()
+			);
+		} catch {
+			return { error: T.not_a_set };
+		}
+		if ( ! manifest?.name || ! Array.isArray( manifest.tracks ) ) {
+			return { error: T.not_a_set };
+		}
+		if ( Number( manifest.version || 1 ) > SET_FORMAT ) {
+			return { error: T.set_newer };
+		}
+		const set =
+			G.sets.find( ( s ) => s.slug === manifest.slug ) ||
+			G.sets.find( ( s ) => s.name === manifest.name );
+		if ( ! set ) {
+			return { error: tpl( T.set_elsewhere, manifest.name ) };
+		}
+		durable( { ask: true } );
+		const tracks = set.tracks;
+		const taken = new Set();
+		let loaded = 0;
+		for ( const m of manifest.tracks ) {
+			const read = entries.get( String( m.file || '' ) );
+			if ( ! read ) {
+				continue;
+			}
+			const named = new File( [], m.file );
+			const t =
+				tracks.find(
+					( s ) => s.key && s.key === m.id && ! taken.has( s.url )
+				) || matchTrack( named, tracks, taken );
+			if ( ! t ) {
+				continue;
+			}
+			taken.add( t.url );
+			try {
+				const blob = await read();
+				await loadTrackFile(
+					t,
+					new File( [ blob ], m.file, { type: audioType( m.file ) } )
+				);
+				loaded++;
+			} catch {
+				// out of space, or an entry this browser can't unpack: the count says so
+			}
+		}
+		return { set, loaded, total: manifest.tracks.length };
+	}
 	function bindOffline( set ) {
 		const offBtn = $( 'offline' );
 		if ( ! offBtn ) {
@@ -3126,6 +3452,10 @@
 				'is-done',
 				! busy && have.size === tracks.length
 			);
+			const fileBtn = $( 'set-file' );
+			if ( fileBtn ) {
+				fileBtn.hidden = busy || have.size !== tracks.length; // the file is written from the offline copy, so only a whole one
+			}
 			const rest = sizeLabel(
 				tracks
 					.filter( ( t ) => ! have.has( t.url ) )
@@ -3172,9 +3502,23 @@
 		const loadLabel = $( 'load-label' );
 		if ( loadInput && loadLabel ) {
 			loadInput.onchange = async () => {
-				const files = [ ...( loadInput.files || [] ) ];
+				const picked = [ ...( loadInput.files || [] ) ];
 				loadInput.value = ''; // so picking the same file twice still fires
+				if ( ! picked.length ) {
+					return;
+				}
+				// A set file among them opens the way it does from home; the rest are audio.
+				const sets = picked.filter( isSetFile ),
+					files = picked.filter( ( f ) => ! isSetFile( f ) );
+				for ( const file of sets ) {
+					const r = await openSetFile( file );
+					toast(
+						r.error ||
+							tpl( T.loaded_set, r.loaded, r.total, r.set.name )
+					);
+				}
 				if ( ! files.length ) {
+					await paintAll();
 					return;
 				}
 				durable( { ask: true } );
@@ -3197,6 +3541,39 @@
 				toast(
 					loaded ? tpl( T.loaded, loaded, files.length ) : T.load_none
 				);
+			};
+		}
+		// Writing the set file: reading every track out of the cache can outlast the tap that asked for it, and
+		// the share sheet needs that tap. When it has expired, the file is kept and the next tap sends it.
+		const fileBtn = $( 'set-file' );
+		if ( fileBtn ) {
+			let ready = null;
+			fileBtn.onclick = async () => {
+				haptic();
+				if ( fileBtn.classList.contains( 'is-busy' ) ) {
+					return;
+				}
+				if ( ! ready ) {
+					fileBtn.classList.add( 'is-busy' );
+					fileBtn.textContent = T.set_file_busy;
+					try {
+						ready = await writeSetFile( set );
+					} catch {
+						ready = null;
+					}
+					fileBtn.classList.remove( 'is-busy' );
+					if ( ! ready ) {
+						fileBtn.textContent = T.set_file;
+						toast( T.set_file_fail );
+						return;
+					}
+				}
+				if ( await handOver( ready ) ) {
+					ready = null;
+					fileBtn.textContent = T.set_file;
+				} else {
+					fileBtn.textContent = T.set_file_send;
+				}
 			};
 		}
 		// When the whole set is saved, a tap (or Delete) asks to remove it and a second tap confirms.

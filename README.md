@@ -104,6 +104,8 @@ The service worker precaches the shell and the home fragment. Saving a set strea
 
 **Load from files** fills the same cache without the network, for a phone on bad signal standing next to somebody who has the audio on a stick. Files are matched to tracks by the track's own file name, then by a leading number, which is how a car-format export is named, then by title; anything unmatched is reported rather than guessed at. A sideloaded copy carries a marker, because it can be a different size from the server's — a car export has ID3 tags the original does not — and without it the next check would call it stale and download it again.
 
+**Save set file** appears on a set once every track is saved offline. It writes a `.callboard` file in the browser from those saved copies, in the same format wp-admin exports, and hands it to the share sheet, where Save to Files can put it on a USB drive. Where the share sheet won't take a zip, as on Android, the file downloads instead. **Open a set file** on home, or a `.callboard` file picked in Load from files, reads one back into the offline copy of the set it describes, with no network. That's how a set gets from one phone to another on a stick.
+
 </details>
 
 <details>

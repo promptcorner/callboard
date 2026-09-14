@@ -26,7 +26,9 @@ $callboard_badge = Callboard\Settings::get( 'badge' );
 			<?php if ( Callboard\Settings::get( 'offline' ) ) : ?>
 				<?php // Rendered, not revealed: a label hidden until the script runs leaves the input with no accessible name. The script hides it where there is no cache to fill. ?>
 				<label class="btn btn-quiet load-files" id="load-label" for="load-files"><?php esc_html_e( 'Load from files', 'callboard' ); ?></label>
-				<input type="file" id="load-files" class="load-input" multiple accept="audio/*">
+				<?php // No accept filter: an iPhone greys out a .callboard file under one, and Android hides USB drives under audio/*. ?>
+				<input type="file" id="load-files" class="load-input" multiple>
+				<button type="button" class="btn btn-quiet" id="set-file" hidden><?php esc_html_e( 'Save set file', 'callboard' ); ?></button>
 			<?php endif; ?>
 			<?php /** Slot set_header: extension controls beside the set's own. */ ?>
 			<?php callboard_slot( 'set_header', $callboard_set ); ?>
