@@ -113,6 +113,16 @@ final class Frontend {
 			'load_none'      => __( 'Nothing matched a track in this set', 'callboard' ),
 			/* translators: 1: files loaded, 2: files chosen. */
 			'loaded'         => __( 'Loaded %1$s of %2$s', 'callboard' ),
+			/* translators: 1: tracks loaded, 2: tracks in the file, 3: set name. */
+			'loaded_set'     => __( 'Loaded %1$s of %2$s tracks into %3$s', 'callboard' ),
+			'set_file'       => __( 'Save set file', 'callboard' ),
+			'set_file_busy'  => __( 'Making the set file', 'callboard' ),
+			'set_file_send'  => __( 'Send set file', 'callboard' ),
+			'set_file_fail'  => __( 'Could not make the set file', 'callboard' ),
+			'not_a_set'      => __( 'That file is not a Callboard set', 'callboard' ),
+			'set_newer'      => __( 'That set file needs a newer version of Callboard', 'callboard' ),
+			/* translators: %s: set name. */
+			'set_elsewhere'  => __( '%s is not on this site', 'callboard' ),
 			'notify'         => __( 'Notify me about new sets', 'callboard' ),
 			/* translators: %s: track title. */
 			'left_off'       => __( 'Left off at %s', 'callboard' ),

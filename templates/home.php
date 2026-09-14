@@ -55,5 +55,12 @@ else :
 	</ul>
 	<?php endif; ?>
 
+	<?php if ( Callboard\Settings::get( 'offline' ) ) : ?>
+	<p class="open-set">
+		<label class="btn btn-quiet load-files" id="open-set-label" for="open-set"><?php esc_html_e( 'Open a set file', 'callboard' ); ?></label>
+		<input type="file" id="open-set" class="load-input" multiple>
+	</p>
+	<?php endif; ?>
+
 	<?php callboard_template( 'footer', array( 'set' => null ) ); ?>
 </main>
