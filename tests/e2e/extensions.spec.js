@@ -21,6 +21,20 @@ const useExample = ( page, extra = {} ) =>
 		)
 	);
 const expandDeck = ( page ) => page.locator( '#open-lyrics' ).click();
+// The worker registers at idle and controls the page after a reload.
+const controlled = ( page ) =>
+	page
+		.waitForFunction( () => navigator.serviceWorker?.controller, null, {
+			timeout: 15000,
+		} )
+		.catch( async () => {
+			await page.reload();
+			await page.waitForFunction(
+				() => navigator.serviceWorker?.controller,
+				null,
+				{ timeout: 15000 }
+			);
+		} );
 const body = ( page, key ) =>
 	page.evaluate( ( k ) => document.body.dataset[ k ], key );
 
@@ -565,6 +579,111 @@ test.describe( 'Extensions', () => {
 		expect( sw ).toMatch(
 			/"\/wp-includes\/js\/dist\/hooks(\.min)?\.js\?ver=[^"]+"/
 		);
+	} );
+
+	test( 'the player works when an extension’s inline script takes the defer off Callboard’s script', async ( {
+		page,
+	} ) => {
+		await useExample( page, { callboard_example_inline: '1' } );
+		await page.goto( '/demo-set/' );
+		// WordPress defers no script with an inline script after it, and none of the scripts it depends on.
+		const app = page.locator( 'script[src*="/assets/app.js"]' );
+		await expect( app ).toHaveCount( 1 );
+		expect( await app.getAttribute( 'defer' ) ).toBeNull();
+
+		// The first track is already in the player bar, so a later one is what loads and fires `track`.
+		await page.locator( '.track' ).nth( 2 ).click();
+		await expect( page.locator( '#now-title' ) ).toContainText(
+			'Sonnets 21–30'
+		);
+		await expect( page.locator( 'body' ) ).toHaveAttribute(
+			'data-example-track',
+			'2'
+		);
+		expect( await page.evaluate( () => window.__exampleInline ) ).toBe(
+			true
+		);
+	} );
+
+	test( 'an extension script that 404s leaves the rest of the app to open offline', async ( {
+		admin,
+		page,
+		context,
+		request,
+	} ) => {
+		await useExample( page, { callboard_example_missing: '1' } );
+		try {
+			await admin.visitAdminPage( 'index.php' ); // the worker is rewritten from the admin, when assets change
+			expect( await ( await request.get( '/sw.js' ) ).text() ).toContain(
+				'/callboard-example/missing.js?ver=1.0.0'
+			);
+			// Not home, so the only copy of home the worker can have is the one it installed with.
+			await page.goto( '/demo-set/' );
+			await controlled( page );
+
+			await context.setOffline( true );
+			await page.goto( '/' );
+			await expect(
+				page.locator( 'a.set', { hasText: 'Shakespeare’s Sonnets' } )
+			).toBeVisible();
+			await expect
+				.poll( () =>
+					page.evaluate( () => typeof window.callboard?.commands )
+				)
+				.toBe( 'object' );
+		} finally {
+			await context.setOffline( false );
+			await useExample( page, {
+				callboard_example: '0',
+				callboard_example_missing: '0',
+			} );
+			await admin.visitAdminPage( 'index.php' ); // and a worker without it for the tests after this one
+		}
+	} );
+
+	test( 'offline, an extension script at a newer ?ver= than the worker kept loads from the older copy', async ( {
+		admin,
+		page,
+		context,
+		request,
+	} ) => {
+		await useExample( page );
+		try {
+			await admin.visitAdminPage( 'index.php' );
+			expect( await ( await request.get( '/sw.js' ) ).text() ).toContain(
+				'/callboard-example/example.js?ver=1.0.0'
+			);
+			await page.goto( '/demo-set/' );
+			await controlled( page );
+
+			// The extension updates and nobody opens the admin, so the worker still lists 1.0.0. Saving the
+			// set keeps its page as the site prints it now, asking for 2.0.0, which the browser never fetched.
+			await useExample( page, {
+				callboard_example_script_version: '2.0.0',
+			} );
+			await expect( page.locator( '#offline[data-some]' ) ).toBeAttached( {
+				timeout: 15000,
+			} );
+			await page.locator( '#offline' ).click();
+			await expect( page.locator( '#offline' ) ).toContainText(
+				/Saved offline/,
+				{ timeout: 30000 }
+			);
+
+			await context.setOffline( true );
+			await page.goto( '/demo-set/' );
+			await expect(
+				page.locator( 'script[src*="/example.js?ver=2.0.0"]' )
+			).toHaveCount( 1 );
+			// The extension's own script draws these, so they are only here if it ran.
+			await expect( page.locator( '.track .example-meta' ) ).toHaveCount(
+				10
+			);
+		} finally {
+			await context.setOffline( false );
+			await useExample( page, { callboard_example: '0' } );
+			await admin.visitAdminPage( 'index.php' );
+		}
 	} );
 } );
 

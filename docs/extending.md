@@ -114,7 +114,7 @@ Track data, playlist data and app data are arrays in PHP and objects in the page
 
 A `beforePlay` contribution gets `context`, which is `{ set, track, index, at }`. Return nothing to let the track start, `false` to stop it, or a promise of either. Contributions run one after another in priority order and the track starts once every one has said yes. `signal` aborts if the person presses Play (which starts the track at once), picks another track, or closes the player bar; an extension that holds the start should stop what it is doing when that happens. The count-in is built on this.
 
-Callboard removes every other script and style from its pages. An extension's assets are kept, depend on Callboard's script, load deferred, and are kept by the service worker for an offline start.
+Callboard removes every other script and style from its pages. An extension's assets are kept, depend on Callboard's script, load deferred in the footer, and are kept by the service worker for an offline start.
 
 ## REST routes
 
