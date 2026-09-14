@@ -211,6 +211,19 @@ Features are extensions: an id, a version, and named contribution points shared 
 
 </details>
 
+<details>
+<summary>Abilities</summary>
+
+On WordPress 6.9 and later, Callboard registers three abilities with the [Abilities API](https://developer.wordpress.org/apis/abilities-api/), in the `callboard` category. Other plugins and AI tools can run them with `wp_get_ability( $name )->execute( $input )` or through the `wp-abilities/v1` REST routes. Each one checks the same capability as the matching wp-admin screen. On older WordPress versions nothing is registered.
+
+| Ability | Capability | What it does |
+| --- | --- | --- |
+| `callboard/list-playlists` | `edit_callboard_playlists` | Lists published playlists with each track's id, position and title |
+| `callboard/list-upcoming-calls` | `edit_callboard_calls` | Lists the calls shown on the board: upcoming calls soonest first, then notices without a time |
+| `callboard/post-call` | `publish_callboard_calls` | Publishes a call from a `title` and optional `note`, `when` (`YYYY-MM-DDTHH:MM` in the site's time zone), `where` and `numbers` (track ids). The cast gets a notification if call notifications are on |
+
+</details>
+
 ## WP-CLI
 
 | Command | Does |
