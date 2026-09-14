@@ -227,3 +227,30 @@ test.describe( 'Landing page live demo', () => {
 		await expect( page.locator( '#demo-still' ) ).toBeVisible();
 	} );
 } );
+
+test.describe( 'Landing page', () => {
+	test( 'shows the Now Playing screen and says what it does', async ( {
+		page,
+	} ) => {
+		for ( const width of [ 1440, 390 ] ) {
+			await page.setViewportSize( { width, height: 900 } );
+			await page.goto( base );
+			const section = page.locator( '#now-playing' );
+			await section.scrollIntoViewIfNeeded();
+			await expect(
+				section.getByRole( 'heading', { name: 'Now Playing.' } )
+			).toBeVisible();
+			await expect( section.locator( '.lede' ) ).toContainText(
+				'Drag it down'
+			);
+			const shot = section.getByRole( 'img', { name: /Now Playing/ } );
+			await expect( shot ).toBeVisible();
+			await expect
+				.poll( () => shot.evaluate( ( img ) => img.naturalWidth ) )
+				.toBe( 780 );
+			// Not stretched: shown at the screenshot's own proportions.
+			const box = await shot.boundingBox();
+			expect( box.height / box.width ).toBeCloseTo( 1328 / 780, 1 );
+		}
+	} );
+} );
