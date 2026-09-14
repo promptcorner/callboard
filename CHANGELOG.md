@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.0](https://github.com/promptcorner/callboard/compare/v2.5.0...v2.6.0) (2026-09-14)
+
+
+### Features
+
+* write a set file on a phone and open one, for sharing a set on a USB stick ([#207](https://github.com/promptcorner/callboard/issues/207)) ([a433f8e](https://github.com/promptcorner/callboard/commit/a433f8eb126c64bbd122be457416e9ab184f7c96))
+
 ## [2.5.0](https://github.com/promptcorner/callboard/compare/v2.4.0...v2.5.0) (2026-09-14)
 
 
