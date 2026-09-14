@@ -135,6 +135,41 @@ Callboard\\Sets::flush();
 echo wp_json_encode( $state );
 `;
 
+// Only sets that ship as test fixtures appear in a screenshot. A developer's own playlists live in the same
+// mapped folder, untracked, and are private: they are set to draft while the shots are taken, then restored.
+const PUBLIC_SETS = [
+	...new Set(
+		execFileSync( 'git', [ 'ls-files', 'tests/fixtures/callboard' ], {
+			cwd: ROOT,
+			encoding: 'utf8',
+		} )
+			.split( '\n' )
+			.map( ( file ) => file.split( '/' )[ 3 ] )
+			.filter( Boolean )
+	),
+];
+const HIDE_PRIVATE = `
+global $wpdb;
+$hidden = array();
+foreach ( $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_type = 'callboard_set'" ) as $id ) {
+	if ( ! in_array( get_post_field( 'post_name', $id ), $in['keep'], true ) ) {
+		$wpdb->update( $wpdb->posts, array( 'post_status' => 'draft' ), array( 'ID' => $id ) );
+		clean_post_cache( $id );
+		$hidden[] = (int) $id;
+	}
+}
+Callboard\\Sets::flush();
+echo wp_json_encode( $hidden );
+`;
+const SHOW_PRIVATE = `
+global $wpdb;
+foreach ( $in as $id ) {
+	$wpdb->update( $wpdb->posts, array( 'post_status' => 'publish' ), array( 'ID' => $id ) );
+	clean_post_cache( $id );
+}
+Callboard\\Sets::flush();
+`;
+
 const DEMO_PRESET = `
 update_option( 'blogname', $in['name'] );
 update_option( 'callboard_settings', array_merge( (array) get_option( 'callboard_settings' ), array( 'accent' => $in['accent'], 'badge' => $in['badge'], 'confetti' => $in['confetti'], 'hearts' => (bool) $in['hearts'] ) ) );
@@ -198,7 +233,12 @@ Callboard\\Sets::flush();
 		} );
 	};
 	if ( ONLY_PLAYER ) {
-		await player();
+		const hidden = wp( HIDE_PRIVATE, { keep: PUBLIC_SETS } ) || [];
+		try {
+			await player();
+		} finally {
+			wp( SHOW_PRIVATE, hidden );
+		}
 		await browser.close();
 		return;
 	}
@@ -231,13 +271,18 @@ Callboard\\Sets::flush();
 		return;
 	}
 
-	await phone( 'home-light.png', 'light', async ( p ) => {
-		await p.goto( `${ BASE }/`, { waitUntil: 'networkidle' } );
-	} );
-	await phone( 'set-light.png', 'light', async ( p ) => {
-		await p.goto( `${ BASE }/demo-set/`, { waitUntil: 'networkidle' } );
-	} );
-	await player();
+	const hidden = wp( HIDE_PRIVATE, { keep: PUBLIC_SETS } ) || [];
+	try {
+		await phone( 'home-light.png', 'light', async ( p ) => {
+			await p.goto( `${ BASE }/`, { waitUntil: 'networkidle' } );
+		} );
+		await phone( 'set-light.png', 'light', async ( p ) => {
+			await p.goto( `${ BASE }/demo-set/`, { waitUntil: 'networkidle' } );
+		} );
+		await player();
+	} finally {
+		wp( SHOW_PRIVATE, hidden );
+	}
 
 	// The admin shot: a call open in the editor, at the desktop size the page uses.
 	const desk = await browser.newContext( {
