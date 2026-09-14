@@ -77,3 +77,39 @@ test( 'setting both ends of a loop plays it from a looping buffer, and hiding th
 	// Reading the position while the looper was still loading used to throw on every frame.
 	expect( errors ).toEqual( [] );
 } );
+
+test( 'a loop set after moving to the next track still plays from a looping buffer', async ( {
+	page,
+} ) => {
+	const tone = wav( { seconds: 10 } );
+	await page.route( /\.mp3(\?|$)/, ( route ) =>
+		fulfillWithRanges( route, tone )
+	);
+	const errors = [];
+	page.on( 'pageerror', ( error ) => errors.push( error.message ) );
+
+	await page.goto( '/demo-set/' );
+	await page.locator( '.track' ).first().click();
+	const audio = page.locator( '#audio' );
+	await expect
+		.poll( () => audio.evaluate( ( a ) => ! a.paused ) )
+		.toBe( true );
+	// Next starts the level meter on the track. Its analyser lived in a second audio context, which the
+	// loop's buffer could not connect to.
+	await page.locator( '#next' ).click();
+	await expect( page.locator( '#now-title' ) ).toContainText(
+		'Sonnets 11–20'
+	);
+	await expect
+		.poll( () => audio.evaluate( ( a ) => ! a.paused && a.duration ) )
+		.toBeCloseTo( 10, 0 );
+
+	await audio.evaluate( ( a ) => ( a.currentTime = 2 ) );
+	await page.keyboard.press( '[' );
+	await audio.evaluate( ( a ) => ( a.currentTime = 6 ) );
+	await page.keyboard.press( ']' );
+
+	// The element is muted only once the buffer is playing the loop.
+	await expect.poll( () => audio.evaluate( ( a ) => a.muted ) ).toBe( true );
+	expect( errors ).toEqual( [] );
+} );
