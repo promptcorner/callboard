@@ -151,6 +151,7 @@ class Test_Callboard_Multisite extends WP_UnitTestCase {
 			$this->assertSame( get_option( 'blogname' ), $manifest['name'] ?? null, "site {$id} wrote its own manifest" );
 			$this->assertSame( Pwa::scope(), $manifest['scope'] );
 			$this->assertStringContainsString( "const HOME = '" . Pwa::scope() . "';", Pwa::contents( 'sw.js' ), "site {$id} wrote its own service worker" );
+			$this->assertFalse( get_option( Plugin::ONBOARDING_OPTION ), "site {$id} does not redirect an unrelated administrator" );
 			restore_current_blog();
 		}
 	}

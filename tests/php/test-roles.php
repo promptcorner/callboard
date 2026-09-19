@@ -56,6 +56,8 @@ class Test_Callboard_Roles extends WP_UnitTestCase {
 		Plugin::activate();
 
 		$this->assert_installed();
+		$this->assertSame( '1', get_option( Plugin::ONBOARDING_OPTION ) );
+		delete_option( Plugin::ONBOARDING_OPTION );
 	}
 
 	public function test_updating_the_plugin_adds_the_roles_and_capabilities(): void {

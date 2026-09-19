@@ -2,7 +2,7 @@
 
 # Callboard
 
-A WordPress plugin for a cast's rehearsal tracks. The stage manager posts the call. The cast opens it on their phones, taps a number, and the track plays. Works offline, installs from Safari, needs no accounts.
+An open-source music player for WordPress. Publish an owned, app-like listening experience with persistent playback, offline sets, waveform seeking, lyrics, and lock-screen controls. Rehearsal workflows for casts and choirs are built in, not bolted on.
 
 <p><a href="https://promptcorner.github.io/callboard/">Landing page and live demo</a> · <a href="https://playground.wordpress.net/?mode=seamless&blueprint-url=https://promptcorner.github.io/callboard/blueprint.json">Open in WordPress Playground</a> · <a href="https://github.com/promptcorner/callboard/releases/latest">Latest release</a></p>
 
@@ -18,8 +18,9 @@ A WordPress plugin for a cast's rehearsal tracks. The stage manager posts the ca
 
 ## What it does
 
+- **Owned music player.** WordPress manages the library while Callboard replaces the theme on the front end with a focused listening app. Share one URL; listeners do not need an account by default.
 - **Board.** The home page shows the next call: time, place, note, and the numbers being worked. Each number is a tap that starts the track. A call is a post under Sets. Publishing one sends a push notification.
-- **Sets.** A set is a post; its tracks are audio attachments. Fetch a playlist with WP-CLI, or import a folder of audio.
+- **Sets.** A set is a post; its tracks are audio attachments. Add audio through the Media Library, fetch a playlist with WP-CLI, or import a folder.
 - **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, an A/B loop (two fingers on the wave, or the bracket keys), count-in, lyrics and director's notes in time with the track, AirPlay, and lock-screen controls. The tab title carries the track as well, for whoever has the board open behind a rehearsal PDF.
 - **Offline.** Save a set once. It plays from the phone with no connection, or load it from a file when there is no signal to save it with.
 - **Settings.** Site name, accent colour, badge, confetti behind a triple tap on the title. Hooks and template overrides for developers.

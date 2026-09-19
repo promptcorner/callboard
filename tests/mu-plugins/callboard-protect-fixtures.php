@@ -21,6 +21,11 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// End-to-end runs exercise stable admin destinations, not the one-time activation redirect.
+if ( ! wp_installing() ) {
+	delete_option( 'callboard_onboarding_pending' );
+}
+
 add_filter(
 	'wp_delete_file',
 	static function ( $file ) {

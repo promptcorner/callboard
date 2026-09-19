@@ -60,6 +60,7 @@ for ( const scheme of [ 'light', 'dark' ] ) {
 
 test.describe( 'axe, admin', () => {
 	for ( const [ name, query ] of [
+		[ 'setup', 'post_type=callboard_set&page=callboard-setup' ],
 		[ 'settings', 'post_type=callboard_set&page=callboard-settings' ],
 		[ 'import', 'post_type=callboard_set&page=callboard-import' ],
 		[ 'notices', 'post_type=callboard_set&page=callboard-notices' ],
@@ -73,6 +74,18 @@ test.describe( 'axe, admin', () => {
 			expect( report( results ) ).toBe( '' );
 		} );
 	}
+
+	test( 'new set editor', async ( { admin, page } ) => {
+		await admin.visitAdminPage(
+			'post-new.php',
+			'post_type=callboard_set'
+		);
+		const results = await new AxeBuilder( { page } )
+			.include( '#wpbody-content' )
+			.withTags( [ 'wcag2a', 'wcag2aa', 'wcag21aa' ] )
+			.analyze();
+		expect( report( results ) ).toBe( '' );
+	} );
 } );
 
 test( 'the whole player works from the keyboard', async ( { page } ) => {
