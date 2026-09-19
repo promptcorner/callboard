@@ -13,12 +13,12 @@ const openDemoSet = async ( admin, page ) => {
 	await admin.visitAdminPage( 'edit.php', 'post_type=callboard_set' );
 	await page
 		.locator( '.wp-list-table tbody tr', {
-			hasText: 'Shakespeare’s Sonnets',
+			hasText: 'Compositions',
 		} )
 		.first()
 		.locator( 'a.row-title' )
 		.click();
-	return page.locator( '#callboard-tracks li' ).first();
+	return page.locator( '#callboard-track-list li' ).first();
 };
 // The track's details panel starts open when the track already has a tempo or a note, so only click it
 // when it is closed.
@@ -83,6 +83,7 @@ test.describe( 'Admin', () => {
 				0
 			);
 		} );
+
 		await admin.visitAdminPage(
 			'edit.php',
 			'post_type=callboard_set&page=callboard-settings'
@@ -114,26 +115,76 @@ test.describe( 'Admin', () => {
 		).toBe( '#3b82f6' );
 	} );
 
+	test( 'setup leads from the library to the live player', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage(
+			'edit.php',
+			'post_type=callboard_set&page=callboard-setup'
+		);
+		await expect(
+			page.getByRole( 'heading', {
+				name: 'Set up Callboard',
+			} )
+		).toBeVisible();
+		await expect( page.getByText( /published set/ ).first() ).toBeVisible();
+		await expect(
+			page.getByRole( 'link', { name: 'Manage sets' } ).first()
+		).toHaveAttribute( 'href', /post_type=callboard_set/ );
+		await expect(
+			page.getByRole( 'link', { name: 'Open player' } ).first()
+		).toHaveAttribute( 'href', /\/$/ );
+	} );
+
+	test( 'a new set starts with a Media Library track picker', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage(
+			'post-new.php',
+			'post_type=callboard_set'
+		);
+		await expect( page.locator( '#title-prompt-text' ) ).toHaveText(
+			'Name this set'
+		);
+		await expect(
+			page.getByText(
+				'No tracks yet. Add audio from your computer or choose files already in WordPress.'
+			)
+		).toBeVisible();
+		await page.getByRole( 'button', { name: 'Add tracks' } ).click();
+		await expect( page.locator( '.media-modal' ) ).toBeVisible();
+		await expect( page.locator( '.media-frame-title' ) ).toContainText(
+			'Choose tracks'
+		);
+		await expect( page.getByRole( 'tab', { name: 'Upload files' } ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'tab', { name: 'Media Library' } )
+		).toBeVisible();
+		await page.keyboard.press( 'Escape' );
+	} );
+
 	test( 'a set has a tracks meta box with reorderable, retitlable rows', async ( {
 		admin,
 		page,
 	} ) => {
 		undoAfter( async () => {
 			const first = await openDemoSet( admin, page );
-			await first.locator( 'input[type=text]' ).fill( 'Sonnets 1–10' );
+			await first.locator( 'input[type=text]' ).fill( 'Intensities in Ten Cities' );
 			await saveSet( page );
 		} );
 		// Find the demo set through the list table (REST is closed to anonymous but we're logged in here).
 		await admin.visitAdminPage( 'edit.php', 'post_type=callboard_set' );
 		const row = page
 			.locator( '.wp-list-table tbody tr', {
-				hasText: 'Shakespeare’s Sonnets',
+				hasText: 'Compositions',
 			} )
 			.first();
-		await expect( row ).toContainText( 'Shakespeare’s Sonnets' );
+		await expect( row ).toContainText( 'Compositions' );
 		await expect( row.locator( 'td.tracks' ) ).toHaveText( '10' );
 		await row.locator( 'a.row-title' ).click();
-		const tracks = page.locator( '#callboard-tracks li' );
+		const tracks = page.locator( '#callboard-track-list li' );
 		await expect( tracks ).toHaveCount( 10 );
 		await tracks
 			.first()
@@ -162,7 +213,7 @@ test.describe( 'Admin', () => {
 		await first.locator( 'input[type=number]' ).fill( '100' );
 		await first.locator( 'textarea' ).fill( '0:03 Softer here' );
 		await saveSet( page );
-		const again = page.locator( '#callboard-tracks li' ).first();
+		const again = page.locator( '#callboard-track-list li' ).first();
 		await expect( again.locator( 'input[type=number]' ) ).toHaveValue(
 			'100'
 		);
@@ -247,10 +298,10 @@ test.describe( 'Admin', () => {
 		);
 		await page.fill( '#callboard-where', 'Pit' );
 		const demo = page.locator( '.callboard-numbers details', {
-			hasText: 'Shakespeare’s Sonnets',
+			hasText: 'Compositions',
 		} );
 		await demo.locator( 'summary' ).click();
-		await demo.locator( 'input[type=checkbox]' ).nth( 2 ).check(); // Sonnets 21–30
+		await demo.locator( 'input[type=checkbox]' ).nth( 2 ).check(); // Trombone Detritus
 		// When the title field of a new post loses focus, WordPress starts an autosave 200ms later and
 		// ignores clicks on Publish until that save finishes. Wait for "Draft saved" before clicking;
 		// checking that the button is enabled is not enough, because the save may not have started yet (#131).
@@ -280,12 +331,12 @@ test.describe( 'Admin', () => {
 		);
 		await expect( call ).toHaveCSS( 'border-radius', '0px' );
 		await expect( call.locator( '.call-numbers a' ) ).toHaveText(
-			'Sonnets 21–30'
+			'Trombone Detritus'
 		);
 		await call.locator( '.call-numbers a' ).click();
 		await expect( page ).toHaveURL( /\/demo-set\/$/ );
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 21–30'
+			'Trombone Detritus'
 		);
 
 		await admin.visitAdminPage( 'edit.php', 'post_type=callboard_call' );

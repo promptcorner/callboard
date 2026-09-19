@@ -4,7 +4,7 @@
   --bg:#eceae5; --surface:#f6f5f2; --surface-2:#e2e0da; --line:#d3d1cb; --line-strong:#b8b6b0;
   --ink:#1c1c1c; --ink-2:#55544f; --ink-3:#6f6e69; --accent:#e8541e; --accent-text:#c2401a; --accent-ink:#fff;
   --deck:#f6f5f2; --wave:rgba(0,0,0,.3); --wave-hover:rgba(0,0,0,.52); --deck-shadow:0 -1px 0 var(--line), 0 -12px 32px rgba(0,0,0,.06); --deck-hi:rgba(255,255,255,.72); --gloss:rgba(255,255,255,.85); --play-hi:#565554; --play-rim:rgba(255,255,255,.22); --dish:rgba(0,0,0,.08);
-  --ease:cubic-bezier(.2,.8,.2,1); --ease-spring:cubic-bezier(.34,1.4,.64,1); --t-fast:.12s; --t:.2s; --t-slow:.36s; --radius:14px; --safe-b:env(safe-area-inset-bottom,0px); --deck-h:200px; --deck-bg:rgba(246,245,242,.94);
+  --ease:cubic-bezier(.2,.8,.2,1); --ease-spring:cubic-bezier(.34,1.4,.64,1); --t-fast:.12s; --t:.2s; --t-slow:.36s; --radius:14px; --safe-b:env(safe-area-inset-bottom,0px); --deck-h:200px; --deck-bg:rgba(246,245,242,.94); --admin-bar-h:0px;
   /* the deck's whole vertical rhythm — padding, gaps, nothing else — comes from these five; no ad hoc px */
   --s1:8px; --s2:13px; --s3:21px; --s4:34px; --s5:55px;
 }
@@ -18,6 +18,8 @@
 
 html,body{touch-action:manipulation} /* blocks double-tap zoom, keeps pinch zoom */
 body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none} /* an instrument, not a document: a long press never opens selection handles */
+body.admin-bar{--admin-bar-h:32px}
+@media (max-width:782px){body.admin-bar{--admin-bar-h:46px}}
 input,textarea{-webkit-user-select:text;user-select:text}
 button,a,input,label{touch-action:manipulation;-webkit-touch-callout:none}
 [hidden]{display:none!important}
@@ -232,7 +234,7 @@ input[type=range]::-moz-range-thumb{width:var(--thumb);height:var(--thumb);borde
    so the amplitude reads as a room brightening, not a lamp being switched. */
 .deck.is-expanded .deck-glow-halo{top:0;height:220px;filter:none;background:linear-gradient(180deg,color-mix(in srgb,currentColor 40%,transparent),color-mix(in srgb,currentColor 12%,transparent) 45%,transparent);transition:opacity .5s ease-out;will-change:opacity}
 @media (prefers-reduced-motion:reduce){.deck.is-expanded .deck-glow-halo{transition:none;opacity:.25!important}}
-.deck.is-expanded{top:0;bottom:-60px;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto auto;padding-bottom:calc(var(--safe-b) + var(--s3) + 60px);border-top:0;background-image:none;background-color:var(--deck);overflow:hidden} /* 60px below the screen, so a drag up shows no gap. Solid: the bar's glass let the track list show through a full screen. */
+.deck.is-expanded{top:var(--admin-bar-h);bottom:-60px;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto auto auto;padding-bottom:calc(var(--safe-b) + var(--s3) + 60px);border-top:0;background-image:none;background-color:var(--deck);overflow:hidden} /* 60px below the screen, so a drag up shows no gap. Solid: the bar's glass let the track list show through a full screen. */
 .deck.is-expanded::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 13%,transparent),transparent 190px),radial-gradient(130% 70% at 50% 0%,color-mix(in srgb,var(--tint,transparent) 20%,transparent),transparent 68%);pointer-events:none;z-index:0}
 @media (prefers-reduced-transparency:reduce){.deck.is-expanded::before{display:none}}
 /* Named, not `> *`: the three filament elements are position:absolute, and a blanket rule made them
@@ -485,7 +487,7 @@ body.now-playing .lyrics{z-index:21;inset:0 0 auto 0;height:calc(100% - 190px - 
 
 /* lyrics sheet */
 .lyrics:not([open]){display:none}
-.lyrics{position:fixed;inset:0 0 calc(var(--deck-h) + var(--safe-b)) 0;width:auto;height:auto;max-width:none;max-height:none;margin:0;padding:0;border:0;color:inherit;z-index:15;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:14px 14px 0 0;will-change:transform;transition:transform var(--t-slow) var(--ease)}
+.lyrics{position:fixed;inset:var(--admin-bar-h) 0 calc(var(--deck-h) + var(--safe-b)) 0;width:auto;height:auto;max-width:none;max-height:none;margin:0;padding:0;border:0;color:inherit;z-index:15;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:14px 14px 0 0;will-change:transform;transition:transform var(--t-slow) var(--ease)}
 @starting-style{.lyrics{transform:translateY(100%)}}
 .lyrics.closing{transform:translateY(100%)}
 #main{transition:transform var(--t-slow) var(--ease),opacity var(--t-slow) var(--ease);transform-origin:50% 0}
@@ -561,7 +563,7 @@ html[data-nav="back"]::view-transition-old(root){animation-name:pop-out}
 @media (prefers-reduced-motion:reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation-duration:.2s}}
 
 /* compact bar that fades in as the large title scrolls away (scroll-driven animation; Safari 26+, Chrome). Others never see it. */
-.topbar{position:fixed;top:0;left:0;right:0;z-index:18;height:calc(48px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:none;align-items:center;justify-content:center;border-bottom:1px solid var(--line);pointer-events:none}
+.topbar{position:fixed;top:var(--admin-bar-h);left:0;right:0;z-index:18;height:calc(48px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);display:none;align-items:center;justify-content:center;border-bottom:1px solid var(--line);pointer-events:none}
 .topbar-title{font-size:1rem;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%}
 @supports (animation-timeline:scroll()){
   .topbar{display:flex;opacity:0;visibility:hidden;transform:translateY(-6px);animation:topbar linear both;animation-timeline:scroll(root);animation-range:60px 140px}

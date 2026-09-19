@@ -29,7 +29,6 @@ final class Frontend {
 		add_filter( 'should_load_separate_core_block_assets', '__return_false' );
 		add_filter( 'wp_img_tag_add_auto_sizes', '__return_false' );
 		add_filter( 'wp_speculation_rules_configuration', '__return_null' );
-		add_filter( 'show_admin_bar', '__return_false' ); // the app is the whole front end; admins use wp-admin.
 	}
 
 	/**
@@ -148,6 +147,10 @@ final class Frontend {
 			'scripts' => array(),
 			'styles'  => array(),
 		);
+		if ( is_admin_bar_showing() ) {
+			$handles['styles']  = array_merge( $handles['styles'], array( 'admin-bar', 'dashicons' ) );
+			$handles['scripts'] = array_merge( $handles['scripts'], array( 'admin-bar' ) );
+		}
 		foreach ( wp_styles()->queue as $handle ) {
 			if ( ! in_array( $handle, $handles['styles'], true ) ) {
 				wp_dequeue_style( $handle );

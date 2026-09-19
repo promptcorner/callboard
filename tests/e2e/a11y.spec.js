@@ -6,6 +6,7 @@ const AxeBuilder = require( '@axe-core/playwright' ).default;
 
 const audit = async ( page ) =>
 	new AxeBuilder( { page } )
+		.exclude( '#wpadminbar' )
 		.withTags( [
 			'wcag2a',
 			'wcag2aa',
@@ -60,6 +61,7 @@ for ( const scheme of [ 'light', 'dark' ] ) {
 
 test.describe( 'axe, admin', () => {
 	for ( const [ name, query ] of [
+		[ 'setup', 'post_type=callboard_set&page=callboard-setup' ],
 		[ 'settings', 'post_type=callboard_set&page=callboard-settings' ],
 		[ 'import', 'post_type=callboard_set&page=callboard-import' ],
 		[ 'notices', 'post_type=callboard_set&page=callboard-notices' ],
@@ -73,6 +75,18 @@ test.describe( 'axe, admin', () => {
 			expect( report( results ) ).toBe( '' );
 		} );
 	}
+
+	test( 'new set editor', async ( { admin, page } ) => {
+		await admin.visitAdminPage(
+			'post-new.php',
+			'post_type=callboard_set'
+		);
+		const results = await new AxeBuilder( { page } )
+			.include( '#wpbody-content' )
+			.withTags( [ 'wcag2a', 'wcag2aa', 'wcag21aa' ] )
+			.analyze();
+		expect( report( results ) ).toBe( '' );
+	} );
 } );
 
 test( 'the whole player works from the keyboard', async ( { page } ) => {
@@ -95,7 +109,7 @@ test( 'the whole player works from the keyboard', async ( { page } ) => {
 	await page.locator( '#next' ).focus();
 	await page.keyboard.press( 'Enter' );
 	await expect( page.locator( '#now-title' ) ).toContainText(
-		'Sonnets 11–20'
+		'Underground'
 	);
 	await page.locator( '#seek' ).focus();
 	await page.keyboard.press( 'ArrowRight' );

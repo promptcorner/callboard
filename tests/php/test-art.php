@@ -128,7 +128,7 @@ class Test_Callboard_Art extends WP_UnitTestCase {
 		$this->require_freetype();
 		$out      = $this->temp( 'png' );
 		$manifest = array(
-			'name'   => 'Shakespeare’s Sonnets',
+			'name'   => 'Compositions',
 			'slug'   => 'demo-set',
 			'tracks' => array(),
 		);

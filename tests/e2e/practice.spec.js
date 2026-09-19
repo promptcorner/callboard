@@ -163,7 +163,7 @@ test.describe( 'Practice counts', () => {
 			'post_type=callboard_call'
 		);
 		const demo = page.locator( '.callboard-numbers details', {
-			hasText: 'Sonnets',
+			hasText: 'Compositions',
 		} );
 		await demo.locator( 'summary' ).click();
 		await demo.locator( 'input[type=checkbox]' ).first().check();

@@ -8,13 +8,15 @@ Stable tag: 2.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Rehearsal tracks for a cast. Sets of audio, a persistent player, installable as a home-screen app.
+An open-source music player for WordPress with persistent playback, offline sets, and an app-like front end.
 
 == Description ==
 
 Source and issues: https://github.com/promptcorner/callboard. Landing page: https://promptcorner.github.io/callboard/
 
-Callboard turns a WordPress site into a small, private music app for a cast or choir: a home page of sets, a track list per set, a player that keeps playing while you move around, lock-screen controls, optional offline saving, and an "Add to Home Screen" flow on iPhone. The whole front end is rendered by the plugin, whatever theme is active, and the site is kept out of search engines.
+Callboard turns WordPress into an owned, app-like music player: a library of sets, a track list per set, persistent playback while listeners move around, lock-screen controls, optional offline saving, and an "Add to Home Screen" flow on iPhone. The plugin renders the whole front end whatever theme is active, and keeps the site out of search engines.
+
+Independent artists, labels, and music publishers can run a focused listening experience on their own WordPress site instead of embedding a generic player. Rehearsal tools for casts and choirs—including calls, timed notes, count-in, and anonymous practice counts—are included as a complete workflow on top of the player.
 
 = The board =
 
@@ -22,7 +24,7 @@ The home page opens on the next call: its time, place, note, and the numbers bei
 
 = Sets and tracks =
 
-A set is a post. Its tracks are audio files attached to it, ordered by drag and drop, titled in the Media Library. Set a featured image for lock-screen artwork. Credits and a source link live in the set's meta boxes.
+A set is a post. Add audio through the WordPress Media Library, edit track titles in place, and order playback by drag and drop or keyboard controls. Set a featured image for lock-screen artwork. Credits and a source link live in the set's meta boxes.
 
 = Import =
 
@@ -40,7 +42,7 @@ Templates can be replaced through `callboard_template_path`, and filters cover t
 
 1. Upload the plugin through Plugins → Add New → Upload Plugin, or unzip it into `wp-content/plugins/`.
 2. Activate it. The front end is served from the site root straight away; the active theme is not used.
-3. Add a set under Sets, then attach audio files to it from the Media Library and drag them into order.
+3. Add a set under Sets, choose Add tracks to upload or select audio, then arrange the playing order.
 4. Post a call under Sets → Calls, and publish or schedule it.
 5. Share the home page URL with the cast. On iPhone they add it to the Home Screen from the Share sheet.
 6. Adjust Sets → Settings.

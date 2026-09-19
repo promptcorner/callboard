@@ -98,7 +98,7 @@ test( 'a loop set after moving to the next track still plays from a looping buff
 	// loop's buffer could not connect to.
 	await page.locator( '#next' ).click();
 	await expect( page.locator( '#now-title' ) ).toContainText(
-		'Sonnets 11–20'
+		'Underground'
 	);
 	await expect
 		.poll( () => audio.evaluate( ( a ) => ! a.paused && a.duration ) )

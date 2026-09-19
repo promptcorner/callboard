@@ -15,6 +15,11 @@ defined( 'ABSPATH' ) || exit;
 final class Plugin {
 
 	/**
+	 * Set on activation until an administrator reaches the setup screen.
+	 */
+	public const ONBOARDING_OPTION = 'callboard_onboarding_pending';
+
+	/**
 	 * Register every component.
 	 */
 	public static function boot(): void {
@@ -90,6 +95,7 @@ final class Plugin {
 		Importer::import_all(); // Before the manifest, so shortcuts and artwork reflect the sets.
 		Pwa::write_files();
 		flush_rewrite_rules();
+		update_option( self::ONBOARDING_OPTION, '1', false );
 	}
 
 	/**
@@ -164,7 +170,7 @@ final class Plugin {
 				wp_delete_file( sprintf( '%s/%s-%dx%d.png', $splash, $scheme, $dims[0], $dims[1] ) );
 			}
 		}
-		foreach ( array( 'callboard_version', 'callboard_settings', 'callboard_vapid', 'callboard_import_stamp', 'callboard_splash_key', 'callboard_extension_assets', Pwa::SW_OPTION, Pwa::MANIFEST_OPTION ) as $option ) {
+		foreach ( array( 'callboard_version', 'callboard_settings', 'callboard_vapid', 'callboard_import_stamp', 'callboard_splash_key', 'callboard_extension_assets', self::ONBOARDING_OPTION, Pwa::SW_OPTION, Pwa::MANIFEST_OPTION ) as $option ) {
 			delete_option( $option );
 		}
 		delete_transient( 'callboard_sets_v1' );
