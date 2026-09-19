@@ -1,0 +1,359 @@
+.callboard-admin {
+	--callboard-muted: #5f6368;
+	--callboard-line: #dcdcde;
+	max-width: 1000px;
+}
+
+.callboard-admin,
+.callboard-admin * {
+	box-sizing: border-box;
+}
+
+.callboard-setup-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin: 20px 0 0;
+}
+
+.callboard-setup-head {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 260px;
+	align-items: center;
+	min-height: 220px;
+	margin: 20px 0 32px;
+	padding: 32px 40px;
+	overflow: hidden;
+	background: #171717;
+	color: #fff;
+}
+
+.callboard-setup-head h1 {
+	margin: 0;
+	color: #fff;
+	font-size: 32px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.callboard-setup-head p:not(.callboard-setup-actions) {
+	max-width: 58ch;
+	margin: 10px 0 0;
+	color: #c3c4c7;
+	font-size: 14px;
+}
+
+.callboard-setup-head .button {
+	border-color: #8c8f94;
+	background: transparent;
+	color: #fff;
+}
+
+.callboard-setup-head .button:hover,
+.callboard-setup-head .button:focus {
+	border-color: #fff;
+	background: #fff;
+	color: #1d2327;
+}
+
+.callboard-setup-head .button-primary {
+	border-color: #c64016;
+	background: #c64016;
+}
+
+.callboard-setup-head .button-primary:hover,
+.callboard-setup-head .button-primary:focus {
+	border-color: #a9340e;
+	background: #a9340e;
+	color: #fff;
+}
+
+.callboard-open-player {
+	color: #fff;
+}
+
+.callboard-open-player:hover,
+.callboard-open-player:focus {
+	color: #fff;
+}
+
+.callboard-wave {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px;
+	height: 116px;
+}
+
+.callboard-wave i {
+	width: 8px;
+	height: 24%;
+	background: #e8541e;
+}
+
+.callboard-wave i:nth-child(2),
+.callboard-wave i:nth-child(8) {
+	height: 46%;
+}
+
+.callboard-wave i:nth-child(3),
+.callboard-wave i:nth-child(7) {
+	height: 70%;
+}
+
+.callboard-wave i:nth-child(4),
+.callboard-wave i:nth-child(6) {
+	height: 92%;
+}
+
+.callboard-wave i:nth-child(5) {
+	height: 58%;
+	background: #fff;
+}
+
+.callboard-checklist {
+	max-width: 900px;
+}
+
+.callboard-checklist th:last-child,
+.callboard-checklist td:last-child {
+	width: 130px;
+}
+
+.callboard-checklist td {
+	vertical-align: top;
+}
+
+.callboard-checklist td p {
+	margin: 3px 0 0;
+	color: var(--callboard-muted);
+}
+
+.callboard-settings-form,
+.callboard-import > p,
+.callboard-import > form,
+.callboard-import > details,
+.callboard-import > table {
+	max-width: 900px;
+}
+
+.callboard-import > h1 {
+	margin-bottom: 8px;
+}
+
+.callboard-import > h1 + p {
+	max-width: 68ch;
+	color: var(--callboard-muted);
+	font-size: 14px;
+}
+
+.callboard-import > hr {
+	margin: 24px 0;
+}
+
+.callboard-import > details {
+	margin-top: 24px;
+}
+
+.callboard-import > details summary {
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.callboard-tracks {
+	counter-reset: callboard-track;
+	list-style: none;
+	margin: 12px 0 0;
+}
+
+.callboard-tracks li {
+	counter-increment: callboard-track;
+	padding: 10px 0;
+	border-bottom: 1px solid var(--callboard-line);
+}
+
+.callboard-track-toolbar {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20px;
+}
+
+.callboard-track-toolbar p {
+	margin: 4px 0 0;
+}
+
+.callboard-track-empty {
+	margin: 16px 0 4px;
+	padding: 18px;
+	border: 1px dashed #c3c4c7;
+	background: #f6f7f7;
+	text-align: center;
+}
+
+.callboard-track-row {
+	display: grid;
+	grid-template-columns: 24px 24px minmax(180px, 1fr) 46px 64px 112px;
+	align-items: center;
+	gap: 8px;
+}
+
+.callboard-track-number {
+	color: #646970;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.callboard-track-number::before {
+	content: counter(callboard-track) ".";
+}
+
+.callboard-drag {
+	color: #787c82;
+	cursor: grab;
+}
+
+.callboard-drag:active {
+	cursor: grabbing;
+}
+
+.callboard-track-title {
+	width: 100%;
+	min-width: 0;
+}
+
+.callboard-track-more {
+	margin: 4px 0 0 56px;
+}
+
+.callboard-track-more summary {
+	display: inline-block;
+	padding: 4px 0;
+	color: #2271b1;
+	cursor: pointer;
+}
+
+.callboard-track-more summary::before {
+	content: "\f140";
+	display: inline-block;
+	width: 18px;
+	font: 20px/1 dashicons;
+	vertical-align: -4px;
+}
+
+.callboard-track-more[open] summary::before {
+	content: "\f142";
+}
+
+.callboard-track-fields {
+	max-width: 760px;
+	padding: 4px 0 6px 18px;
+}
+
+.callboard-track-fields p {
+	margin: 10px 0;
+}
+
+.callboard-track-fields textarea {
+	display: block;
+	margin-top: 5px;
+}
+
+.callboard-track-fields .description {
+	display: inline-block;
+	margin-top: 4px;
+}
+
+.callboard-track-reorder {
+	display: flex;
+	align-items: center;
+}
+
+.callboard-move {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	border-radius: 2px;
+	text-decoration: none;
+}
+
+.callboard-move:hover,
+.callboard-move:focus {
+	background: #f0f0f1;
+}
+
+.callboard-move:disabled {
+	color: #a7aaad;
+	cursor: default;
+}
+
+.callboard-move:disabled:hover {
+	background: transparent;
+}
+
+.callboard-track-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	white-space: nowrap;
+}
+
+.callboard-len {
+	color: #646970;
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+}
+
+.callboard-remove-track.button-link {
+	min-height: 30px;
+	padding: 0;
+}
+
+@media (max-width: 782px) {
+	.callboard-setup-head {
+		grid-template-columns: 1fr;
+		padding: 28px 24px 22px;
+	}
+
+	.callboard-wave {
+		justify-content: flex-start;
+		height: 72px;
+		margin-top: 20px;
+	}
+
+	.callboard-checklist th:nth-child(2),
+	.callboard-checklist td:nth-child(2) {
+		display: none;
+	}
+
+	.callboard-track-row {
+		grid-template-columns: 24px 24px minmax(0, 1fr) 42px;
+	}
+
+	.callboard-track-toolbar {
+		align-items: stretch;
+		flex-direction: column;
+		gap: 12px;
+	}
+
+	.callboard-track-toolbar .button {
+		align-self: flex-start;
+	}
+
+	.callboard-track-reorder {
+		grid-column: 3;
+	}
+
+	.callboard-track-actions {
+		grid-column: 4;
+	}
+
+	.callboard-track-more {
+		margin-left: 48px;
+	}
+}
