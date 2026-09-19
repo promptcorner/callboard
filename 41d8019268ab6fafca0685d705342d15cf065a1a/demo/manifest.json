@@ -1,0 +1,110 @@
+{
+	"name": "Shakespeare’s Sonnets",
+	"slug": "demo-set",
+	"order": -1,
+	"playlist_url": "https://librivox.org/sonnets-by-william-shakespeare/",
+	"curator": "",
+	"curator_url": "https://librivox.org/sonnets-by-william-shakespeare/",
+	"tracks": [
+		{
+			"index": 1,
+			"id": "son01",
+			"title": "Sonnets 1–10",
+			"file": "01 - Sonnets 1–10 [son01].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		},
+		{
+			"index": 2,
+			"id": "son02",
+			"title": "Sonnets 11–20",
+			"file": "02 - Sonnets 11–20 [son02].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		},
+		{
+			"index": 3,
+			"id": "son03",
+			"title": "Sonnets 21–30",
+			"file": "03 - Sonnets 21–30 [son03].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		},
+		{
+			"index": 4,
+			"id": "son04",
+			"title": "Sonnets 31–40",
+			"file": "04 - Sonnets 31–40 [son04].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		},
+		{
+			"index": 5,
+			"id": "son05",
+			"title": "Sonnets 41–50",
+			"file": "05 - Sonnets 41–50 [son05].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		},
+		{
+			"index": 6,
+			"id": "son06",
+			"title": "Sonnets 51–60",
+			"file": "06 - Sonnets 51–60 [son06].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		},
+		{
+			"index": 7,
+			"id": "son07",
+			"title": "Sonnets 61–70",
+			"file": "07 - Sonnets 61–70 [son07].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		},
+		{
+			"index": 8,
+			"id": "son08",
+			"title": "Sonnets 71–80",
+			"file": "08 - Sonnets 71–80 [son08].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		},
+		{
+			"index": 9,
+			"id": "son09",
+			"title": "Sonnets 81–90",
+			"file": "09 - Sonnets 81–90 [son09].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		},
+		{
+			"index": 10,
+			"id": "son10",
+			"title": "Sonnets 91–100",
+			"file": "10 - Sonnets 91–100 [son10].mp3",
+			"duration": 40,
+			"url": "https://librivox.org/sonnets-by-william-shakespeare/",
+			"uploader": "LibriVox volunteers",
+			"uploader_url": "https://librivox.org/sonnets-by-william-shakespeare/"
+		}
+	]
+}
