@@ -8,6 +8,7 @@
  * @package Callboard
  */
 
+use Callboard\Art;
 use Callboard\Importer;
 use Callboard\Sets;
 
@@ -147,6 +148,17 @@ class Test_Callboard_Importer extends WP_UnitTestCase {
 		);
 
 		$this->assertStringNotContainsString( '<script>', $notes[0]['text'] );
+	}
+
+	public function test_importing_a_manifest_keeps_its_valid_art_palette(): void {
+		$fixture = dirname( __DIR__ ) . '/fixtures/callboard/demo-set';
+
+		$this->assertSame( 'Compositions: 10 new tracks.', Importer::import_folder( $fixture ) );
+
+		$set = Sets::post_by_slug( 'demo-set' );
+		$this->assertInstanceOf( WP_Post::class, $set );
+		$this->assertSame( 'congo', get_post_meta( $set->ID, '_callboard_palette', true ) );
+		$this->assertMatchesRegularExpression( '/^#[0-9a-f]{6}$/', (string) Art::tint( (string) get_attached_file( get_post_thumbnail_id( $set ) ) ) );
 	}
 
 	/**

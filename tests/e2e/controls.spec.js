@@ -120,22 +120,22 @@ test.describe( 'Controls', () => {
 		await page.locator( '.track' ).first().click();
 		await page.locator( '#next' ).click();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 11–20'
+			'Underground'
 		);
 		await expect( page.locator( '.track' ).nth( 1 ) ).toHaveClass(
 			/active/
 		);
 		await page.locator( '#prev' ).click();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 1–10'
+			'Intensities in Ten Cities'
 		);
 		await page.locator( '#prev' ).click(); // from the first track, previous wraps to the last
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 91–100'
+			'Everyday Adventures'
 		);
 		await page.locator( '#next' ).click();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 1–10'
+			'Intensities in Ten Cities'
 		);
 	} );
 
@@ -146,7 +146,7 @@ test.describe( 'Controls', () => {
 		await setTime( page, 5 );
 		await page.locator( '#prev' ).click();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 21–30'
+			'Trombone Detritus'
 		); // stayed on the track rather than going back one
 		expect( await time( page ) ).toBeLessThan( 5 );
 	} );
@@ -173,7 +173,7 @@ test.describe( 'Controls', () => {
 		await page.goto( '/demo-set/' );
 		await page.locator( '.track' ).first().click();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 1–10'
+			'Intensities in Ten Cities'
 		);
 
 		const registered = await page.evaluate( () =>
@@ -191,12 +191,12 @@ test.describe( 'Controls', () => {
 		// Called with no arguments, the way the OS calls them.
 		await page.evaluate( () => window.__mediaHandlers.nexttrack() );
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 11–20'
+			'Underground'
 		);
 
 		await page.evaluate( () => window.__mediaHandlers.previoustrack() );
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 1–10'
+			'Intensities in Ten Cities'
 		);
 	} );
 
@@ -235,11 +235,11 @@ test.describe( 'Controls', () => {
 		expect( await time( page ) ).toBeCloseTo( 10, 0 );
 		await page.keyboard.press( 'Shift+ArrowRight' );
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 11–20'
+			'Underground'
 		);
 		await page.keyboard.press( 'Shift+ArrowLeft' );
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 1–10'
+			'Intensities in Ten Cities'
 		);
 		await setTime( page, 4 );
 		await page.keyboard.press( '[' );
@@ -306,7 +306,7 @@ test.describe( 'Controls', () => {
 		expect( await transport( page ) ).toBe( before + 2 );
 		await page.locator( '.track' ).nth( 4 ).click();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 41–50'
+			'Stole Back My Soul'
 		);
 	} );
 
@@ -343,7 +343,7 @@ test.describe( 'Controls', () => {
 		} );
 		expect( pausedBySteal ).toBe( 0 );
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 11–20'
+			'Underground'
 		);
 	} );
 
@@ -455,7 +455,7 @@ test.describe( 'Deck view: compact and expanded', () => {
 				.dispatchEvent( new Event( 'ended' ) )
 		);
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 1–10'
+			'Intensities in Ten Cities'
 		);
 	} );
 

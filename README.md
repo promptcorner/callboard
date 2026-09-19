@@ -134,7 +134,7 @@ A gated request answers 403 with `templates/gate.php` rather than redirecting to
 <details>
 <summary>Artwork</summary>
 
-`Art` draws covers, share cards, and iPhone splash screens with GD from the set's name.
+`Art` draws covers and native wide share cards with GD from the set's name, track count, and available curator or performer credit. A deterministic palette and modular layout keep generated art distinct without network assets or a build step.
 
 </details>
 
@@ -150,7 +150,7 @@ A gated request answers 403 with `templates/gate.php` rather than redirecting to
 | `assets/` | `app.js`, `app.css` |
 | `pwa/sw.js` | Service worker source |
 | `tests/e2e/` | Playwright suites |
-| `tests/fixtures/` | `demo-set` and `empty-set`, and `librivox.js`, which builds the demo audio from LibriVox recordings. `local-set.js` builds a set from your own audio into a gitignored folder, for local listening only |
+| `tests/fixtures/` | `demo-set` and `empty-set`, and `jazz.js`, which builds the public-domain Airmen of Note demo. `local-set.js` builds a set from your own audio into a gitignored folder, for local listening only |
 | `blueprint.json` | Playground demo. The Pages workflow publishes it with the plugin zip and demo audio, stamped by commit |
 | `site/` | Landing page (GitHub Pages) |
 | `languages/callboard.pot` | Translation template; `npm run pot` regenerates it |
@@ -332,7 +332,7 @@ Browser and WordPress features considered for this plugin, with a verdict, so no
 
 Two suites, both against wp-env. PHPUnit in `tests/php/` covers the PHP, leading with the two boundaries that matter: what a `.callboard` file is allowed to unpack, and who the gate lets through. After those come the data model, settings sanitizing, and the helpers behind every line of text a cast reads. Playwright in `tests/e2e/` covers the browser, from a pre-commit hook that `npm install` sets up and again in GitHub Actions on every pull request. One test saves a set, takes the browser offline, and opens and plays it. Headless Chromium cannot decode mp3, so player tests assert on state, not audio.
 
-Fixtures are LibriVox recordings of Shakespeare's Sonnets (book 229), built by `tests/fixtures/librivox.js` (needs ffmpeg, ffprobe, and a network connection): it pulls the LibriVox API, downloads the sections from archive.org, uses silence detection to skip past the reader's introduction, cuts a 40-second clip, encodes it, and writes `manifest.json`, `levels.json`, `notes.json`, and `tempo.json`. LibriVox recordings are public domain in the USA — no licence, no attribution required, commercial use is fine — which matters because this audio is committed here, served from the Pages site, and loaded into the Playground demo. Readers are credited anyway, in the manifest's uploader fields, which the app already renders in a set's footer. Two fixture sets remain: `demo-set` (the sonnets, ten tracks) and `empty-set`. Covers are drawn by the plugin's `Art` class.
+The demo fixture is *Compositions* (2012), ten jazz recordings performed by the Airmen of Note, United States Air Force Band. `tests/fixtures/jazz.js` downloads the source recordings from Wikimedia Commons, cuts compact 40-second excerpts, encodes them, and writes `manifest.json`, `levels.json`, `notes.json`, and `tempo.json` (it needs ffmpeg, ffprobe, and a network connection). The Air Force and Commons identify each composition, performance, and recording as a public-domain U.S. Government work; the manifest retains the composer, performer, source page, and [rights evidence](https://commons.wikimedia.org/wiki/Template:PD-USGov-Military-Air_Force). The source files are public domain in the United States rather than GPL-licensed; status outside the United States may vary. Two fixture sets remain: `demo-set` and `empty-set`. Covers are drawn by the plugin's `Art` class.
 
 ## Source and maintainer
 
