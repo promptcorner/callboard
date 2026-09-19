@@ -109,7 +109,7 @@ test( 'the whole player works from the keyboard', async ( { page } ) => {
 	await page.locator( '#next' ).focus();
 	await page.keyboard.press( 'Enter' );
 	await expect( page.locator( '#now-title' ) ).toContainText(
-		'Sonnets 11–20'
+		'Underground'
 	);
 	await page.locator( '#seek' ).focus();
 	await page.keyboard.press( 'ArrowRight' );
