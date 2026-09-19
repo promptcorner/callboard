@@ -127,6 +127,10 @@ final class Importer {
 				'curator_url'  => esc_url_raw( (string) ( $data['curator_url'] ?? '' ) ),
 			)
 		);
+		$palette = sanitize_key( (string) ( $data['palette'] ?? '' ) );
+		if ( in_array( $palette, Art::palettes(), true ) ) {
+			update_post_meta( $set->ID, '_callboard_palette', $palette );
+		}
 		if ( file_exists( $dir . '/lyrics.approved' ) ) {
 			update_post_meta( $set->ID, '_callboard_lyrics_approved', 1 );
 		}
@@ -250,23 +254,31 @@ final class Importer {
 			return;
 		}
 
-		$tracks = array();
+		$tracks     = array();
+		$performers = array();
 		foreach ( Sets::track_posts( $set ) as $track ) {
-			$tracks[] = array( 'duration' => (float) get_post_meta( $track->ID, '_callboard_duration', true ) );
+			$tracks[]  = array( 'duration' => (float) get_post_meta( $track->ID, '_callboard_duration', true ) );
+			$performer = trim( (string) get_post_meta( $track->ID, '_callboard_uploader', true ) );
+			if ( '' !== $performer ) {
+				$performers[ $performer ] = true;
+			}
 		}
 		$palette  = (string) get_post_meta( $set, '_callboard_palette', true );
+		$credits  = (array) get_post_meta( $set, '_callboard_credits', true );
 		$manifest = array(
-			'name'    => get_the_title( $set ),
-			'slug'    => get_post_field( 'post_name', $set ),
-			'palette' => $palette,
-			'tracks'  => $tracks,
+			'name'      => get_the_title( $set ),
+			'slug'      => get_post_field( 'post_name', $set ),
+			'palette'   => $palette,
+			'curator'   => (string) ( $credits['curator'] ?? '' ),
+			'performer' => 1 === count( $performers ) ? (string) array_key_first( $performers ) : '',
+			'tracks'    => $tracks,
 		);
 
 		// The artwork carries the set's name and "18 tracks · 1 hr 15 min", so it goes stale the moment
 		// the set gains a track — a cover drawn while a folder was empty says "No audio yet" forever
 		// otherwise. Redrawing on a changed fingerprint fixes that, but only for artwork this code
 		// drew: a cover somebody supplied themselves is theirs, and is never overwritten.
-		$want  = md5( (string) wp_json_encode( array( $manifest['name'], count( $tracks ), (int) array_sum( array_column( $tracks, 'duration' ) ), Settings::get( 'tagline' ), $palette ) ) );
+		$want  = md5( (string) wp_json_encode( array( $manifest['name'], count( $tracks ), (int) array_sum( array_column( $tracks, 'duration' ) ), Settings::get( 'tagline' ), $palette, $manifest['curator'], $manifest['performer'] ) ) );
 		$drawn = (string) get_post_meta( $set, '_callboard_art_drawn', true );
 		$ours  = '' !== $drawn;
 

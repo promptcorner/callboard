@@ -83,11 +83,11 @@ class Test_Callboard_Art extends WP_UnitTestCase {
 	public function test_a_long_one_word_name_stays_inside_the_artwork( string $kind, array $margin ): void {
 		$this->require_freetype();
 		$file = $this->temp( 'png' );
-		$this->assertTrue( Art::$kind( $this->manifest( 'Hadestown' ), $file ) );
+		$this->assertTrue( Art::$kind( $this->manifest( 'Extraordinarilylongword' ), $file ) );
 
-		// The left margin is always bare, so it says what the background is.
+		// The upper-left corner is outside the artwork modules, so it says what the background is.
 		$im    = imagecreatefrompng( $file );
-		$bg    = imagecolorat( $im, 4, (int) ( imagesy( $im ) / 2 ) );
+		$bg    = imagecolorat( $im, 4, 4 );
 		$inked = 0;
 		for ( $x = $margin[0]; $x <= $margin[1]; $x++ ) {
 			for ( $y = $margin[2]; $y <= $margin[3]; $y++ ) {
@@ -105,8 +105,8 @@ class Test_Callboard_Art extends WP_UnitTestCase {
 	 */
 	public function cards(): array {
 		return array(
-			'the square cover'      => array( 'cover', array( 950, 1023, 200, 880 ) ),
-			'the link-preview card' => array( 'share', array( 920, 1199, 150, 490 ) ),
+			'the square cover'      => array( 'cover', array( 930, 1023, 500, 820 ) ),
+			'the link-preview card' => array( 'share', array( 1140, 1199, 190, 420 ) ),
 		);
 	}
 
@@ -124,19 +124,72 @@ class Test_Callboard_Art extends WP_UnitTestCase {
 		);
 	}
 
-	public function test_a_cover_comes_back_as_a_square_png(): void {
+	/**
+	 * @dataProvider card_dimensions
+	 */
+	public function test_artwork_has_its_native_dimensions( string $kind, int $width, int $height ): void {
 		$this->require_freetype();
-		$out      = $this->temp( 'png' );
-		$manifest = array(
-			'name'   => 'Shakespeare’s Sonnets',
-			'slug'   => 'demo-set',
-			'tracks' => array(),
-		);
-
-		$this->assertTrue( Art::cover( $manifest, $out ) );
+		$out = $this->temp( 'png' );
+		$this->assertTrue( Art::$kind( $this->manifest( 'Compositions' ), $out ) );
 
 		$size = getimagesize( $out );
-		$this->assertSame( array( 1024, 1024, IMAGETYPE_PNG ), array( $size[0], $size[1], $size[2] ) );
+		$this->assertSame( array( $width, $height, IMAGETYPE_PNG ), array( $size[0], $size[1], $size[2] ) );
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: int, 2: int}>
+	 */
+	public function card_dimensions(): array {
+		return array(
+			'cover'      => array( 'cover', 1024, 1024 ),
+			'share card' => array( 'share', 1200, 630 ),
+		);
+	}
+
+	/**
+	 * A generated asset is cacheable because the same manifest always makes the same pixels.
+	 *
+	 * @dataProvider cards
+	 */
+	public function test_artwork_is_deterministic( string $kind ): void {
+		$this->require_freetype();
+		$first          = $this->temp( 'png' );
+		$second         = $this->temp( 'png' );
+		$set            = $this->manifest( 'Compositions' );
+		$set['palette'] = 'congo';
+
+		$this->assertTrue( Art::$kind( $set, $first ) );
+		$this->assertTrue( Art::$kind( $set, $second ) );
+		$this->assertSame( md5_file( $first ), md5_file( $second ) );
+	}
+
+	public function test_curator_precedes_performer_and_both_fall_back_cleanly(): void {
+		$this->require_freetype();
+		$plain     = $this->temp( 'png' );
+		$performed = $this->temp( 'png' );
+		$curated   = $this->temp( 'png' );
+		$both      = $this->temp( 'png' );
+		$set       = $this->manifest( 'Compositions' );
+
+		$this->assertTrue( Art::cover( $set, $plain ) );
+		$this->assertTrue( Art::cover( array_merge( $set, array( 'performer' => 'The Players' ) ), $performed ) );
+		$this->assertTrue( Art::cover( array_merge( $set, array( 'curator' => 'The Curator' ) ), $curated ) );
+		$this->assertTrue(
+			Art::cover(
+				array_merge(
+					$set,
+					array(
+						'curator'   => 'The Curator',
+						'performer' => 'The Players',
+					)
+				),
+				$both
+			)
+		);
+
+		$this->assertNotSame( md5_file( $plain ), md5_file( $performed ) );
+		$this->assertNotSame( md5_file( $performed ), md5_file( $curated ) );
+		$this->assertSame( md5_file( $curated ), md5_file( $both ) );
 	}
 
 	/**

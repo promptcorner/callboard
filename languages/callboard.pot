@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-19T02:39:30+00:00\n"
+"POT-Creation-Date: 2026-09-19T05:33:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: callboard\n"
@@ -42,7 +42,7 @@ msgid "https://josephfus.co/"
 msgstr ""
 
 #: includes/class-abilities.php:53
-msgid "Rehearsal playlists and calls."
+msgid "Music sets, tracks, and optional rehearsal calls."
 msgstr ""
 
 #: includes/class-abilities.php:76
@@ -121,8 +121,8 @@ msgstr ""
 
 #. translators: %s: track title.
 #: includes/class-admin.php:45
-#: includes/class-frontend.php:90
-#: includes/class-frontend.php:99
+#: includes/class-frontend.php:89
+#: includes/class-frontend.php:98
 #: templates/deck.php:71
 msgid "Lyrics"
 msgstr ""
@@ -922,220 +922,220 @@ msgstr ""
 msgid "Could not start the fetch tool."
 msgstr ""
 
-#: includes/class-frontend.php:71
+#: includes/class-frontend.php:70
 #: templates/set.php:21
 msgid "Play all"
 msgstr ""
 
-#: includes/class-frontend.php:72
+#: includes/class-frontend.php:71
 msgid "Link copied"
 msgstr ""
 
-#: includes/class-frontend.php:73
+#: includes/class-frontend.php:72
 msgid "Pause"
 msgstr ""
 
-#: includes/class-frontend.php:74
+#: includes/class-frontend.php:73
 #: templates/deck.php:51
 msgid "Play"
 msgstr ""
 
-#: includes/class-frontend.php:75
+#: includes/class-frontend.php:74
 msgid "Install this as an app to keep it a tap away."
 msgstr ""
 
-#: includes/class-frontend.php:76
+#: includes/class-frontend.php:75
 msgid "Add"
 msgstr ""
 
-#: includes/class-frontend.php:77
+#: includes/class-frontend.php:76
 msgid "Open this in Safari to add it to your Home Screen."
 msgstr ""
 
-#: includes/class-frontend.php:78
+#: includes/class-frontend.php:77
 msgid "Open in Safari"
 msgstr ""
 
-#: includes/class-frontend.php:79
+#: includes/class-frontend.php:78
 #: templates/set.php:23
 msgid "Save offline"
 msgstr ""
 
-#: includes/class-frontend.php:80
+#: includes/class-frontend.php:79
 msgid "Saved offline"
 msgstr ""
 
 #. translators: 1: tracks saved so far, 2: total tracks.
-#: includes/class-frontend.php:82
+#: includes/class-frontend.php:81
 #, php-format
 msgid "Saving offline, %1$s of %2$s"
 msgstr ""
 
 #. translators: 1: tracks saved so far, 2: total tracks.
-#: includes/class-frontend.php:84
+#: includes/class-frontend.php:83
 #, php-format
 msgid "Save the rest, %1$s of %2$s saved"
 msgstr ""
 
-#: includes/class-frontend.php:85
+#: includes/class-frontend.php:84
 msgid "Hold to remove"
 msgstr ""
 
-#: includes/class-frontend.php:86
+#: includes/class-frontend.php:85
 msgid "Saved offline. Press and hold, or press Delete, to remove the copies."
 msgstr ""
 
 #. translators: 1: tracks saved so far, 2: total tracks.
-#: includes/class-frontend.php:88
+#: includes/class-frontend.php:87
 #, php-format
 msgid "Saving %1$s/%2$s · Cancel"
 msgstr ""
 
-#: includes/class-frontend.php:91
+#: includes/class-frontend.php:90
 #: templates/deck.php:73
 msgid "Lyrics · auto-captions, may be rough"
 msgstr ""
 
-#: includes/class-frontend.php:92
+#: includes/class-frontend.php:91
 msgid "Notes"
 msgstr ""
 
-#: includes/class-frontend.php:93
+#: includes/class-frontend.php:92
 msgid "Director notes"
 msgstr ""
 
-#: includes/class-frontend.php:94
+#: includes/class-frontend.php:93
 msgid "Show director notes"
 msgstr ""
 
-#: includes/class-frontend.php:95
+#: includes/class-frontend.php:94
 msgid "Hide director notes"
 msgstr ""
 
 #. translators: %d: beats per minute.
-#: includes/class-frontend.php:97
+#: includes/class-frontend.php:96
 msgid "Show lyrics"
 msgstr ""
 
-#: includes/class-frontend.php:100
+#: includes/class-frontend.php:99
 msgid "Hide lyrics"
 msgstr ""
 
-#: includes/class-frontend.php:101
+#: includes/class-frontend.php:100
 #: templates/deck.php:28
 msgid "Show current track"
 msgstr ""
 
-#: includes/class-frontend.php:102
+#: includes/class-frontend.php:101
 #: templates/deck.php:23
 msgid "Play on another device"
 msgstr ""
 
-#: includes/class-frontend.php:103
+#: includes/class-frontend.php:102
 msgid "Playing on another device, tap to change"
 msgstr ""
 
 #. translators: %s: track title.
-#: includes/class-frontend.php:105
+#: includes/class-frontend.php:104
 #: templates/set.php:54
 #, php-format
 msgid "Save %s offline"
 msgstr ""
 
 #. translators: %s: track title.
-#: includes/class-frontend.php:107
+#: includes/class-frontend.php:106
 #, php-format
 msgid "%s is saved offline"
 msgstr ""
 
-#: includes/class-frontend.php:108
+#: includes/class-frontend.php:107
 msgid "Remove offline copies? Tap again"
 msgstr ""
 
 #. translators: %s: free space such as 40 MB.
-#: includes/class-frontend.php:110
+#: includes/class-frontend.php:109
 #, php-format
 msgid "Not enough space, %s free"
 msgstr ""
 
 #. translators: %s: track title.
-#: includes/class-frontend.php:112
+#: includes/class-frontend.php:111
 #, php-format
 msgid "Saving %s, tap to cancel"
 msgstr ""
 
-#: includes/class-frontend.php:113
+#: includes/class-frontend.php:112
 msgid "Nothing matched a track in this set"
 msgstr ""
 
 #. translators: 1: files loaded, 2: files chosen.
-#: includes/class-frontend.php:115
+#: includes/class-frontend.php:114
 #, php-format
 msgid "Loaded %1$s of %2$s"
 msgstr ""
 
 #. translators: 1: tracks loaded, 2: tracks in the file, 3: set name.
-#: includes/class-frontend.php:117
+#: includes/class-frontend.php:116
 #, php-format
 msgid "Loaded %1$s of %2$s tracks into %3$s"
 msgstr ""
 
-#: includes/class-frontend.php:118
+#: includes/class-frontend.php:117
 #: templates/set.php:31
 msgid "Save set file"
 msgstr ""
 
-#: includes/class-frontend.php:119
+#: includes/class-frontend.php:118
 msgid "Making the set file"
 msgstr ""
 
-#: includes/class-frontend.php:120
+#: includes/class-frontend.php:119
 msgid "Send set file"
 msgstr ""
 
-#: includes/class-frontend.php:121
+#: includes/class-frontend.php:120
 msgid "Could not make the set file"
 msgstr ""
 
-#: includes/class-frontend.php:122
+#: includes/class-frontend.php:121
 msgid "That file is not a Callboard set"
 msgstr ""
 
-#: includes/class-frontend.php:123
+#: includes/class-frontend.php:122
 msgid "That set file needs a newer version of Callboard"
 msgstr ""
 
 #. translators: %s: set name.
-#: includes/class-frontend.php:125
+#: includes/class-frontend.php:124
 #, php-format
 msgid "%s is not on this site"
 msgstr ""
 
-#: includes/class-frontend.php:126
+#: includes/class-frontend.php:125
 #: templates/home.php:20
 msgid "Notify me about new sets"
 msgstr ""
 
 #. translators: %s: track title.
-#: includes/class-frontend.php:128
+#: includes/class-frontend.php:127
 #, php-format
 msgid "Left off at %s"
 msgstr ""
 
-#: includes/class-frontend.php:129
+#: includes/class-frontend.php:128
 msgid "Notifications on"
 msgstr ""
 
-#: includes/class-frontend.php:130
+#: includes/class-frontend.php:129
 msgid "Add to Home Screen first, then turn on notifications from there."
 msgstr ""
 
-#: includes/class-frontend.php:131
+#: includes/class-frontend.php:130
 msgid "Notifications are blocked in your browser settings."
 msgstr ""
 
 #. translators: %d: number of sets.
-#: includes/class-frontend.php:250
+#: includes/class-frontend.php:253
 #, php-format
 msgid "%d set."
 msgid_plural "%d sets."
@@ -1151,24 +1151,24 @@ msgid "Could not create the set."
 msgstr ""
 
 #. translators: 1: set name, 2: number of new tracks.
-#: includes/class-importer.php:201
+#: includes/class-importer.php:205
 #, php-format
 msgid "%1$s: %2$d new tracks."
 msgstr ""
 
-#: includes/class-importer.php:408
-#: includes/class-importer.php:422
+#: includes/class-importer.php:420
+#: includes/class-importer.php:434
 #: includes/class-push.php:347
 #: includes/class-requests.php:145
 #: includes/class-requests.php:161
 msgid "Not allowed."
 msgstr ""
 
-#: includes/class-importer.php:412
+#: includes/class-importer.php:424
 msgid "Nothing to import."
 msgstr ""
 
-#: includes/class-importer.php:430
+#: includes/class-importer.php:442
 msgid "No file arrived."
 msgstr ""
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Cover and share-card artwork, drawn with GD. Quiet: warm ground, the set name, a label, one accent.
+ * Cover and share-card artwork, drawn with GD.
  *
  * @package Callboard
  */
@@ -25,7 +25,7 @@ final class Art {
 	 * Playbill's masthead yellow, the deep red of a house curtain with its gold, the bone white of a
 	 * ghost light, and two lighting gels — Congo blue and bastard amber — that anybody who has stood
 	 * in a wing has seen. Each is a ground, an ink dark enough to read on it, a muted ink for the
-	 * label, and one accent for the dot and the level bars.
+	 * label, and one accent for the record form and grid mark.
 	 *
 	 * The set picks its own unless somebody chooses for it, so a board of six sets is six colours
 	 * instead of six identical cream squares.
@@ -125,12 +125,14 @@ final class Art {
 		}
 		self::$palette = self::palette( (string) ( $manifest['palette'] ?? '' ), (string) ( $manifest['slug'] ?? $manifest['name'] ?? '' ) );
 		$s             = 1024;
-		$pad           = 90;
+		$pad           = 72;
 		$im            = self::canvas( $s, $s );
-		self::dot( $im, $s - $pad - 22, $pad + 22, 22 );
-		self::rule( $im, $pad, $pad + 20, 160 );
-		$y = self::title( $im, (string) $manifest['name'], $pad - 4, $s - $pad - 66, $s - 2 * $pad, 140, 3 );
-		self::text( $im, 32, $pad, $s - $pad - 8, self::ink( 'muted', self::MUTED ), self::label( $manifest ), 'SemiBold' );
+		self::record( $im, 875, 120, 300 );
+		self::text( $im, 156, $pad - 10, 300, self::ink( 'ink', self::INK ), self::track_number( $manifest ) );
+		self::block( $im, $pad, 356, 210, 18 );
+		self::title( $im, (string) $manifest['name'], $pad - 4, 798, 850, 136, 3 );
+		self::one_line( $im, self::credit( $manifest ), 28, 18, $pad, 906, 820, self::ink( 'ink', self::INK ), 'SemiBold' );
+		self::one_line( $im, self::label( $manifest ), 22, 16, $pad, 956, 820, self::ink( 'ink', self::INK ), 'SemiBold' );
 		return imagepng( $im, $out, 6 );
 	}
 
@@ -147,19 +149,38 @@ final class Art {
 		self::$palette = self::palette( (string) ( $manifest['palette'] ?? '' ), (string) ( $manifest['slug'] ?? $manifest['name'] ?? '' ) );
 		$w             = 1200;
 		$h             = 630;
-		$pad           = 80;
 		$im            = self::canvas( $w, $h );
-		self::dot( $im, $w - $pad - 20, $pad + 20, 20 );
-		self::rule( $im, $pad, $pad + 16, 140 );
-		self::title( $im, (string) $manifest['name'], $pad - 4, $h - $pad - 70, $w - 2 * $pad - 220, 124, 2 );
-		self::text( $im, 28, $pad, $h - $pad - 6, self::ink( 'muted', self::MUTED ), self::label( $manifest ), 'SemiBold' );
-		// A quiet row of level bars, bottom right.
-		$bx = $w - $pad - 4 * 18;
-		foreach ( array( 18, 34, 26, 42 ) as $k => $bar ) {
-			$c = imagecolorallocate( $im, ...( 1 === $k ? self::ink( 'accent', self::ACCENT ) : self::ink( 'ink', self::INK ) ) );
-			imagefilledrectangle( $im, $bx + $k * 18, $h - $pad - $bar, $bx + $k * 18 + 8, $h - $pad, $c );
-		}
+		self::record( $im, 120, 315, 270 );
+		self::text( $im, 114, 472, 126, self::ink( 'ink', self::INK ), self::track_number( $manifest ) );
+		self::block( $im, 476, 158, 164, 16 );
+		self::title( $im, (string) $manifest['name'], 472, 402, 650, 100, 2 );
+		self::one_line( $im, self::credit( $manifest ), 26, 17, 476, 510, 650, self::ink( 'ink', self::INK ), 'SemiBold' );
+		self::one_line( $im, self::label( $manifest ), 21, 15, 476, 558, 650, self::ink( 'ink', self::INK ), 'SemiBold' );
 		return imagepng( $im, $out, 6 );
+	}
+
+	/**
+	 * Two-digit track count for the artwork's oversized index.
+	 *
+	 * @param array<string, mixed> $manifest Set manifest.
+	 */
+	private static function track_number( array $manifest ): string {
+		return str_pad( (string) min( 99, count( (array) ( $manifest['tracks'] ?? array() ) ) ), 2, '0', STR_PAD_LEFT );
+	}
+
+	/**
+	 * The most specific available byline, with a useful default for ordinary sets.
+	 *
+	 * @param array<string, mixed> $manifest Set manifest.
+	 */
+	private static function credit( array $manifest ): string {
+		foreach ( array( 'curator', 'performer' ) as $key ) {
+			$value = trim( (string) ( $manifest[ $key ] ?? '' ) );
+			if ( '' !== $value ) {
+				return $value;
+			}
+		}
+		return __( 'Callboard', 'callboard' );
 	}
 
 	/**
@@ -337,27 +358,30 @@ final class Art {
 	}
 
 	/**
-	 * Accent dot.
+	 * A cropped, record-like circle with a paper-colored spindle hole.
 	 *
 	 * @param \GdImage $im Image.
 	 * @param int      $cx Center x.
 	 * @param int      $cy Center y.
 	 * @param int      $r  Radius.
 	 */
-	private static function dot( $im, int $cx, int $cy, int $r ): void {
+	private static function record( $im, int $cx, int $cy, int $r ): void {
 		imagefilledellipse( $im, $cx, $cy, $r * 2, $r * 2, imagecolorallocate( $im, ...self::ink( 'accent', self::ACCENT ) ) );
+		imagefilledellipse( $im, $cx, $cy, 92, 92, imagecolorallocate( $im, ...self::ink( 'bg', self::BG ) ) );
+		imagefilledellipse( $im, $cx, $cy, 24, 24, imagecolorallocate( $im, ...self::ink( 'ink', self::INK ) ) );
 	}
 
 	/**
-	 * Short hairline.
+	 * One rectangular module in the artwork grid.
 	 *
 	 * @param \GdImage $im Image.
 	 * @param int      $x  Left.
 	 * @param int      $y  Top.
 	 * @param int      $w  Width.
+	 * @param int      $h  Height.
 	 */
-	private static function rule( $im, int $x, int $y, int $w ): void {
-		imagefilledrectangle( $im, $x, $y, $x + $w, $y + 4, imagecolorallocate( $im, ...self::ink( 'ink', self::INK ) ) );
+	private static function block( $im, int $x, int $y, int $w, int $h ): void {
+		imagefilledrectangle( $im, $x, $y, $x + $w, $y + $h, imagecolorallocate( $im, ...self::ink( 'accent', self::ACCENT ) ) );
 	}
 
 	/**
@@ -373,6 +397,31 @@ final class Art {
 	 */
 	private static function text( $im, int $size, int $x, int $y, array $rgb, string $text, string $weight = 'Bold' ): void {
 		imagettftext( $im, $size, 0, $x, $y, imagecolorallocate( $im, ...$rgb ), self::font( $weight ), $text );
+	}
+
+	/**
+	 * Draw a single line, shrinking it when metadata is longer than its grid column.
+	 *
+	 * @param \GdImage        $im       Image.
+	 * @param string          $text     Text.
+	 * @param int             $start    Starting point size.
+	 * @param int             $minimum  Smallest point size.
+	 * @param int             $x        Left.
+	 * @param int             $y        Baseline.
+	 * @param int             $max_w    Available width.
+	 * @param array<int, int> $rgb      Color.
+	 * @param string          $weight   Font weight.
+	 */
+	private static function one_line( $im, string $text, int $start, int $minimum, int $x, int $y, int $max_w, array $rgb, string $weight = 'Bold' ): void {
+		$size = $start;
+		while ( $size > $minimum ) {
+			$box = imagettfbbox( $size, 0, self::font( $weight ), $text );
+			if ( $box && ( $box[2] - $box[0] ) <= $max_w ) {
+				break;
+			}
+			--$size;
+		}
+		self::text( $im, $size, $x, $y, $rgb, $text, $weight );
 	}
 
 	/**

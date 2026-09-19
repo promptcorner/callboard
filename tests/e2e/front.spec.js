@@ -16,15 +16,15 @@ test.describe( 'Front end', () => {
 		await expect( page ).toHaveTitle( /./ );
 		// Not a total count: a machine can have its own local-only sets alongside the fixtures.
 		await expect(
-			page.locator( 'a.set', { hasText: 'Shakespeare' } )
+			page.locator( 'a.set', { hasText: 'Compositions' } )
 		).toHaveCount( 1 );
 		await expect(
 			page.locator( 'a.set', { hasText: 'Empty Set' } )
 		).toHaveCount( 1 );
-		const card = page.locator( 'a.set', { hasText: 'Shakespeare' } );
+		const card = page.locator( 'a.set', { hasText: 'Compositions' } );
 		await expect( card ).toBeVisible();
 		await expect( card.locator( '.set-name' ) ).toHaveText(
-			'Shakespeare’s Sonnets'
+			'Compositions'
 		);
 		await expect( card.locator( '.set-meta' ) ).toContainText(
 			'10 tracks'
@@ -42,7 +42,7 @@ test.describe( 'Front end', () => {
 		await page.locator( '.track' ).nth( 9 ).click();
 		await expect( page.locator( '#deck' ) ).toBeVisible();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 91–100'
+			'Everyday Adventures'
 		);
 		await page.locator( '.track' ).nth( 9 ).scrollIntoViewIfNeeded();
 		const deckBox = await page.locator( '#deck' ).boundingBox();
@@ -59,7 +59,7 @@ test.describe( 'Front end', () => {
 		await page.goto( '/demo-set/?track=2&at=4' );
 		await expect(
 			page.locator( '.track[aria-current="true"]' )
-		).toContainText( 'Sonnets 21–30' );
+		).toContainText( 'Trombone Detritus' );
 		await expect( page.locator( '#now-title' ) ).toContainText(
 			'Softer here'
 		);
@@ -101,7 +101,7 @@ test.describe( 'Front end', () => {
 		page,
 	} ) => {
 		const audio = fs.readFileSync(
-			'tests/fixtures/callboard/demo-set/01 - Sonnets 1–10 [son01].mp3'
+			'tests/fixtures/callboard/demo-set/01 - Intensities in Ten Cities [intensities].mp3'
 		);
 		const file = ( name ) => ( {
 			name,
@@ -118,9 +118,9 @@ test.describe( 'Front end', () => {
 		await page
 			.locator( '#load-files' )
 			.setInputFiles( [
-				file( '01 - Sonnets 1–10 [son01].mp3' ),
+				file( '01 - Intensities in Ten Cities [intensities].mp3' ),
 				file( '02 Anything At All.mp3' ),
-				file( 'Sonnets 21–30.mp3' ),
+				file( 'Trombone Detritus.mp3' ),
 				file( 'nothing-in-this-set.mp3' ),
 			] );
 		await expect( page.locator( '.dl[data-state="saved"]' ) ).toHaveCount(
@@ -336,14 +336,14 @@ test.describe( 'Front end', () => {
 	} ) => {
 		await page.goto( '/demo-set/' );
 		await expect( page.locator( 'h1' ) ).toHaveText(
-			'Shakespeare’s Sonnets'
+			'Compositions'
 		);
 		await expect( page.locator( '.track' ) ).toHaveCount( 10 );
 		await expect(
 			page.locator( '.track' ).first().locator( '.title' )
-		).toHaveText( 'Sonnets 1–10' ); // the first section of the fixture recording
+		).toHaveText( 'Intensities in Ten Cities' );
 		await expect( page.locator( 'footer.colophon' ) ).toContainText(
-			'Audio by LibriVox volunteers'
+			'Audio by Airmen of Note, United States Air Force Band'
 		);
 		await expect(
 			page.locator( 'footer.colophon a' ).first()
@@ -413,7 +413,7 @@ test.describe( 'Front end', () => {
 		await page.goto( '/demo-set/' );
 		await page.locator( '.track' ).nth( 1 ).click();
 		const audio = page.locator( '#audio' );
-		await expect( audio ).toHaveAttribute( 'src', /son02/ );
+		await expect( audio ).toHaveAttribute( 'src', /underground/ );
 		await expect( page.locator( '.track' ).nth( 1 ) ).toHaveClass(
 			/active/
 		);
@@ -422,7 +422,7 @@ test.describe( 'Front end', () => {
 			'true'
 		);
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 11–20'
+			'Underground'
 		);
 		await expect( page.locator( '#deck' ) ).toBeVisible();
 	} );
@@ -443,7 +443,7 @@ test.describe( 'Front end', () => {
 					)?.tracks?.[ 0 ];
 					if ( first ) {
 						first.title =
-							'Sonnets 1–10, read straight through with every line of every one of them and nothing left out';
+							'Intensities in Ten Cities, read straight through with every line of every one of them and nothing left out';
 					}
 					data = value;
 				},
@@ -700,7 +700,7 @@ test.describe( 'Front end', () => {
 				}
 			);
 			await expect( page.locator( '#now-title' ) ).toContainText(
-				'Sonnets 21–30'
+				'Trombone Detritus'
 			);
 		} finally {
 			await settings( false ); // back off for the other tests, whether this one passed or not
@@ -772,7 +772,7 @@ test.describe( 'Front end', () => {
 		const shared = await page.evaluate( () => window.__shared );
 		expect( shared ).toHaveLength( 1 );
 		expect( shared[ 0 ].url ).toMatch( /\/demo-set\/$/ );
-		expect( shared[ 0 ].title ).toContain( 'Shakespeare’s Sonnets' );
+		expect( shared[ 0 ].title ).toContain( 'Compositions' );
 		expect( shared[ 0 ].text ).toContain( '10 tracks' );
 	} );
 
@@ -838,12 +838,12 @@ test.describe( 'Front end', () => {
 		await page.goto( '/' );
 		const [ res ] = await Promise.all( [
 			page.waitForResponse( ( r ) => r.url().includes( 'fragment=1' ) ),
-			page.locator( 'a.set', { hasText: 'Shakespeare' } ).click(),
+			page.locator( 'a.set', { hasText: 'Compositions' } ).click(),
 		] );
 		expect( res.ok() ).toBeTruthy();
 		await expect( page ).toHaveURL( /\/demo-set\/$/ );
 		await expect( page.locator( 'h1' ) ).toHaveText(
-			'Shakespeare’s Sonnets'
+			'Compositions'
 		);
 		await expect( page.locator( '.track' ) ).toHaveCount( 10 );
 		await expect( page.locator( '.colophon' ) ).toContainText( 'Audio by' ); // the footer came with it
@@ -859,14 +859,14 @@ test.describe( 'Front end', () => {
 		await expect( page.locator( 'a.set' ).first() ).toBeVisible();
 		await expect( page.locator( '#deck' ) ).toBeVisible();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 1–10'
+			'Intensities in Ten Cities'
 		);
 		await page.goBack();
 		await expect( page.locator( 'h1' ) ).toHaveText(
-			'Shakespeare’s Sonnets'
+			'Compositions'
 		);
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 1–10'
+			'Intensities in Ten Cities'
 		); // no reload
 	} );
 
@@ -1001,7 +1001,7 @@ test.describe( 'The filament', () => {
 		await expectLit( page );
 		await page.goBack();
 		await expect( page.locator( 'h1' ) ).toHaveText(
-			'Shakespeare’s Sonnets'
+			'Compositions'
 		);
 		await expectLit( page );
 	} );
@@ -1030,7 +1030,7 @@ test.describe( 'The filament', () => {
 			// The back gesture, then forward again: history, not a tap.
 			await page.goBack();
 			await expect( page.locator( 'h1' ) ).toHaveText(
-				'Shakespeare’s Sonnets'
+				'Compositions'
 			);
 			await expectBurning( page );
 			await page.goForward();
@@ -1046,7 +1046,7 @@ test.describe( 'The filament', () => {
 
 			// And into the playing set from its card.
 			await page.goBack();
-			await page.locator( 'a.set', { hasText: 'Shakespeare' } ).click();
+			await page.locator( 'a.set', { hasText: 'Compositions' } ).click();
 			await expect( page.locator( '.track' ) ).toHaveCount( 10 );
 			await expectBurning( page );
 		} );
@@ -1320,7 +1320,7 @@ test.describe( 'Touch', () => {
 		page,
 	} ) => {
 		await page.goto( '/' );
-		await page.locator( 'a.set', { hasText: 'Shakespeare' } ).click();
+		await page.locator( 'a.set', { hasText: 'Compositions' } ).click();
 		await expect( page ).toHaveURL( /\/demo-set\/$/ );
 		await page.locator( '.track' ).first().click();
 
@@ -1391,7 +1391,7 @@ test.describe( 'Touch', () => {
 			page,
 		}, testInfo ) => {
 			await page.goto( '/' );
-			await page.locator( 'a.set', { hasText: 'Shakespeare' } ).click();
+			await page.locator( 'a.set', { hasText: 'Compositions' } ).click();
 			await expect( page ).toHaveURL( /\/demo-set\/$/ );
 			await page.locator( '.track' ).first().click();
 			await expandDeck( page );
@@ -1759,7 +1759,7 @@ test.describe( 'Touch', () => {
 		page,
 	} ) => {
 		await page.goto( '/' );
-		await page.locator( 'a.set', { hasText: 'Shakespeare' } ).click();
+		await page.locator( 'a.set', { hasText: 'Compositions' } ).click();
 		await expect( page ).toHaveURL( /\/demo-set\/$/ );
 		await page.locator( '.track' ).first().click();
 		const grabber = page.getByRole( 'button', { name: 'Close player' } );
@@ -1865,7 +1865,7 @@ test.describe( 'Touch', () => {
 		).toBe( true );
 		await page.locator( '#next' ).click(); // the player controls still work while it is open
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 31–40'
+			"It's a Brand New Day"
 		);
 		await page.locator( '#close-lyrics' ).click();
 		await expect( page.locator( '#lyrics' ) ).toBeHidden();
@@ -1879,7 +1879,7 @@ test.describe( 'Touch', () => {
 			Object.defineProperty( navigator, 'standalone', { value: true } )
 		);
 		await page.goto( '/' );
-		await page.locator( 'a.set', { hasText: 'Shakespeare' } ).click();
+		await page.locator( 'a.set', { hasText: 'Compositions' } ).click();
 		await expect( page.locator( '.track' ) ).toHaveCount( 10 );
 		await page.evaluate( () => {
 			const fire = ( type, clientX ) =>
