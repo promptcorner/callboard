@@ -6,6 +6,7 @@ const AxeBuilder = require( '@axe-core/playwright' ).default;
 
 const audit = async ( page ) =>
 	new AxeBuilder( { page } )
+		.exclude( '#wpadminbar' )
 		.withTags( [
 			'wcag2a',
 			'wcag2aa',

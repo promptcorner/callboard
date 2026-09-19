@@ -46,6 +46,7 @@ nocache_headers();
 	<?php wp_head(); ?>
 </head>
 <body <?php body_class( 'view-gate' ); ?>>
+<?php wp_body_open(); ?>
 <?php $callboard_gate_panel(); ?>
 <?php wp_footer(); ?>
 </body>

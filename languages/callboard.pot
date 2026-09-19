@@ -1495,7 +1495,11 @@ msgstr ""
 msgid "Open a set file"
 msgstr ""
 
-#: templates/index.php:22
+#: templates/index.php:23
+msgid "Skip links"
+msgstr ""
+
+#: templates/index.php:24
 msgid "Skip to content"
 msgstr ""
 

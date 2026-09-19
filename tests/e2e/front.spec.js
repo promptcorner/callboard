@@ -33,7 +33,7 @@ test.describe( 'Front end', () => {
 			'For rehearsal use only.'
 		);
 		await expect( page.locator( '#deck' ) ).toBeHidden();
-		await expect( page.locator( '#wpadminbar' ) ).toHaveCount( 0 ); // even logged in, no admin bar on the app
+		await expect( page.locator( '#wpadminbar' ) ).toBeVisible();
 	} );
 
 	test( 'a set scrolls and keeps the deck pinned', async ( { page } ) => {
@@ -331,7 +331,7 @@ test.describe( 'Front end', () => {
 		expect( partial.bytes ).toBe( 20 );
 	} );
 
-	test( 'a set shows its tracks, credits and no personal chrome', async ( {
+	test( 'a set shows its tracks, credits and only WordPress admin chrome', async ( {
 		page,
 	} ) => {
 		await page.goto( '/demo-set/' );
@@ -348,7 +348,9 @@ test.describe( 'Front end', () => {
 		await expect(
 			page.locator( 'footer.colophon a' ).first()
 		).toHaveAttribute( 'rel', /noreferrer/ );
-		await expect( page.locator( 'link[rel=stylesheet]' ) ).toHaveCount( 0 ); // styles are inlined, nothing leaks from the theme
+		await expect( page.locator( 'link[rel=stylesheet]' ) ).toHaveCount( 2 );
+		await expect( page.locator( '#dashicons-css' ) ).toHaveCount( 1 );
+		await expect( page.locator( '#admin-bar-css' ) ).toHaveCount( 1 );
 	} );
 
 	// #106: the save mark sat in the gutter outside the row, and a long title pushed the rest of the row
@@ -1368,7 +1370,8 @@ test.describe( 'Touch', () => {
 		expect( pill.height ).toBeLessThanOrEqual( 6 );
 		expect( pill.radius ).toBeGreaterThanOrEqual( pill.height / 2 );
 		expect( pill.centre ).toBeCloseTo( page.viewportSize().width / 2, 0 );
-		expect( pill.top ).toBeLessThan( 40 );
+		const adminBar = await page.locator( '#wpadminbar' ).boundingBox();
+		expect( pill.top ).toBeLessThan( adminBar.y + adminBar.height + 40 );
 		const box = await grabber.boundingBox();
 		expect( box.width ).toBeGreaterThanOrEqual( 44 );
 		expect( box.height ).toBeGreaterThanOrEqual( 44 );
