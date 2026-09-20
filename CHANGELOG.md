@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.7.0](https://github.com/promptcorner/callboard/compare/v2.6.0...v2.7.0) (2026-09-20)
+
+
+### Features
+
+* add native set publishing workflow ([#209](https://github.com/promptcorner/callboard/issues/209)) ([8b90c16](https://github.com/promptcorner/callboard/commit/8b90c16c0aae2061003a01b20ef9314009aa7725))
+* complete offline set-file transfer between phones ([#216](https://github.com/promptcorner/callboard/issues/216)) ([2908bc5](https://github.com/promptcorner/callboard/commit/2908bc566884ffc82e367a6c892a0d1c3af1b542))
+* integrate WordPress admin chrome with Callboard ([#210](https://github.com/promptcorner/callboard/issues/210)) ([8ddfeb9](https://github.com/promptcorner/callboard/commit/8ddfeb99f1b6297e578575d4c41c3e936ff2d8ec))
+* replace demo audio and generated artwork ([#213](https://github.com/promptcorner/callboard/issues/213)) ([7b1eed1](https://github.com/promptcorner/callboard/commit/7b1eed177cccbb867cf9e060d8a4d8ad74777c1a))
+* tighten 2.5.0 polish: accurate landing copy/nav, 664px mobile fixes, and safer local tooling ([#215](https://github.com/promptcorner/callboard/issues/215)) ([cff814f](https://github.com/promptcorner/callboard/commit/cff814f8124c39a6d5dc3f7b78cf0c3c141f6a50))
+
+
+### Dependencies
+
+* **deps:** bump adm-zip from 0.6.0 to 0.6.1 ([#212](https://github.com/promptcorner/callboard/issues/212)) ([5b9122a](https://github.com/promptcorner/callboard/commit/5b9122a7040e4a0bf5ae26ab8c07a765cf0d1e9d))
+
 ## [2.6.0](https://github.com/promptcorner/callboard/compare/v2.5.0...v2.6.0) (2026-09-14)
 
 
