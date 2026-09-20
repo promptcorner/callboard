@@ -49,15 +49,15 @@ test.describe( 'Set files', () => {
 		const manifest = JSON.parse( zip.get( 'manifest.json' ) );
 		expect( manifest ).toMatchObject( {
 			version: 1,
-			name: 'Shakespeare’s Sonnets',
+			name: 'Compositions',
 			slug: 'demo-set',
 		} );
 		expect( manifest.tracks ).toHaveLength( 10 );
 		expect( manifest.tracks[ 0 ] ).toMatchObject( {
 			index: 1,
-			id: 'son01',
-			title: 'Sonnets 1–10',
-			file: '01 - Sonnets 1–10 [son01].mp3',
+			id: 'intensities',
+			title: 'Intensities in Ten Cities',
+			file: '01 - Intensities in Ten Cities [intensities].mp3',
 		} );
 		for ( const t of manifest.tracks ) {
 			expect(
@@ -69,9 +69,9 @@ test.describe( 'Set files', () => {
 		}
 		expect(
 			Object.keys( JSON.parse( zip.get( 'levels.json' ) ) )
-		).toContain( 'son01' );
+		).toContain( 'intensities' );
 		expect( JSON.parse( zip.get( 'tempo.json' ) ) ).toMatchObject( {
-			son03: 96,
+			detritus: 96,
 		} );
 		expect(
 			Object.values( JSON.parse( zip.get( 'notes.json' ) ) ).flat().length
@@ -94,7 +94,7 @@ test.describe( 'Set files', () => {
 			await other.setOffline( true );
 			await phone.locator( '#open-set' ).setInputFiles( path );
 			await expect( phone.locator( '#toast' ) ).toContainText(
-				'Loaded 10 of 10 tracks into Shakespeare’s Sonnets',
+				'Loaded 10 of 10 tracks into Compositions',
 				{ timeout: 30000 }
 			);
 			await expect(
@@ -111,7 +111,7 @@ test.describe( 'Set files', () => {
 	} ) => {
 		await admin.visitAdminPage( 'edit.php', 'post_type=callboard_set' );
 		const href = await page
-			.locator( 'tr', { hasText: 'Shakespeare’s Sonnets' } )
+			.locator( 'tr', { hasText: 'Compositions' } )
 			.getByRole( 'link', { name: 'Export', exact: true } )
 			.getAttribute( 'href' );
 		const exported = await ( await page.request.get( href ) ).body();
@@ -126,7 +126,7 @@ test.describe( 'Set files', () => {
 			buffer: exported,
 		} );
 		await expect( page.locator( '#toast' ) ).toContainText(
-			'Loaded 10 of 10 tracks into Shakespeare’s Sonnets',
+			'Loaded 10 of 10 tracks into Compositions',
 			{ timeout: 30000 }
 		);
 		await expect(

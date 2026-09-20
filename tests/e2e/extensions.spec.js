@@ -92,7 +92,7 @@ test.describe( 'Extensions', () => {
 			'data-example-view',
 			'home'
 		);
-		await page.locator( 'a.set', { hasText: 'Shakespeare' } ).click();
+		await page.locator( 'a.set', { hasText: 'Compositions' } ).click();
 		await expect( rows ).toHaveCount( 10 );
 		await expect( page.locator( '.track .example-meta' ) ).toHaveCount(
 			10
@@ -594,7 +594,7 @@ test.describe( 'Extensions', () => {
 		// The first track is already in the player bar, so a later one is what loads and fires `track`.
 		await page.locator( '.track' ).nth( 2 ).click();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 21–30'
+			'Trombone Detritus'
 		);
 		await expect( page.locator( 'body' ) ).toHaveAttribute(
 			'data-example-track',
@@ -624,7 +624,7 @@ test.describe( 'Extensions', () => {
 			await context.setOffline( true );
 			await page.goto( '/' );
 			await expect(
-				page.locator( 'a.set', { hasText: 'Shakespeare’s Sonnets' } )
+				page.locator( 'a.set', { hasText: 'Compositions' } )
 			).toBeVisible();
 			await expect
 				.poll( () =>
@@ -720,7 +720,7 @@ test.describe( 'Callboard’s own features are extensions', () => {
 		).not.toContain( 'callboard/count-in' );
 		await page.locator( '.track' ).nth( 2 ).click();
 		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Sonnets 21–30'
+			'Trombone Detritus'
 		);
 		await expect( page.locator( '#deck' ) ).not.toHaveClass( /counting/ );
 	} );
@@ -757,7 +757,7 @@ test.describe( 'Callboard’s own features are extensions', () => {
 		await expandDeck( page );
 		await expect(
 			page.locator( '#deck-meta .example-quality' )
-		).toHaveText( /^Example · Sonnets 1–10$/ );
+		).toHaveText( /^Example · Intensities in Ten Cities$/ );
 		await expect( page.locator( '.quality-pill' ) ).toHaveCount( 0 );
 		expect(
 			await page.evaluate( () =>

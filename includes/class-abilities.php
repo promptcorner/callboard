@@ -50,7 +50,7 @@ final class Abilities {
 			self::CATEGORY,
 			array(
 				'label'       => __( 'Callboard', 'callboard' ),
-				'description' => __( 'Rehearsal playlists and calls.', 'callboard' ),
+				'description' => __( 'Music sets, tracks, and optional rehearsal calls.', 'callboard' ),
 			)
 		);
 	}

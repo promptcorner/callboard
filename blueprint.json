@@ -51,82 +51,82 @@
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/01 - Sonnets 1–10 [son01].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/01 - Intensities in Ten Cities [intensities].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/01%20-%20Sonnets%201%E2%80%9310%20%5Bson01%5D.mp3"
+        "url": "demo/01%20-%20Intensities%20in%20Ten%20Cities%20%5Bintensities%5D.mp3"
       }
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/02 - Sonnets 11–20 [son02].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/02 - Underground [underground].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/02%20-%20Sonnets%2011%E2%80%9320%20%5Bson02%5D.mp3"
+        "url": "demo/02%20-%20Underground%20%5Bunderground%5D.mp3"
       }
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/03 - Sonnets 21–30 [son03].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/03 - Trombone Detritus [detritus].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/03%20-%20Sonnets%2021%E2%80%9330%20%5Bson03%5D.mp3"
+        "url": "demo/03%20-%20Trombone%20Detritus%20%5Bdetritus%5D.mp3"
       }
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/04 - Sonnets 31–40 [son04].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/04 - It's a Brand New Day [new-day].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/04%20-%20Sonnets%2031%E2%80%9340%20%5Bson04%5D.mp3"
+        "url": "demo/04%20-%20It%27s%20a%20Brand%20New%20Day%20%5Bnew-day%5D.mp3"
       }
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/05 - Sonnets 41–50 [son05].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/05 - Stole Back My Soul [stole-back].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/05%20-%20Sonnets%2041%E2%80%9350%20%5Bson05%5D.mp3"
+        "url": "demo/05%20-%20Stole%20Back%20My%20Soul%20%5Bstole-back%5D.mp3"
       }
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/06 - Sonnets 51–60 [son06].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/06 - Sunk in Dars [sunk-in-dars].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/06%20-%20Sonnets%2051%E2%80%9360%20%5Bson06%5D.mp3"
+        "url": "demo/06%20-%20Sunk%20in%20Dars%20%5Bsunk-in-dars%5D.mp3"
       }
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/07 - Sonnets 61–70 [son07].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/07 - Little Dreamer, Big Dreams [little-dreamer].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/07%20-%20Sonnets%2061%E2%80%9370%20%5Bson07%5D.mp3"
+        "url": "demo/07%20-%20Little%20Dreamer%2C%20Big%20Dreams%20%5Blittle-dreamer%5D.mp3"
       }
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/08 - Sonnets 71–80 [son08].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/08 - Convergence [convergence].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/08%20-%20Sonnets%2071%E2%80%9380%20%5Bson08%5D.mp3"
+        "url": "demo/08%20-%20Convergence%20%5Bconvergence%5D.mp3"
       }
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/09 - Sonnets 81–90 [son09].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/09 - Hickory and Twine [hickory].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/09%20-%20Sonnets%2081%E2%80%9390%20%5Bson09%5D.mp3"
+        "url": "demo/09%20-%20Hickory%20and%20Twine%20%5Bhickory%5D.mp3"
       }
     },
     {
       "step": "writeFile",
-      "path": "/wordpress/wp-content/uploads/callboard/demo-set/10 - Sonnets 91–100 [son10].mp3",
+      "path": "/wordpress/wp-content/uploads/callboard/demo-set/10 - Everyday Adventures [everyday].mp3",
       "data": {
         "resource": "url",
-        "url": "demo/10%20-%20Sonnets%2091%E2%80%93100%20%5Bson10%5D.mp3"
+        "url": "demo/10%20-%20Everyday%20Adventures%20%5Beveryday%5D.mp3"
       }
     },
     {
