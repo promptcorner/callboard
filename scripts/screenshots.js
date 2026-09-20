@@ -254,15 +254,16 @@ Callboard\\Sets::flush();
 		waitUntil: 'networkidle',
 	} );
 	const row = page.locator( '.wp-list-table tbody a.row-title' ).first();
-	if ( await row.count() ) {
-		await row.click();
-		await page.waitForLoadState( 'networkidle' );
-		await page.waitForTimeout( 1500 );
-		await page.screenshot( { path: path.join( OUT, 'admin-call.png' ) } );
-		console.log( 'admin-call.png  2560x1920' );
-	} else {
-		console.log( 'admin-call.png  SKIPPED: no call posted' );
+	if ( ! ( await row.count() ) ) {
+		throw new Error(
+			'admin-call.png was not captured: the tests site has no posted call.'
+		);
 	}
+	await row.click();
+	await page.waitForLoadState( 'networkidle' );
+	await page.waitForTimeout( 1500 );
+	await page.screenshot( { path: path.join( OUT, 'admin-call.png' ) } );
+	console.log( 'admin-call.png  2560x1920' );
 	await desk.close();
 	await browser.close();
 } )();

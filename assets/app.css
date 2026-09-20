@@ -262,6 +262,7 @@ input[type=range]::-moz-range-thumb{width:var(--thumb);height:var(--thumb);borde
    as the row allows and never one pixel taller than it. A width alone would push the title under it. */
 .deck-cover img{display:block;width:100%;height:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;background:var(--surface-2)}
 .deck.is-expanded .deck-cover img{inline-size:auto;block-size:auto;width:auto;height:auto;max-inline-size:min(90vw,min(460px,calc(100dvh - 400px)));max-block-size:none;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+@media (max-height:664px){.deck.is-expanded .deck-cover img{max-inline-size:min(82vw,min(400px,calc(100dvh - 430px)))}}
 .deck-cover img:not([src]){visibility:hidden}
 /* The display line stops being a row and becomes a title block once there is a screen to fill. Left
    aligned, because a title and an artist are a stack of two facts and centring them makes the eye
@@ -595,6 +596,7 @@ body.is-offline #offline:not(.is-done){opacity:.5}
 /* offline: only saved tracks will play, so the others step back */
 body.is-offline .tracks li:not(:has(.dl[data-state="saved"])) .track{opacity:.4}
 body:not(.has-deck) .a2hs{bottom:calc(var(--safe-b) + 12px)}
+@media (max-height:664px){body.has-deck .a2hs{bottom:calc(var(--safe-b) + 12px);margin-bottom:0}}
 
 /* skip link: visible only when focused */
 .skip-link{position:absolute;left:12px;top:-100px;z-index:100;padding:10px 14px;border-radius:8px;background:var(--ink);color:var(--bg);font-weight:600;text-decoration:none}
