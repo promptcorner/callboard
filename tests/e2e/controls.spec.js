@@ -409,6 +409,36 @@ test.describe( 'Deck view: compact and expanded', () => {
 		);
 	} );
 
+	test( 'on a 664px-tall phone, Now Playing art is fully visible and the install hint stays off track rows', async ( {
+		page,
+	} ) => {
+		await page.setViewportSize( { width: 390, height: 664 } );
+		await page.goto( '/demo-set/' );
+		await page.locator( '.track' ).first().click();
+		await expandDeck( page );
+		const clipped = await page.locator( '#deck-cover' ).evaluate( ( cover ) => {
+			const rect = cover.getBoundingClientRect();
+			return rect.bottom > window.innerHeight + 1;
+		} );
+		expect( clipped ).toBe( false );
+		const tipOverlap = await page.evaluate( () => {
+			const tip = document.getElementById( 'a2hs' );
+			if ( ! tip || tip.hidden ) {
+				return false;
+			}
+			const t = tip.getBoundingClientRect();
+			const overlap = ( a, b ) =>
+				a.left < b.right &&
+				a.right > b.left &&
+				a.top < b.bottom &&
+				a.bottom > b.top;
+			return [ ...document.querySelectorAll( '.track' ) ]
+				.map( ( row ) => row.getBoundingClientRect() )
+				.some( ( row ) => overlap( t, row ) );
+		} );
+		expect( tipOverlap ).toBe( false );
+	} );
+
 	test( 'repeat cycles off, set, one, and remembers the choice', async ( {
 		page,
 	} ) => {

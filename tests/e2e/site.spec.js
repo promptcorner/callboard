@@ -288,4 +288,23 @@ test.describe( 'Landing page', () => {
 			expect( box.height / box.width ).toBeCloseTo( 1328 / 780, 1 );
 		}
 	} );
+
+	test( 'navigation and copy include the set handoff details', async ( {
+		page,
+	} ) => {
+		await page.goto( base );
+		const nav = page.locator( '.nav nav' );
+		await expect(
+			nav.getByRole( 'link', { name: 'Now Playing' } )
+		).toHaveAttribute( 'href', '#now-playing' );
+		await expect(
+			nav.getByRole( 'link', { name: 'Hand it to someone' } )
+		).toHaveAttribute( 'href', '#hand' );
+		await expect( page.locator( '#hand .lede' ) ).toContainText(
+			"The Share button sends the set's link"
+		);
+		await expect( page.locator( '#under .lede' ) ).toContainText(
+			"WordPress's hooks script and any extension scripts"
+		);
+	} );
 } );

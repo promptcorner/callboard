@@ -8,9 +8,7 @@
   "testsPort": 8891,
   "mappings": {
     "wp-content/uploads/callboard": "./tests/fixtures/callboard",
-    "wp-content/mu-plugins/callboard-protect-fixtures.php": "./tests/mu-plugins/callboard-protect-fixtures.php",
-    "wp-content/mu-plugins/callboard-example-extension.php": "./tests/mu-plugins/callboard-example-extension.php",
-    "wp-content/mu-plugins/callboard-example": "./tests/mu-plugins/callboard-example"
+    "wp-content/mu-plugins": "./tests/mu-plugins"
   },
   "config": {
     "WP_DEBUG": true,

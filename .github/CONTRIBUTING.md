@@ -18,7 +18,7 @@ npm run lint               # PHPCS (WordPress Coding Standards) + ESLint
 npm run test:e2e           # Playwright, desktop + iPhone viewport (wp-env must be running)
 ```
 
-The Playwright suite runs **before every commit**, from the hook in `.githooks` that `npm install` wires up, against your running wp-env, and again in GitHub Actions on every pull request. The hook catches problems before they reach a pull request; CI catches what a contributor's machine missed. Skip it for one commit with `CALLBOARD_SKIP_E2E=1 git commit ...`, or skip every hook with `--no-verify`. CI also runs PHPCS, ESLint, the spell check, and a lint of the workflow files. Plugin Check runs by hand from its workflow page.
+Playwright smoke tests run **before every commit**, from the hook in `.githooks` that `npm install` wires up, against your running wp-env, and the full suite runs in GitHub Actions on every pull request. The hook catches obvious problems before they reach a pull request; CI catches what a contributor's machine missed. Skip it for one commit with `CALLBOARD_SKIP_E2E=1 git commit ...`, or skip every hook with `--no-verify`. CI also runs PHPCS, ESLint, the spell check, and a lint of the workflow files. Plugin Check runs by hand from its workflow page.
 
 ## Pull requests
 
