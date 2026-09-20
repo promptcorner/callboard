@@ -18,7 +18,7 @@ const openDemoSet = async ( admin, page ) => {
 		.first()
 		.locator( 'a.row-title' )
 		.click();
-	return page.locator( '#callboard-tracks li' ).first();
+	return page.locator( '#callboard-track-list li' ).first();
 };
 // The track's details panel starts open when the track already has a tempo or a note, so only click it
 // when it is closed.
@@ -83,6 +83,7 @@ test.describe( 'Admin', () => {
 				0
 			);
 		} );
+
 		await admin.visitAdminPage(
 			'edit.php',
 			'post_type=callboard_set&page=callboard-settings'
@@ -114,6 +115,56 @@ test.describe( 'Admin', () => {
 		).toBe( '#3b82f6' );
 	} );
 
+	test( 'setup leads from the library to the live player', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage(
+			'edit.php',
+			'post_type=callboard_set&page=callboard-setup'
+		);
+		await expect(
+			page.getByRole( 'heading', {
+				name: 'Set up Callboard',
+			} )
+		).toBeVisible();
+		await expect( page.getByText( /published set/ ).first() ).toBeVisible();
+		await expect(
+			page.getByRole( 'link', { name: 'Manage sets' } ).first()
+		).toHaveAttribute( 'href', /post_type=callboard_set/ );
+		await expect(
+			page.getByRole( 'link', { name: 'Open player' } ).first()
+		).toHaveAttribute( 'href', /\/$/ );
+	} );
+
+	test( 'a new set starts with a Media Library track picker', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage(
+			'post-new.php',
+			'post_type=callboard_set'
+		);
+		await expect( page.locator( '#title-prompt-text' ) ).toHaveText(
+			'Name this set'
+		);
+		await expect(
+			page.getByText(
+				'No tracks yet. Add audio from your computer or choose files already in WordPress.'
+			)
+		).toBeVisible();
+		await page.getByRole( 'button', { name: 'Add tracks' } ).click();
+		await expect( page.locator( '.media-modal' ) ).toBeVisible();
+		await expect( page.locator( '.media-frame-title' ) ).toContainText(
+			'Choose tracks'
+		);
+		await expect( page.getByRole( 'tab', { name: 'Upload files' } ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'tab', { name: 'Media Library' } )
+		).toBeVisible();
+		await page.keyboard.press( 'Escape' );
+	} );
+
 	test( 'a set has a tracks meta box with reorderable, retitlable rows', async ( {
 		admin,
 		page,
@@ -133,7 +184,7 @@ test.describe( 'Admin', () => {
 		await expect( row ).toContainText( 'Shakespeare’s Sonnets' );
 		await expect( row.locator( 'td.tracks' ) ).toHaveText( '10' );
 		await row.locator( 'a.row-title' ).click();
-		const tracks = page.locator( '#callboard-tracks li' );
+		const tracks = page.locator( '#callboard-track-list li' );
 		await expect( tracks ).toHaveCount( 10 );
 		await tracks
 			.first()
@@ -162,7 +213,7 @@ test.describe( 'Admin', () => {
 		await first.locator( 'input[type=number]' ).fill( '100' );
 		await first.locator( 'textarea' ).fill( '0:03 Softer here' );
 		await saveSet( page );
-		const again = page.locator( '#callboard-tracks li' ).first();
+		const again = page.locator( '#callboard-track-list li' ).first();
 		await expect( again.locator( 'input[type=number]' ) ).toHaveValue(
 			'100'
 		);

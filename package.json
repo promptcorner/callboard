@@ -1,7 +1,7 @@
 {
   "name": "callboard",
   "version": "2.6.0",
-  "description": "Rehearsal tracks for a cast. A WordPress plugin.",
+  "description": "A focused music player for WordPress with offline listening and optional rehearsal tools.",
   "license": "GPL-2.0-or-later",
   "private": true,
   "scripts": {

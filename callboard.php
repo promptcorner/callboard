@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Callboard
- * Description: Rehearsal tracks for a cast. Sets of audio, a persistent player, installable as a home-screen app.
+ * Description: A focused music player for WordPress with offline listening and optional rehearsal tools.
  * Version: 2.6.0
  * Requires at least: 6.5
  * Requires PHP: 8.1
