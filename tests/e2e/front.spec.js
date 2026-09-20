@@ -1867,6 +1867,9 @@ test.describe( 'Touch', () => {
 		await expect( page.locator( '#now-title' ) ).toContainText(
 			"It's a Brand New Day"
 		);
+		await page.locator( '#wpadminbar' ).evaluate( ( el ) => {
+			el.style.pointerEvents = 'none';
+		} );
 		await page.locator( '#close-lyrics' ).click();
 		await expect( page.locator( '#lyrics' ) ).toBeHidden();
 	} );
