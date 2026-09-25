@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.0.0](https://github.com/promptcorner/callboard/compare/v2.7.0...v3.0.0) (2026-09-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove the A/B loop and lyrics ([#222](https://github.com/promptcorner/callboard/issues/222))
+* remove director's notes, count-in, and the Director role ([#220](https://github.com/promptcorner/callboard/issues/220))
+* remove calls, the board, and push notifications ([#218](https://github.com/promptcorner/callboard/issues/218))
+
+### Features
+
+* remove calls, the board, and push notifications ([#218](https://github.com/promptcorner/callboard/issues/218)) ([2d47346](https://github.com/promptcorner/callboard/commit/2d473468b7bfc9f8d2d26923573a7af40d8e9617))
+* remove director's notes, count-in, and the Director role ([#220](https://github.com/promptcorner/callboard/issues/220)) ([367c8ec](https://github.com/promptcorner/callboard/commit/367c8ec00ab6d700dae8b416a076a1e02d4c970a))
+* remove the A/B loop and lyrics ([#222](https://github.com/promptcorner/callboard/issues/222)) ([6c73a68](https://github.com/promptcorner/callboard/commit/6c73a68959bd85d31b009286d3e2245a7d9b97b9))
+
 ## [2.7.0](https://github.com/promptcorner/callboard/compare/v2.6.0...v2.7.0) (2026-09-20)
 
 
