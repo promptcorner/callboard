@@ -20,7 +20,7 @@ An open-source music player for WordPress. Publish an owned, app-like listening 
 
 - **Owned music player.** WordPress manages the library while Callboard replaces the theme on the front end with a focused listening app. Share one URL; listeners do not need an account by default.
 - **Sets.** A set is a post; its tracks are audio attachments. Add audio through the Media Library, fetch a playlist with WP-CLI, or import a folder.
-- **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, an A/B loop (two fingers on the wave, or the bracket keys), count-in, lyrics and director's notes in time with the track, AirPlay, and lock-screen controls. The tab title carries the track as well, for whoever has the board open behind a rehearsal PDF.
+- **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, an A/B loop (two fingers on the wave, or the bracket keys), lyrics in time with the track, AirPlay, and lock-screen controls. The tab title carries the track as well, for whoever has the board open behind a rehearsal PDF.
 - **Offline.** Save a set once. It plays from the phone with no connection, or load it from a file when there is no signal to save it with.
 - **Settings.** Site name, accent colour, badge, confetti behind a triple tap on the title. Hooks and template overrides for developers.
 
@@ -71,8 +71,6 @@ Design rules: animate only transform and opacity, never use font weight for stat
 | `_callboard_duration` | Seconds |
 | `_callboard_levels` | Loudness envelope, digits 0–9, ten per second. Drives the waveform and the filament, which auto-ranges to its own recent peak — rising at once, forgotten over ~6s — so a quiet reading lights it as fully as a loud mix. iPhones cannot analyse audio live |
 | `_callboard_lyrics`, `_callboard_lyrics_approved` | Timed lines from captions, shown after approval |
-| `callboard_note` comments on the track | Director's notes. Text is the comment body, the time into the track is `_callboard_at` comment meta, and author and date come from the comment. Legacy `_callboard_notes` post meta is still read as a fallback; `wp callboard migrate-notes` turns those arrays into comments |
-| `_callboard_bpm` | Tempo, for the count-in |
 | `_callboard_video_id`, `_callboard_source_url`, `_callboard_uploader` | Source. The uploader is also sent per track as `artist` — right for one playlist by one uploader, wrong for a set where every track differs |
 | `_callboard_codec`, `_callboard_reencoded` | What a fetch actually got (e.g. `aac`) and whether `ffmpeg` had to re-encode to get it — provenance, not a measurement of the file itself |
 
@@ -83,7 +81,7 @@ Design rules: animate only transform and opacity, never use font weight for stat
 <details>
 <summary>Import</summary>
 
-1. **Fetch.** `Fetcher` runs `yt-dlp` (and `ffmpeg` when it needs to) on a YouTube URL, playlist, or search and writes `wp-content/uploads/callboard/<slug>/`: the audio, a `manifest.json`, and sidecars keyed by video id (`levels.json`, `lyrics.json`, `notes.json`, `tempo.json`). It keeps the native m4a/AAC stream YouTube already serves rather than re-encoding it — re-encoding a lossy source is a pure loss, and can even inflate the bitrate while making it sound worse — and only asks `ffmpeg` to convert when a video truly offers no AAC audio, preferring m4a there too and falling back to mp3 only if the ffmpeg build cannot encode AAC at all. A search (yt-dlp's `ytsearch:` syntax) is narrowed to one candidate first: an auto-generated "Topic" upload, then a channel YouTube has verified, skipping obvious live versions, covers and remixes where another copy exists. Binary paths are filterable.
+1. **Fetch.** `Fetcher` runs `yt-dlp` (and `ffmpeg` when it needs to) on a YouTube URL, playlist, or search and writes `wp-content/uploads/callboard/<slug>/`: the audio, a `manifest.json`, and sidecars keyed by video id (`levels.json`, `lyrics.json`). It keeps the native m4a/AAC stream YouTube already serves rather than re-encoding it — re-encoding a lossy source is a pure loss, and can even inflate the bitrate while making it sound worse — and only asks `ffmpeg` to convert when a video truly offers no AAC audio, preferring m4a there too and falling back to mp3 only if the ffmpeg build cannot encode AAC at all. A search (yt-dlp's `ytsearch:` syntax) is narrowed to one candidate first: an auto-generated "Topic" upload, then a channel YouTube has verified, skipping obvious live versions, covers and remixes where another copy exists. Binary paths are filterable.
 2. **Import.** `Importer` reads that folder into posts. The folder is only an input; posts are the source of truth. Re-importing refreshes order, credits, and lyrics but keeps titles edited in the admin.
 
 Hosts that cannot run binaries: build the folder on a laptop with the same command, upload it, import. `Requests` is an admin queue of URLs; `wp callboard run` drains it where the tools exist. Because `Requests` only accepts a real YouTube URL, a search query is a WP-CLI-only way in for now.
@@ -112,7 +110,7 @@ The service worker precaches the shell and the home fragment. Saving a set strea
 
 `Gate` is the one decision about who may see the front end, and it is off by default: a link in a group chat is the whole setup, and that is the point. Turn on **Require a WordPress sign-in** and the answer becomes `is_user_logged_in()` and nothing else, so whatever sign-in the site already has guards the app too — Apple, Google, a membership plugin, passkeys through Two Factor and its WebAuthn provider. Core still ships no passkeys of its own. Also turn on **Only let in users with access to Callboard** and a signed-in user needs the `view_callboard` capability too. `callboard_can_view` overrides the settings; return `null` and the filter never has to know what they say.
 
-`Roles` adds two roles. **Director** can edit playlists and their track notes. **Cast member** can only open the front end. Each post type has its own capabilities (`edit_callboard_playlists`, `edit_callboard_import_requests`, and so on), and on activation or update every other role gets the ones that match the post capabilities it already has. Administrators, editors, authors and contributors keep what they could do before. Deleting the plugin removes the roles and capabilities.
+`Roles` adds one role, **Listener**, which can only open the front end, and gives `view_callboard` to every role that can edit posts. Sets and import requests use the ordinary post capabilities, so whoever can write posts can make sets. Deleting the plugin removes the role and the capability.
 
 A gated request answers 403 with `templates/gate.php` rather than redirecting to `wp-login.php`, which would drop the cast out of an installed app and into WordPress branding mid-session. Nothing about the sets escapes it: the script and its data are not enqueued, link previews are suppressed, and the document title falls back to the site name. Audio files keep their own upload addresses either way, so the gate guards the app, not the media.
 
@@ -151,7 +149,7 @@ A gated request answers 403 with `templates/gate.php` rather than redirecting to
 
 ## Developer API
 
-Features are extensions: an id, a version, and named contribution points shared between PHP and the page. Callboard's own count-in, quality readout and Home Screen badge are built that way, so a plugin can switch one off, replace it, or add its own beside them. [Extending Callboard](docs/extending.md) is the contract: the points, the lifecycle, events, state and commands, escaping, and what version 1 promises.
+Features are extensions: an id, a version, and named contribution points shared between PHP and the page. Callboard's own quality readout is built that way, so a plugin can switch one off, replace it, or add its own beside them. [Extending Callboard](docs/extending.md) is the contract: the points, the lifecycle, events, state and commands, escaping, and what version 1 promises.
 
 <details>
 <summary>PHP</summary>
@@ -205,7 +203,7 @@ On WordPress 6.9 and later, Callboard registers one ability with the [Abilities 
 
 | Ability | Capability | What it does |
 | --- | --- | --- |
-| `callboard/list-playlists` | `edit_callboard_playlists` | Lists published playlists with each track's id, position and title |
+| `callboard/list-playlists` | `edit_posts` | Lists published playlists with each track's id, position and title |
 
 </details>
 
@@ -230,7 +228,7 @@ Links go to the specifications.
 - [Service Workers](https://w3c.github.io/ServiceWorker/) with navigation preload, [Cache API](https://w3c.github.io/ServiceWorker/#cache-interface), [Fetch](https://fetch.spec.whatwg.org/) with [Range requests](https://www.rfc-editor.org/rfc/rfc9110.html#name-range-requests)
 - [Web App Manifest](https://www.w3.org/TR/appmanifest/), [display-mode](https://www.w3.org/TR/mediaqueries-5/#display-mode), [beforeinstallprompt](https://wicg.github.io/manifest-incubations/#installation-prompts), [Apple web app meta tags](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html)
 - [HTML media element](https://html.spec.whatwg.org/multipage/media.html), [Media Session](https://www.w3.org/TR/mediasession/), [Audio Session](https://w3c.github.io/audio-session/), [Remote Playback](https://www.w3.org/TR/remote-playback/), [TextTrack](https://html.spec.whatwg.org/multipage/media.html#text-track-api) for lyric cues
-- [Web Audio](https://www.w3.org/TR/webaudio/) for the level meter, count-in, and sample-accurate loop
+- [Web Audio](https://www.w3.org/TR/webaudio/) for the level meter and sample-accurate loop
 - [Web Locks](https://www.w3.org/TR/web-locks/) so one tab plays at a time, [Screen Wake Lock](https://www.w3.org/TR/screen-wake-lock/) while a loop is set or the lyrics sheet is open
 - [Storage](https://storage.spec.whatwg.org/) estimate and persist, [Streams](https://streams.spec.whatwg.org/) with `tee()` for save progress, [AbortController](https://dom.spec.whatwg.org/#interface-abortcontroller), [Web Storage](https://html.spec.whatwg.org/multipage/webstorage.html)
 - [Web Share](https://www.w3.org/TR/web-share/) for the set's link with a [Clipboard](https://www.w3.org/TR/clipboard-apis/) fallback, and for the track's own file, which reaches AirDrop and "Save to Files", [Vibration](https://www.w3.org/TR/vibration/), [WebKit switch control](https://webkit.org/blog/15054/an-html-switch-control/) for iPhone haptics
@@ -266,7 +264,6 @@ Browser and WordPress features considered for this plugin, with a verdict, so no
 <summary>Would add</summary>
 
 - [WebAuthn passkeys](https://www.w3.org/TR/webauthn-3/) to gate the front end. Today anyone with the URL can open the site. Passkeys give one-tap sign-in with no third party. OAuth and Sign in with Apple were considered and set aside; the Presence API answers who is present, not who may enter.
-- [WebRTC data channels](https://www.w3.org/TR/webrtc/) for live cues from the director to every phone, with WordPress only as the signaling server.
 - [AudioWorklet](https://www.w3.org/TR/webaudio/#AudioWorklet) for transposition without tempo change. The most requested feature and the largest.
 - [Media Capabilities](https://www.w3.org/TR/media-capabilities/) to choose between mp3 and m4a per device.
 - [Navigation API](https://html.spec.whatwg.org/multipage/nav-history-apis.html#navigation-api) to replace `pushState` routing. Safari 18.4+.
@@ -311,7 +308,7 @@ Browser and WordPress features considered for this plugin, with a verdict, so no
 
 Two suites, both against wp-env. PHPUnit in `tests/php/` covers the PHP, leading with the two boundaries that matter: what a `.callboard` file is allowed to unpack, and who the gate lets through. After those come the data model, settings sanitizing, and the helpers behind every line of text a cast reads. Playwright in `tests/e2e/` covers the browser. The pre-commit hook that `npm install` sets up runs a fast smoke pass, and GitHub Actions runs the full suite on every pull request. One test saves a set, takes the browser offline, and opens and plays it. Headless Chromium cannot decode mp3, so player tests assert on state, not audio.
 
-The demo fixture is *Compositions* (2012), ten jazz recordings performed by the Airmen of Note, United States Air Force Band. `tests/fixtures/jazz.js` downloads the source recordings from Wikimedia Commons, cuts compact 40-second excerpts, encodes them, and writes `manifest.json`, `levels.json`, `notes.json`, and `tempo.json` (it needs ffmpeg, ffprobe, and a network connection). The Air Force and Commons identify each composition, performance, and recording as a public-domain U.S. Government work; the manifest retains the composer, performer, source page, and [rights evidence](https://commons.wikimedia.org/wiki/Template:PD-USGov-Military-Air_Force). The source files are public domain in the United States rather than GPL-licensed; status outside the United States may vary. Two fixture sets remain: `demo-set` and `empty-set`. Covers are drawn by the plugin's `Art` class.
+The demo fixture is *Compositions* (2012), ten jazz recordings performed by the Airmen of Note, United States Air Force Band. `tests/fixtures/jazz.js` downloads the source recordings from Wikimedia Commons, cuts compact 40-second excerpts, encodes them, and writes `manifest.json`, `levels.json`, and `lyrics.json` (it needs ffmpeg, ffprobe, and a network connection). The Air Force and Commons identify each composition, performance, and recording as a public-domain U.S. Government work; the manifest retains the composer, performer, source page, and [rights evidence](https://commons.wikimedia.org/wiki/Template:PD-USGov-Military-Air_Force). The source files are public domain in the United States rather than GPL-licensed; status outside the United States may vary. Two fixture sets remain: `demo-set` and `empty-set`. Covers are drawn by the plugin's `Art` class.
 
 ## Source and maintainer
 

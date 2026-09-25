@@ -28,7 +28,6 @@ final class Plugin {
 		Extensions::register_hooks();
 		Post_Types::register_hooks();
 		Meta::register_hooks();
-		Notes::register_hooks();
 		Sets::register_hooks();
 		Importer::register_hooks();
 		Exporter::register_hooks();
@@ -60,8 +59,9 @@ final class Plugin {
 		update_option( 'callboard_version', CALLBOARD_VERSION, false );
 		delete_option( 'callboard_cue' ); // Left by the shared cue, which shipped in 2.4.0 and was then removed.
 		self::remove_notifications();
+		self::trash_notes();
 		Sets::flush();
-		Importer::import_all(); // sidecar files (levels, notes, tempo) added by a deploy land here.
+		Importer::import_all(); // sidecar files (levels, lyrics) added by a deploy land here.
 		Pwa::write_files();
 	}
 
@@ -83,6 +83,24 @@ final class Plugin {
 			wp_delete_post( (int) $id, true );
 		}
 		delete_option( 'callboard_vapid' );
+	}
+
+	/**
+	 * Director's notes were removed in 3.0.0. They are comments on the track, which only Callboard's
+	 * own filters kept out of the Comments screen and the comment counts, so they go to the trash:
+	 * out of sight, and still there to restore until WordPress empties it.
+	 */
+	private static function trash_notes(): void {
+		$notes = get_comments(
+			array(
+				'type'   => 'callboard_note',
+				'status' => 'all',
+				'fields' => 'ids',
+			)
+		);
+		foreach ( $notes as $id ) {
+			wp_trash_comment( (int) $id );
+		}
 	}
 
 	/**

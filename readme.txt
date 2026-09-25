@@ -16,7 +16,7 @@ Source and issues: https://github.com/promptcorner/callboard. Landing page: http
 
 Callboard turns WordPress into an owned, app-like music player: a library of sets, a track list per set, persistent playback while listeners move around, lock-screen controls, optional offline saving, and an "Add to Home Screen" flow on iPhone. The plugin renders the whole front end whatever theme is active, and keeps the site out of search engines.
 
-Independent artists, labels, and music publishers can run a focused listening experience on their own WordPress site instead of embedding a generic player. Rehearsal tools for casts and choirs—including timed notes and count-in—are included as a complete workflow on top of the player.
+Independent artists, labels, and music publishers can run a focused listening experience on their own WordPress site instead of embedding a generic player.
 
 = Sets and tracks =
 
@@ -28,7 +28,7 @@ Drop a folder into `wp-content/uploads/callboard/<slug>/` containing audio files
 
 = Settings =
 
-Site title is the app name. The Settings screen under Sets holds the tagline, the home page footer note, an optional emoji badge on the playing track, the confetti text (and optional hearts) released by triple-tapping a title, the iPhone install hint, and switches for offline saving and a count-in on tracks with a tempo.
+Site title is the app name. The Settings screen under Sets holds the tagline, the home page footer note, an optional emoji badge on the playing track, the confetti text (and optional hearts) released by triple-tapping a title, the iPhone install hint, and the switch for offline saving.
 
 = For developers =
 

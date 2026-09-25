@@ -70,12 +70,7 @@ test.describe( 'Set files', () => {
 		expect(
 			Object.keys( JSON.parse( zip.get( 'levels.json' ) ) )
 		).toContain( 'intensities' );
-		expect( JSON.parse( zip.get( 'tempo.json' ) ) ).toMatchObject( {
-			detritus: 96,
-		} );
-		expect(
-			Object.values( JSON.parse( zip.get( 'notes.json' ) ) ).flat().length
-		).toBeGreaterThan( 0 );
+		expect( zip.has( 'notes.json' ) ).toBe( false );
 
 		// Another phone, with nothing saved and no signal.
 		const other = await browser.newContext( {

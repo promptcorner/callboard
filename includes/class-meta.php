@@ -62,7 +62,7 @@ final class Meta {
 	 * The whole model: post type, then field, then what it is.
 	 *
 	 * Arrays carry no sanitize callback. Each is written through a dedicated sanitizer that
-	 * understands its shape — Importer::sanitize_notes() and sanitize_cues(), Calls' own save — and a
+	 * understands its shape — Importer::sanitize_cues() — and a
 	 * second pass here would have to re-derive that shape from nothing and would flatten it.
 	 *
 	 * @return array<string, array<string, array<string, mixed>>>
@@ -117,17 +117,6 @@ final class Meta {
 					'type'        => 'number',
 					'description' => 'Length in seconds, as the importer measured it.',
 					'sanitize'    => 'floatval',
-				),
-				'_callboard_bpm'          => array(
-					'type'        => 'integer',
-					'description' => 'Beats per minute for the count-in. Zero where no usable tempo was found.',
-					'sanitize'    => 'absint',
-				),
-				// Legacy shape. New notes are comments (Notes::TYPE); this array is still read as a
-				// fallback and left in place after migration so a downgrade still sees them.
-				'_callboard_notes'        => array(
-					'type'        => 'array',
-					'description' => 'Legacy director\'s notes array. Prefer callboard_note comments; kept readable so a downgrade survives.',
 				),
 				'_callboard_lyrics'       => array(
 					'type'        => 'array',

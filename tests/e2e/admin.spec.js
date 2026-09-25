@@ -20,15 +20,6 @@ const openDemoSet = async ( admin, page ) => {
 		.click();
 	return page.locator( '#callboard-track-list li' ).first();
 };
-// The track's details panel starts open when the track already has a tempo or a note, so only click it
-// when it is closed.
-const openTrackDetails = async ( track ) => {
-	if (
-		! ( await track.locator( 'details' ).evaluate( ( el ) => el.open ) )
-	) {
-		await track.locator( 'summary' ).click();
-	}
-};
 const saveSet = async ( page ) => {
 	await page.click( '#publish' );
 	await expect( page.locator( '#message' ) ).toContainText( /updated/i );
@@ -102,6 +93,14 @@ test.describe( 'Admin', () => {
 		await expect(
 			page.locator( 'meta[property="og:description"]' )
 		).toHaveAttribute( 'content', /Practice tracks/ );
+		// Three taps on the title release the confetti, hearts between the 22s.
+		for ( let n = 0; n < 3; n++ ) {
+			await page.locator( 'h1' ).click();
+		}
+		const confetti = page.locator( 'body > .tt' );
+		await expect( confetti ).toHaveCount( 8 );
+		await expect( confetti.filter( { hasText: '22' } ) ).toHaveCount( 4 );
+		await expect( confetti.filter( { hasText: '♥' } ) ).toHaveCount( 4 );
 		expect(
 			await page.evaluate( () =>
 				getComputedStyle( document.documentElement )
@@ -191,34 +190,6 @@ test.describe( 'Admin', () => {
 		await expect(
 			page.locator( '.track' ).first().locator( '.title' )
 		).toContainText( 'Renamed Tone' );
-	} );
-
-	test( 'a track keeps its tempo and dated director notes', async ( {
-		admin,
-		page,
-	} ) => {
-		undoAfter( async () => {
-			const first = await openDemoSet( admin, page );
-			await openTrackDetails( first );
-			await first.locator( 'input[type=number]' ).fill( '' );
-			await first.locator( 'textarea' ).fill( '' );
-			await saveSet( page );
-		} );
-		const first = await openDemoSet( admin, page );
-		await openTrackDetails( first );
-		await first.locator( 'input[type=number]' ).fill( '100' );
-		await first.locator( 'textarea' ).fill( '0:03 Softer here' );
-		await saveSet( page );
-		const again = page.locator( '#callboard-track-list li' ).first();
-		await expect( again.locator( 'input[type=number]' ) ).toHaveValue(
-			'100'
-		);
-		await expect( again.locator( 'textarea' ) ).toHaveValue(
-			'0:03 Softer here'
-		);
-		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).first().click();
-		await expect( page.locator( '#seek-marks .pin' ) ).toHaveCount( 1 );
 	} );
 
 	test( 'the import page queues a YouTube request', async ( {

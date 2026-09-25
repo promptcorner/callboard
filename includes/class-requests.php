@@ -36,12 +36,11 @@ final class Requests {
 		register_post_type(
 			self::TYPE,
 			array(
-				'public'          => false,
-				'show_ui'         => false,
-				'show_in_rest'    => false,
-				'supports'        => array( 'title' ),
-				'capability_type' => Roles::CAPABILITY_TYPES[ self::TYPE ],
-				'map_meta_cap'    => true,
+				'public'       => false,
+				'show_ui'      => false,
+				'show_in_rest' => false,
+				'supports'     => array( 'title' ),
+				'map_meta_cap' => true,
 			)
 		);
 	}

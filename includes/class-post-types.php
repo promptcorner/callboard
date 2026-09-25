@@ -30,7 +30,7 @@ final class Post_Types {
 		register_post_type(
 			self::SET,
 			array(
-				'labels'          => array(
+				'labels'        => array(
 					'name'               => __( 'Sets', 'callboard' ),
 					'singular_name'      => __( 'Set', 'callboard' ),
 					'add_new_item'       => __( 'Add New Set', 'callboard' ),
@@ -39,17 +39,16 @@ final class Post_Types {
 					'featured_image'     => __( 'Cover', 'callboard' ),
 					'set_featured_image' => __( 'Set cover', 'callboard' ),
 				),
-				'description'     => __( 'Albums, releases, and playlists published in the Callboard player.', 'callboard' ),
-				'public'          => false,
-				'show_ui'         => true,
-				'show_in_rest'    => false,
-				'menu_icon'       => 'dashicons-playlist-audio',
-				'menu_position'   => 5,
-				'supports'        => array( 'title', 'thumbnail', 'page-attributes' ),
-				'rewrite'         => false,
-				'has_archive'     => false,
-				'capability_type' => Roles::CAPABILITY_TYPES[ self::SET ],
-				'map_meta_cap'    => true,
+				'description'   => __( 'Albums, releases, and playlists published in the Callboard player.', 'callboard' ),
+				'public'        => false,
+				'show_ui'       => true,
+				'show_in_rest'  => false,
+				'menu_icon'     => 'dashicons-playlist-audio',
+				'menu_position' => 5,
+				'supports'      => array( 'title', 'thumbnail', 'page-attributes' ),
+				'rewrite'       => false,
+				'has_archive'   => false,
+				'map_meta_cap'  => true,
 			)
 		);
 		add_image_size( 'callboard-cover-512', 512, 512, true );

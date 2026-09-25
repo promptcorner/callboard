@@ -38,52 +38,6 @@
 		button.trigger( 'focus' );
 	};
 
-	const detailRow = ( id ) => {
-		const details = $( '<details>', { class: 'callboard-track-more' } );
-		details.append( $( '<summary>' ).text( config.details ) );
-
-		const tempo = $( '<p>' );
-		tempo.append(
-			$( '<label>', { for: `callboard-bpm-${ id }` } ).text(
-				config.tempo
-			),
-			document.createTextNode( ' ' ),
-			$( '<input>', {
-				type: 'number',
-				id: `callboard-bpm-${ id }`,
-				name: `callboard_bpm[${ id }]`,
-				min: 30,
-				max: 300,
-				step: 1,
-				class: 'small-text',
-			} ),
-			document.createTextNode( ' ' ),
-			$( '<span>', { class: 'description' } ).text( config.tempoHelp )
-		);
-
-		const notes = $( '<p>' );
-		notes.append(
-			$( '<label>', { for: `callboard-notes-${ id }` } ).text(
-				config.notes
-			),
-			$( '<textarea>', {
-				id: `callboard-notes-${ id }`,
-				name: `callboard_notes[${ id }]`,
-				rows: 3,
-				class: 'large-text code',
-				placeholder: config.notesPlaceholder,
-			} ),
-			$( '<span>', { class: 'description' } ).text( config.notesHelp )
-		);
-
-		return details.append(
-			$( '<div>', { class: 'callboard-track-fields' } ).append(
-				tempo,
-				notes
-			)
-		);
-	};
-
 	const addTrack = ( attachment ) => {
 		const id = Number( attachment.id );
 		if ( ! id || list.children( `[data-id="${ id }"]` ).length ) {
@@ -164,7 +118,7 @@
 			} ).text( config.remove )
 		);
 		controls.append( actions );
-		row.append( controls, detailRow( id ) ).appendTo( list );
+		row.append( controls ).appendTo( list );
 		updateState();
 	};
 

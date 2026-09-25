@@ -18,7 +18,7 @@ Admin surfaces use core WordPress headings, page actions, buttons, notices, form
 
 Admin pages use the standard `.wrap` container and a readable working width. Setup is a short vertical flow: compact listening header, then one core list table showing the library and listener-facing settings. Settings use the Settings API's headings and form tables without extra panel chrome.
 
-The Set editor stays inside the classic WordPress post editor. Its Tracks panel is a compact working list: numbered rows, editable titles, duration, keyboard reorder controls, quiet file actions, and progressively disclosed tempo and note fields. Audio enters through the core Media Library and removed tracks remain there.
+The Set editor stays inside the classic WordPress post editor. Its Tracks panel is a compact working list: numbered rows, editable titles, duration, keyboard reorder controls, and quiet file actions. Audio enters through the core Media Library and removed tracks remain there.
 
 ## Interaction
 

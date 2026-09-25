@@ -260,7 +260,7 @@ function callboard_rest_can_view(): bool {
 /**
  * One of Callboard's settings, with its default when the site never saved one.
  *
- * @param string $key Setting key, as on the settings screen: `count_in`, `offline`, `badge`, and so on.
+ * @param string $key Setting key, as on the settings screen: `offline`, `badge`, and so on.
  * @return mixed Null for a key that does not exist.
  */
 function callboard_get_setting( string $key ) {

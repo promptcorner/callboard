@@ -65,7 +65,6 @@ final class Extensions {
 	 * there as deprecated copies for API v1; the extension's own `ext` entry is the real one.
 	 */
 	private const TRACK_ALIASES = array(
-		'bpm'     => array( 'callboard/count-in', 'bpm' ),
 		'quality' => array( 'callboard/quality', 'quality' ),
 	);
 
@@ -124,7 +123,7 @@ final class Extensions {
 		foreach ( glob( CALLBOARD_DIR . 'includes/extensions/class-*.php' ) as $file ) {
 			require_once $file;
 		}
-		foreach ( array( Extension\Count_In::class, Extension\Quality::class ) as $extension ) {
+		foreach ( array( Extension\Quality::class ) as $extension ) {
 			$extension::register();
 		}
 		self::$first_party = false;

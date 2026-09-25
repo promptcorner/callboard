@@ -105,12 +105,19 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 			)
 		);
 		update_post_meta( $track, '_wp_attached_file', 'registry-track.mp3' );
-		update_post_meta( $track, '_callboard_bpm', 104 );
+		update_post_meta(
+			$track,
+			'_wp_attachment_metadata',
+			array(
+				'sample_rate' => 44100,
+				'bitrate'     => 320000,
+			)
+		);
 		return array( $set, $track );
 	}
 
 	public function test_callboards_own_features_are_registered_through_the_registry(): void {
-		foreach ( array( 'callboard/count-in', 'callboard/quality' ) as $id ) {
+		foreach ( array( 'callboard/quality' ) as $id ) {
 			$this->assertNotNull( callboard_get_extension( $id ), "{$id} is not registered" );
 		}
 		$this->assertSame( 1, CALLBOARD_API_VERSION );
@@ -233,7 +240,7 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 		$data = Callboard\Extensions::filter_app_data( array() );
 		$this->assertArrayNotHasKey( 'test/switchable', $data['ext'] );
 		$this->assertArrayNotHasKey( 'test/switchable', $data['extensions'] );
-		$this->assertArrayHasKey( 'callboard/count-in', $data['extensions'], 'switching one off leaves the others' );
+		$this->assertArrayHasKey( 'callboard/quality', $data['extensions'], 'switching one off leaves the others' );
 	}
 
 	public function test_track_and_set_data_reach_the_set_under_ext_and_the_old_fields_stay(): void {
@@ -250,33 +257,33 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 
 		$this->assertSame( array( 'id' => $track ), $built['tracks'][0]['ext']['test/data'] );
 		$this->assertSame( array( 'count' => 1 ), $built['ext']['test/data'] );
-		$this->assertSame( 104, $built['tracks'][0]['ext']['callboard/count-in']['bpm'] );
-		$this->assertSame( 104, $built['tracks'][0]['bpm'], 'the deprecated top-level copy is still there for API v1' );
-		$this->assertArrayHasKey( 'quality', $built['tracks'][0] );
+		$this->assertSame( '320 kbps 44.1kHz', $built['tracks'][0]['ext']['callboard/quality']['quality'] );
+		$this->assertSame( '320 kbps 44.1kHz', $built['tracks'][0]['quality'], 'the deprecated top-level copy is still there for API v1' );
+		$this->assertArrayNotHasKey( 'bpm', $built['tracks'][0], 'count-in was removed, and its copy with it' );
 	}
 
 	public function test_switching_an_extension_off_rebuilds_the_cached_sets(): void {
 		$this->set_with_a_track();
-		$bpm = static fn() => Sets::by_slug( 'registry-set' )['tracks'][0]['bpm'];
+		$quality = static fn() => Sets::by_slug( 'registry-set' )['tracks'][0]['quality'];
 
-		$this->assertSame( 104, $bpm() );
+		$this->assertSame( '320 kbps 44.1kHz', $quality() );
 
-		add_filter( 'callboard_extension_enabled', static fn( bool $on, string $id ) => $on && 'callboard/count-in' !== $id, 10, 2 );
+		add_filter( 'callboard_extension_enabled', static fn( bool $on, string $id ) => $on && 'callboard/quality' !== $id, 10, 2 );
 
-		$this->assertNull( $bpm(), 'the cache still held the tempo of an extension that is off' );
+		$this->assertNull( $quality(), 'the cache still held the quality of an extension that is off' );
 	}
 
 	public function test_alternating_fingerprints_use_cached_variants(): void {
 		$this->set_with_a_track();
-		$count_in = true;
-		$builds   = 0;
+		$quality = true;
+		$builds  = 0;
 		add_filter(
 			'callboard_extension_enabled',
-			static function ( bool $on, string $id ) use ( &$count_in ): bool {
-				if ( 'callboard/count-in' !== $id ) {
+			static function ( bool $on, string $id ) use ( &$quality ): bool {
+				if ( 'callboard/quality' !== $id ) {
 					return $on;
 				}
-				return $count_in;
+				return $quality;
 			},
 			10,
 			2
@@ -289,19 +296,19 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 			},
 			999
 		);
-		$read_bpm = static function ( bool $enabled ) use ( &$count_in ) {
-			$count_in = $enabled;
+		$read = static function ( bool $enabled ) use ( &$quality ) {
+			$quality = $enabled;
 			// Tests run in one PHP process; poke the registry to emulate a fresh request's active memo.
 			callboard_register_extension( 'test/poke', array( 'version' => '1.0.0' ) );
 			callboard_unregister_extension( 'test/poke' );
-			return Sets::by_slug( 'registry-set' )['tracks'][0]['bpm'];
+			return Sets::by_slug( 'registry-set' )['tracks'][0]['quality'];
 		};
 
-		$this->assertSame( 104, $read_bpm( true ) );
+		$this->assertSame( '320 kbps 44.1kHz', $read( true ) );
 		$this->assertSame( 1, $builds );
-		$this->assertNull( $read_bpm( false ) );
+		$this->assertNull( $read( false ) );
 		$this->assertSame( 2, $builds );
-		$this->assertSame( 104, $read_bpm( true ) );
+		$this->assertSame( '320 kbps 44.1kHz', $read( true ) );
 		$this->assertSame( 2, $builds, 'the first fingerprint variant should be reused' );
 	}
 

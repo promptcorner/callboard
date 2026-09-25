@@ -137,8 +137,6 @@ final class Importer {
 
 		$lyrics   = self::sidecar( $dir, 'lyrics' );
 		$levels   = self::sidecar( $dir, 'levels' );
-		$notes    = self::sidecar( $dir, 'notes' );
-		$tempo    = self::sidecar( $dir, 'tempo' );
 		$existing = array();
 		foreach ( Sets::track_posts( $set->ID ) as $track ) {
 			$existing[ (string) get_post_meta( $track->ID, '_callboard_video_id', true ) ] = $track->ID;
@@ -187,12 +185,6 @@ final class Importer {
 			}
 			if ( ! empty( $levels[ $video_id ] ) && is_string( $levels[ $video_id ] ) ) {
 				update_post_meta( $track_id, '_callboard_levels', preg_replace( '/[^0-9]/', '', $levels[ $video_id ] ) );
-			}
-			if ( isset( $tempo[ $video_id ] ) && is_numeric( $tempo[ $video_id ] ) ) {
-				update_post_meta( $track_id, '_callboard_bpm', self::clamp_bpm( (int) $tempo[ $video_id ] ) );
-			}
-			if ( ! empty( $notes[ $video_id ] ) && is_array( $notes[ $video_id ] ) && ! Notes::get( $track_id ) ) {
-				Notes::set( $track_id, $notes[ $video_id ] ); // Notes are edited in the admin; a folder only seeds them.
 			}
 		}
 
@@ -369,7 +361,7 @@ final class Importer {
 	}
 
 	/**
-	 * A JSON sidecar file next to the audio (lyrics.json, levels.json, notes.json, tempo.json), keyed by video id.
+	 * A JSON sidecar file next to the audio (lyrics.json, levels.json), keyed by video id. A file from before 3.0.0 may also carry notes.json and tempo.json, which are ignored.
 	 *
 	 * @param string $dir  Set folder.
 	 * @param string $name File name without extension.
@@ -378,38 +370,6 @@ final class Importer {
 	private static function sidecar( string $dir, string $name ): array {
 		$file = $dir . '/' . $name . '.json';
 		return file_exists( $file ) ? (array) json_decode( (string) file_get_contents( $file ), true ) : array(); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-	}
-
-	/**
-	 * Director notes: [{t: seconds, text, date: Y-m-d}, ...], sorted by time.
-	 *
-	 * @param array<int, mixed> $notes Raw notes.
-	 * @return array<int, array{t: float, text: string, date: string}>
-	 */
-	public static function sanitize_notes( array $notes ): array {
-		$out = array();
-		foreach ( $notes as $n ) {
-			if ( ! is_array( $n ) || ! isset( $n['text'] ) || '' === trim( (string) $n['text'] ) ) {
-				continue;
-			}
-			$date  = (string) ( $n['date'] ?? '' );
-			$out[] = array(
-				't'    => max( 0.0, round( (float) ( $n['t'] ?? 0 ), 1 ) ), // 0.0, not 0: max() hands back the argument it picked, so an int zero here would make a clamped note the one note whose time is not a float.
-				'text' => sanitize_text_field( (string) $n['text'] ),
-				'date' => preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ? $date : current_time( 'Y-m-d' ),
-			);
-		}
-		usort( $out, static fn( array $a, array $b ) => $a['t'] <=> $b['t'] );
-		return $out;
-	}
-
-	/**
-	 * A tempo the count-in can use, or 0 for none.
-	 *
-	 * @param int $bpm Beats per minute.
-	 */
-	public static function clamp_bpm( int $bpm ): int {
-		return $bpm >= 30 && $bpm <= 300 ? $bpm : 0;
 	}
 
 	/**

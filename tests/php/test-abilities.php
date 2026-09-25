@@ -92,13 +92,13 @@ class Test_Callboard_Abilities extends WP_UnitTestCase {
 
 	public function test_listing_playlists_needs_the_capability_to_edit_playlists(): void {
 		$this->assertFalse( $this->allowed( 'callboard/list-playlists', 'subscriber' ) );
-		$this->assertFalse( $this->allowed( 'callboard/list-playlists', Roles::CAST_MEMBER ), 'opening the front end is not enough' );
-		$this->assertTrue( $this->allowed( 'callboard/list-playlists', Roles::DIRECTOR ) );
+		$this->assertFalse( $this->allowed( 'callboard/list-playlists', Roles::LISTENER ), 'opening the front end is not enough' );
+		$this->assertTrue( $this->allowed( 'callboard/list-playlists', 'author' ) );
 	}
 
 	public function test_the_lists_match_their_output_schemas(): void {
 		$this->track();
-		wp_set_current_user( self::factory()->user->create( array( 'role' => Roles::DIRECTOR ) ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'author' ) ) );
 
 		foreach ( array(
 			'callboard/list-playlists' => 'playlists',
