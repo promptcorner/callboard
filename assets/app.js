@@ -2393,16 +2393,6 @@
 			return;
 		}
 		e.preventDefault();
-		if ( a.dataset.track ) {
-			// a number on the board: open its set and start it
-			go( a.href ).then( () => {
-				const set = setBy( routeOf( a.href ) );
-				if ( set ) {
-					startSet( set, +a.dataset.track );
-				}
-			} );
-			return;
-		}
 		go( a.href );
 	} );
 
@@ -2479,14 +2469,7 @@
 	} );
 	paintNet();
 
-	// ---- Notifications (Web Push). The app badge is a contribution point: see paintBadge().
-	const urlBase64ToUint8Array = ( b64 ) => {
-		const s = ( b64 + '='.repeat( ( 4 - ( b64.length % 4 ) ) % 4 ) )
-			.replace( /-/g, '+' )
-			.replace( /_/g, '/' );
-		const raw = atob( s );
-		return Uint8Array.from( [ ...raw ].map( ( c ) => c.charCodeAt( 0 ) ) );
-	};
+	// ---- Toasts.
 	const toastEl = $( 'toast' );
 	let toastTimer = 0;
 	function toast( msg ) {
@@ -2500,104 +2483,6 @@
 			toastEl.hidden = true;
 		}, 4000 );
 	}
-	async function bindNotify() {
-		const btn = $( 'notify' );
-		if ( ! btn ) {
-			return;
-		}
-		const iosTab = isIOS && ! standalone; // Safari's tab: push needs the Home Screen app; the bell explains
-		if (
-			! iosTab &&
-			( ! G.push ||
-				! ( 'serviceWorker' in navigator ) ||
-				! ( 'PushManager' in window ) ||
-				! ( 'Notification' in window ) )
-		) {
-			btn.hidden = true; // no push in this browser at all: the one case the bell leaves
-			return;
-		}
-		const reg = iosTab ? null : await navigator.serviceWorker.ready;
-		let sub = reg ? await reg.pushManager.getSubscription() : null;
-		const paintBell = () => {
-			btn.dataset.state = sub ? 'on' : '';
-			btn.setAttribute( 'aria-pressed', sub ? 'true' : 'false' );
-			btn.setAttribute( 'aria-label', sub ? T.notify_on : T.notify );
-		};
-		paintBell();
-		btn.onclick = async () => {
-			haptic(); // now, while this is still the tap; nothing after the awaits below can
-			if ( iosTab ) {
-				return toast( T.notify_home );
-			}
-			if ( Notification.permission === 'denied' ) {
-				return toast( T.notify_denied );
-			}
-			btn.disabled = true;
-			try {
-				if ( sub ) {
-					await fetch( `${ G.push.api }unsubscribe`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify( { endpoint: sub.endpoint } ),
-					} );
-					await sub.unsubscribe();
-					sub = null;
-				} else if (
-					( await Notification.requestPermission() ) !== 'granted'
-				) {
-					toast( T.notify_denied );
-				} else {
-					sub = await reg.pushManager.subscribe( {
-						userVisibleOnly: true,
-						applicationServerKey: urlBase64ToUint8Array(
-							G.push.key
-						),
-					} );
-					const r = await fetch( `${ G.push.api }subscribe`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify( sub.toJSON() ),
-					} );
-					if ( ! r.ok ) {
-						await sub.unsubscribe();
-						sub = null;
-					} else {
-						toast( T.notify_on );
-					}
-				}
-			} catch {}
-			btn.disabled = false;
-			paintBell();
-		};
-	}
-
-	// The board's "in 2 days" is rendered by the server and refreshed here, so a copy the worker kept overnight reads right.
-	function paintCalls() {
-		const rel = window.Intl?.RelativeTimeFormat
-			? new Intl.RelativeTimeFormat(
-					document.documentElement.lang || 'en',
-					{
-						numeric: 'auto',
-					}
-			  )
-			: null;
-		document.querySelectorAll( '.call-rel[data-when]' ).forEach( ( el ) => {
-			const s = ( new Date( el.dataset.when ) - Date.now() ) / 1000;
-			if ( ! rel || Math.abs( s ) < 300 ) {
-				return; // "now" from the server stands
-			}
-			const units = [
-				[ 86400 * 7, 'week' ],
-				[ 86400, 'day' ],
-				[ 3600, 'hour' ],
-				[ 60, 'minute' ],
-			];
-			const [ size, unit ] =
-				units.find( ( [ n ] ) => Math.abs( s ) >= n ) || units[ 3 ];
-			el.textContent = rel.format( Math.round( s / size ), unit );
-		} );
-	}
-
 	// ---- The tab title. A cast member has the board open behind a rehearsal PDF and a group chat, and
 	// the tab strip is the only part of the app they can see. So it carries the track, not the view.
 	//
@@ -2776,13 +2661,11 @@
 		$( 'topbar-title' ).textContent = set ? set.name : G.site;
 		if ( ! set ) {
 			bindOpenSet();
-			bindNotify().catch( () => {} );
 			paintHomeOffline().catch( () => {} );
 			paintHomeResume();
-			paintCalls();
 		}
 		if ( set?.tracks.length ) {
-			// A director's note notification links to ?track=2&at=72: open that track at that time.
+			// A link to ?track=2&at=72 opens that track at that time.
 			const params = new URLSearchParams( location.search ),
 				noteIndex = /^\d+$/.test( params.get( 'track' ) || '' )
 					? Number( params.get( 'track' ) )
@@ -4046,42 +3929,8 @@
 		}
 		box.hidden = ! box.childElementCount;
 	}
-	// The Home Screen badge is the sum of what extensions contribute. With no contributors the page
-	// leaves the badge alone; with contributors, zero clears it.
-	async function paintBadge() {
-		if (
-			! ( 'setAppBadge' in navigator ) ||
-			! hooks?.hasFilter( 'callboard.badge' )
-		) {
-			return;
-		}
-		/**
-		 * Contributions to the Home Screen badge: numbers, or promises of them, summed.
-		 */
-		const list = applyFilters( 'callboard.badge', [], callboard );
-		if ( ! Array.isArray( list ) || ! list.length ) {
-			return;
-		}
-		const values = await Promise.all(
-			list.map( ( v ) => Promise.resolve( v ).catch( () => 0 ) )
-		);
-		const n = values.reduce(
-			( sum, v ) =>
-				sum +
-				( Number.isFinite( +v ) && +v > 0 ? Math.floor( +v ) : 0 ),
-			0
-		);
-		( n ? navigator.setAppBadge( n ) : navigator.clearAppBadge() ).catch(
-			() => {}
-		);
-	}
-	document.addEventListener( 'visibilitychange', () => {
-		if ( document.visibilityState === 'visible' ) {
-			paintBadge();
-		}
-	} );
 	function invalidate( ...points ) {
-		const all = [ 'trackBadges', 'trackMeta', 'nowPlayingMeta', 'badge' ];
+		const all = [ 'trackBadges', 'trackMeta', 'nowPlayingMeta' ];
 		const which = points.length ? points : all;
 		if (
 			which.includes( 'trackBadges' ) ||
@@ -4091,9 +3940,6 @@
 		}
 		if ( which.includes( 'nowPlayingMeta' ) ) {
 			renderNowPlayingMeta();
-		}
-		if ( which.includes( 'badge' ) ) {
-			paintBadge();
 		}
 		which
 			.filter( ( p ) => ! all.includes( p ) )
@@ -4244,14 +4090,6 @@
 				)
 			);
 		} );
-		if ( args.badge ) {
-			addFilter( 'callboard.badge', args.badge, ( cb ) =>
-				guard(
-					( list, app ) => list.concat( [ cb( app ) ] ),
-					( list ) => list
-				)
-			);
-		}
 		if ( args.beforePlay ) {
 			addFilter(
 				'callboard.beforePlay',
@@ -4485,6 +4323,9 @@
 			return;
 		}
 		readied = true;
+		// The icon badge counted unread calls until 3.0 removed them. Nothing sets it now, so clear any left over.
+		// The page does it rather than the worker: Chromium kills a renderer whose worker asks.
+		navigator.clearAppBadge?.().catch( () => {} );
 		/**
 		 * The page and every deferred script, extensions included, have run. Detail: { view, set }.
 		 */
@@ -4492,7 +4333,6 @@
 			view: view() ? 'set' : 'home',
 			set: view(),
 		} );
-		paintBadge();
 	};
 	if ( document.readyState === 'complete' ) {
 		ready();
@@ -4619,118 +4459,6 @@
 					},
 				];
 			},
-		},
-	} );
-} )();
-
-// ---- callboard/badging. A notification puts a number on the Home Screen icon; opening the app is
-// reading what it was for. This contributes zero, and contributions that add up to zero clear the badge.
-( () => {
-	/**
-	 * Badging, as an extension: a badge contributor of zero.
-	 */
-	window.callboard?.registerExtension( 'callboard/badging', {
-		version: '1.0.0',
-		apiVersion: 1,
-		badge: () => 0,
-	} );
-} )();
-
-// ---- callboard/practice. Anonymous practice counts per track: times opened, loops set and seconds played.
-// The page sends them to the site in batches. Runs only when the "Count practice" setting is on.
-( () => {
-	const cb = window.callboard;
-	if ( ! cb?.isActive( 'callboard/practice' ) || ! navigator.sendBeacon ) {
-		return;
-	}
-	const counts = new Map(); // track id -> { opens, loops, seconds }
-	let playing = null; // { id, since } while a track plays
-	// An open is the first play of a track after it loads. The page can load a track before this runs,
-	// and resuming after a pause is not a new open.
-	let opened = null;
-	const entry = ( id ) => {
-		if ( ! counts.has( id ) ) {
-			counts.set( id, { opens: 0, loops: 0, seconds: 0 } );
-		}
-		return counts.get( id );
-	};
-	// Add the time played so far to the playing track, and keep timing it.
-	const tick = () => {
-		if ( playing ) {
-			const now = performance.now();
-			entry( playing.id ).seconds += ( now - playing.since ) / 1000;
-			playing.since = now;
-		}
-	};
-	const stop = () => {
-		tick();
-		playing = null;
-	};
-	const send = () => {
-		tick();
-		const config = cb.data( 'callboard/practice' );
-		const body = [ ...counts ]
-			.map( ( [ track, c ] ) => ( {
-				track,
-				opens: c.opens,
-				loops: c.loops,
-				seconds: Math.round( c.seconds ),
-			} ) )
-			.filter( ( c ) => c.opens || c.loops || c.seconds );
-		if ( ! body.length || ! config?.url ) {
-			return;
-		}
-		const url = new URL( config.url, window.location.href );
-		if ( config.nonce ) {
-			url.searchParams.set( '_wpnonce', config.nonce ); // sendBeacon cannot set headers
-		}
-		// Sent as text/plain, which a beacon can send without a CORS preflight in every browser.
-		const queued = navigator.sendBeacon(
-			url.href,
-			new Blob( [ JSON.stringify( body ) ], { type: 'text/plain' } )
-		);
-		if ( queued ) {
-			counts.clear();
-		}
-	};
-	/**
-	 * Practice counts, as an extension: listens to player events and sends totals.
-	 */
-	cb.registerExtension( 'callboard/practice', {
-		version: '1.0.0',
-		apiVersion: 1,
-		events: {
-			track() {
-				stop();
-				opened = null;
-			},
-			loop( range ) {
-				const track = cb.state.track;
-				if ( range && track?.id ) {
-					entry( track.id ).loops++;
-				}
-			},
-			play( { track } ) {
-				stop();
-				if ( track?.id ) {
-					if ( opened !== track.id ) {
-						entry( track.id ).opens++;
-						opened = track.id;
-					}
-					playing = { id: track.id, since: performance.now() };
-				}
-			},
-			pause: stop,
-			ended: stop,
-		},
-		setup() {
-			document.addEventListener( 'visibilitychange', () => {
-				if ( document.visibilityState === 'hidden' ) {
-					send();
-				}
-			} );
-			window.addEventListener( 'pagehide', send );
-			setInterval( send, 5 * 60 * 1000 );
 		},
 	} );
 } )();

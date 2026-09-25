@@ -29,12 +29,10 @@ final class Plugin {
 		Post_Types::register_hooks();
 		Meta::register_hooks();
 		Notes::register_hooks();
-		Calls::register_hooks();
 		Sets::register_hooks();
 		Importer::register_hooks();
 		Exporter::register_hooks();
 		Requests::register_hooks();
-		Push::register_hooks();
 		Abilities::register_hooks();
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			Cli::register();
@@ -61,9 +59,30 @@ final class Plugin {
 		}
 		update_option( 'callboard_version', CALLBOARD_VERSION, false );
 		delete_option( 'callboard_cue' ); // Left by the shared cue, which shipped in 2.4.0 and was then removed.
+		self::remove_notifications();
 		Sets::flush();
 		Importer::import_all(); // sidecar files (levels, notes, tempo) added by a deploy land here.
 		Pwa::write_files();
+	}
+
+	/**
+	 * Notifications were removed in 3.0.0. Their subscriptions are live push credentials with nothing
+	 * left to send to them, so they go, with the server's signing keys. Calls stay in the database,
+	 * like any other content a removed feature leaves behind.
+	 */
+	private static function remove_notifications(): void {
+		$subscriptions = get_posts(
+			array(
+				'post_type'      => 'callboard_subscriber',
+				'post_status'    => 'private',
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+			)
+		);
+		foreach ( $subscriptions as $id ) {
+			wp_delete_post( (int) $id, true );
+		}
+		delete_option( 'callboard_vapid' );
 	}
 
 	/**

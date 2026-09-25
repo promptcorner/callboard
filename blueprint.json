@@ -131,7 +131,7 @@
     },
     {
       "step": "runPHP",
-      "code": "<?php require '/wordpress/wp-load.php'; update_option( 'callboard_settings', array( 'tagline' => 'Rehearsal tracks', 'footer_note' => 'For rehearsal use only.', 'badge' => '★', 'confetti' => '22', 'hearts' => true, 'show_hint' => false, 'offline' => true, 'push' => false, 'notify_new_sets' => false, 'notify_calls' => false ) ); Callboard\\Importer::import_all(); $call = wp_insert_post( array( 'post_type' => 'callboard_call', 'post_status' => 'publish', 'post_title' => 'Act I run', 'post_content' => 'Warm-up at 6:45. Bring scripts and a pencil; we are setting the Act I transitions.' ) ); update_post_meta( $call, '_callboard_when', wp_date( 'Y-m-d', strtotime( '+2 days' ) ) . ' 19:00' ); update_post_meta( $call, '_callboard_where', 'Room 204' ); $ids = get_posts( array( 'post_type' => 'attachment', 'post_mime_type' => 'audio', 'posts_per_page' => 2, 'orderby' => 'menu_order', 'order' => 'ASC', 'fields' => 'ids' ) ); update_post_meta( $call, '_callboard_numbers', $ids ); flush_rewrite_rules(); ?>"
+      "code": "<?php require '/wordpress/wp-load.php'; update_option( 'callboard_settings', array( 'tagline' => 'Rehearsal tracks', 'footer_note' => 'For rehearsal use only.', 'badge' => '★', 'confetti' => '22', 'hearts' => true, 'show_hint' => false, 'offline' => true ) ); Callboard\\Importer::import_all(); flush_rewrite_rules(); ?>"
     }
   ]
 }

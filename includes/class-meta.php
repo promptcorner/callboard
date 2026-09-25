@@ -18,8 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * edits one, and gives a reader somewhere to look that is not a grep.
  *
  * `show_in_rest` is false on every one of them, deliberately. A set's contents are the reason the
- * gate in Gate exists, and the subscriber fields below are live Web Push credentials — an endpoint
- * and the keys that sign for it. None of that belongs on a public endpoint, and the plugin already
+ * gate in Gate exists, and none of that belongs on a public endpoint, and the plugin already
  * closes anonymous REST elsewhere. Registering the meta without saying so would quietly reopen the
  * question every time somebody adds a field.
  */
@@ -130,10 +129,6 @@ final class Meta {
 					'type'        => 'array',
 					'description' => 'Legacy director\'s notes array. Prefer callboard_note comments; kept readable so a downgrade survives.',
 				),
-				'_callboard_practice'     => array(
-					'type'        => 'array',
-					'description' => 'Anonymous practice counts by hour in the site time zone: { "Y-m-d H": { opens, loops, seconds } }. Written only while the Count practice setting is on.',
-				),
 				'_callboard_lyrics'       => array(
 					'type'        => 'array',
 					'description' => 'Caption cues as [start, end, text], from the source\'s own auto-captions.',
@@ -180,23 +175,6 @@ final class Meta {
 				),
 			),
 
-			Calls::TYPE     => array(
-				'_callboard_when'    => array(
-					'type'        => 'string',
-					'description' => 'When the call is, as Y-m-d H:i in the site\'s time zone. A call without one is a plain notice.',
-					'sanitize'    => $text,
-				),
-				'_callboard_where'   => array(
-					'type'        => 'string',
-					'description' => 'Where to be.',
-					'sanitize'    => $text,
-				),
-				'_callboard_numbers' => array(
-					'type'        => 'array',
-					'description' => 'Attachment IDs of the tracks being worked, so a call can link straight to them.',
-				),
-			),
-
 			Requests::TYPE  => array(
 				'_callboard_url'    => array(
 					'type'        => 'string',
@@ -216,31 +194,6 @@ final class Meta {
 				'_callboard_log'    => array(
 					'type'        => 'string',
 					'description' => 'What the fetch tool said, kept so a failure can be read without SSH.',
-				),
-			),
-
-			// Live Web Push credentials. Never exposed, never in REST, and the reason the blanket
-			// show_in_rest above is a decision rather than a default.
-			Push::TYPE      => array(
-				'_callboard_endpoint' => array(
-					'type'        => 'string',
-					'description' => 'Push service endpoint for one subscribed browser.',
-					'sanitize'    => $url,
-				),
-				'_callboard_p256dh'   => array(
-					'type'        => 'string',
-					'description' => 'That subscription\'s public key.',
-					'sanitize'    => $text,
-				),
-				'_callboard_auth'     => array(
-					'type'        => 'string',
-					'description' => 'That subscription\'s auth secret.',
-					'sanitize'    => $text,
-				),
-				'_callboard_ua'       => array(
-					'type'        => 'string',
-					'description' => 'The browser that subscribed, truncated, so a stale subscription can be recognised.',
-					'sanitize'    => $text,
 				),
 			),
 		);

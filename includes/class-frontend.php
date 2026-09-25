@@ -62,10 +62,6 @@ final class Frontend {
 			'url'   => wp_make_link_relative( Pwa::sw_url() ),
 			'scope' => Pwa::scope(),
 		);
-		$data['push']     = Settings::get( 'push' ) && Push::available() ? array(
-			'key' => Push::keys()['publicKey'] ?? '',
-			'api' => esc_url_raw( rest_url( 'callboard/v1/push/' ) ),
-		) : null;
 		$data['text']     = array(
 			'play_all'       => __( 'Play all', 'callboard' ),
 			'copied'         => __( 'Link copied', 'callboard' ),
@@ -122,12 +118,8 @@ final class Frontend {
 			'set_newer'      => __( 'That set file needs a newer version of Callboard', 'callboard' ),
 			/* translators: %s: set name. */
 			'set_elsewhere'  => __( '%s is not on this site', 'callboard' ),
-			'notify'         => __( 'Notify me about new sets', 'callboard' ),
 			/* translators: %s: track title. */
 			'left_off'       => __( 'Left off at %s', 'callboard' ),
-			'notify_on'      => __( 'Notifications on', 'callboard' ),
-			'notify_home'    => __( 'Add to Home Screen first, then turn on notifications from there.', 'callboard' ),
-			'notify_denied'  => __( 'Notifications are blocked in your browser settings.', 'callboard' ),
 		);
 		/**
 		 * Everything the front end knows: site, sets, settings, text. Add a field here and it is on window.CALLBOARD.

@@ -57,7 +57,6 @@
 			// Fires this extension's own event.
 			ping: ( word ) => cb.emit( 'example.demo.pinged', { word } ),
 		},
-		badge: () => 3,
 	} );
 
 	cb.registerExtension( 'example/late', {

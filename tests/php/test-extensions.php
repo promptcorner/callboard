@@ -110,7 +110,7 @@ class Test_Callboard_Extensions extends WP_UnitTestCase {
 	}
 
 	public function test_callboards_own_features_are_registered_through_the_registry(): void {
-		foreach ( array( 'callboard/count-in', 'callboard/quality', 'callboard/badging' ) as $id ) {
+		foreach ( array( 'callboard/count-in', 'callboard/quality' ) as $id ) {
 			$this->assertNotNull( callboard_get_extension( $id ), "{$id} is not registered" );
 		}
 		$this->assertSame( 1, CALLBOARD_API_VERSION );

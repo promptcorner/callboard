@@ -24,23 +24,17 @@ test.describe( 'PWA and previews', () => {
 		expect( manifest.short_name.length ).toBeLessThanOrEqual( 12 );
 	} );
 
-	test( 'service worker is served from the root with push handlers', async ( {
+	test( 'service worker is served from the root, with no push handlers', async ( {
 		request,
 	} ) => {
 		const res = await request.get( '/sw.js' );
 		expect( res.ok() ).toBeTruthy();
 		const body = await res.text();
-		expect( body ).toMatch( /addEventListener\(\s*'push'/ );
 		expect( body ).toMatch( /addEventListener\(\s*'fetch'/ );
 		expect( body ).toContain( 'navigationPreload' );
 		expect( body ).toMatch( /const ASSETS = \[.*\/manifest\.json.*\]/ ); // shell precache, versioned
-		expect( body ).toContain( 'd.notification' ); // declarative Web Push payloads
-		expect( body ).toMatch(
-			/addEventListener\(\s*'pushsubscriptionchange'/
-		);
-		expect( body ).toMatch(
-			/const PUSH_API = '[^']*callboard\/v1\/push\/'/
-		); // the worker knows where to re-register
+		expect( body ).not.toMatch( /addEventListener\(\s*'push/ );
+		expect( body ).toContain( 'getSubscription' ); // drops a subscription left from before 3.0
 	} );
 
 	test( 'head carries app meta and Open Graph tags per view', async ( {

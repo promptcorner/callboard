@@ -585,10 +585,9 @@ html[data-nav="back"]::view-transition-old(root){animation-name:pop-out}
 /* respect reduced transparency: solid surfaces */
 @media (prefers-reduced-transparency:reduce){.deck,.topbar{background:var(--deck);-webkit-backdrop-filter:none;backdrop-filter:none}}
 
-/* notifications */
+/* small notes */
 .note.small{font-size:.875rem;color:var(--ink-3);margin:0}
 .actions .note.small{flex-basis:100%}
-#notify.is-done{color:var(--ink-2)}
 
 /* offline */
 body.is-offline .deck-time::after{content:" · " attr(data-offline);color:var(--accent-text)}
@@ -633,38 +632,14 @@ body:not(.has-deck) .a2hs{bottom:calc(var(--safe-b) + 12px)}
 .set-off[data-state="saved"] .dl-check{opacity:1;stroke:var(--bg);stroke-width:2.6}
 /* the set-level control is secondary: quiet text, no chrome */
 #offline{border-color:var(--line);background:color-mix(in srgb,var(--surface-2) 55%,transparent);color:var(--ink-2);padding-left:14px;padding-right:14px} /* the quiet capsule: the same construction as Share, one rank below Play */
-#notify.is-done{color:var(--ink-2);pointer-events:auto}
 .masthead-row{display:flex;align-items:center;justify-content:space-between;gap:20px}
-/* The board: the same hairlines as the lists. The time leads, because the time is the call */
-.board{margin:6px 0 22px;border-bottom:1px solid var(--line)}
-.call{padding:16px 0 18px;display:grid;gap:6px;animation:arrive var(--t-slow) var(--ease) both}
-.call+.call{border-top:1px solid var(--line)}
-.call-when{margin:0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
-.call-when time{font-size:1.0625rem;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
-.call.is-next .call-when time{font-size:1.25rem}
-.call-rel{font-size:.875rem;color:var(--accent-text)}
-.call-title{margin:0;font-size:1rem;font-weight:600;letter-spacing:-.01em;color:var(--ink);text-wrap:pretty}
-.call:not(:has(.call-when)) .call-title{font-size:1.0625rem}
-.call-where{font-weight:400;color:var(--ink-3)}
-.call-where::before{content:"·";margin:0 6px 0 2px}
-.call-body{color:var(--ink-2);font-size:.9375rem;line-height:1.45;text-wrap:pretty}
-.call-body p{margin:0 0 6px}.call-body p:last-child{margin:0}
-.call-numbers{margin:2px 0 0;font-size:.9375rem;color:var(--ink-3);line-height:1.6}
-.call-numbers-label{margin-right:6px}
-.call-numbers a{color:var(--ink-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line-strong);transition:color var(--t),text-decoration-color var(--t)}
-.call-numbers a:hover{color:var(--ink);text-decoration-color:var(--ink)}
 .masthead-text{min-width:0}
-.bell{margin:0 -8px 0 0;position:relative;flex:none;width:40px;height:40px;border:0;background:transparent;color:var(--ink-2)} /* a toolbar glyph beside the title, not a button on its own */
-.bell svg{width:22px;height:22px}
-.bell:active{background:var(--surface-2)}
-.bell[data-state="on"]{color:var(--ink)}
-.bell[data-state="on"]::after{content:"";position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--bg)} /* on: the bell carries a dot, the way the phone shows it */
 body.has-deck .set.is-now .set-name::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:8px;vertical-align:middle} /* the set in the deck — and only while there is a deck to point at, since the idle one can be swiped away */
 body.is-loading{cursor:progress}
 .toast{position:fixed;left:50%;bottom:calc(var(--deck-h) + var(--safe-b) + 12px);transform:translateX(-50%);z-index:19;max-width:min(92vw,480px);margin:0;padding:10px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font-size:.875rem;line-height:1.35;text-align:center;text-wrap:pretty;box-shadow:0 8px 24px rgba(0,0,0,.18);transition:opacity var(--t),transform var(--t)}
 @starting-style{.toast{opacity:0;transform:translate(-50%,6px)}}
 body:not(.has-deck) .toast{bottom:calc(var(--safe-b) + 12px)}
-#offline:hover,#offline:focus-visible,#notify:hover,#notify:focus-visible{color:var(--ink)}
+#offline:hover,#offline:focus-visible{color:var(--ink)}
 #offline.is-busy{color:var(--ink-2)}
 
 /* Extension items: a badge or a line of metadata a feature contributed through a slot. They take the

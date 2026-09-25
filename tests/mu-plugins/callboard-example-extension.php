@@ -11,7 +11,7 @@
  *
  *   callboard_example=1                register the example extensions
  *   callboard_example_replace=1        with them, unregister callboard/quality and register example/quality
- *   callboard_example_disable=callboard/count-in,callboard/badging   switch those off by id
+ *   callboard_example_disable=callboard/count-in,callboard/quality   switch those off by id
  *   callboard_example_count_in=1       the count-in setting, on for this request only
  *   callboard_example_gate=1           the front end closed to everyone, for this request only
  *   callboard_example_visitor=<text>   a value example/demo returns from app_data

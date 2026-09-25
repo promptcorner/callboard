@@ -1,6 +1,6 @@
 # Extending Callboard
 
-Callboard has one way to add a feature to the player, and its own features use it. A count-in, the quality readout in Now Playing and the number on the Home Screen icon are all registered as extensions, through the same functions a plugin calls. A site can switch any of them off or replace it by id. When Callboard needs something a plugin could not do, the fix is to add it to this document and to the API.
+Callboard has one way to add a feature to the player, and its own features use it. A count-in and the quality readout in Now Playing are registered as extensions, through the same functions a plugin calls. A site can switch any of them off or replace it by id. When Callboard needs something a plugin could not do, the fix is to add it to this document and to the API.
 
 This is API version 1: `CALLBOARD_API_VERSION` in PHP, `callboard.apiVersion` in the page.
 
@@ -69,7 +69,7 @@ window.callboard.registerExtension( 'acme/call-sheet', {
 
 The PHP functions are `callboard_register_extension( $id, $args )`, `callboard_unregister_extension( $id )`, `callboard_get_extension( $id )` and `callboard_get_extensions()`. The first returns the registered extension or `false`; the second returns the removed one or `false`.
 
-`callboard_get_setting( $key )` reads one of Callboard's settings, with its default when the site never saved one, and returns `null` for a key that does not exist. The keys are the ones on the settings screen: `tagline`, `footer_note`, `badge`, `accent`, `confetti`, `hearts`, `show_hint`, `offline`, `push`, `notify_new_sets`, `notify_calls`, `count_in`, `practice` and `require_signin`. The count-in reads `count_in` this way.
+`callboard_get_setting( $key )` reads one of Callboard's settings, with its default when the site never saved one, and returns `null` for a key that does not exist. The keys are the ones on the settings screen: `tagline`, `footer_note`, `badge`, `accent`, `confetti`, `hearts`, `show_hint`, `offline`, `count_in`, `require_signin` and `require_access`. The count-in reads `count_in` this way.
 
 Every contribution takes either a callable or `array( 'callback' => …, 'priority' => … )` (`{ callback, priority }` in the script). Priority defaults to the extension's own `priority`, which defaults to 10. Lower runs first; equal priorities run in the order extensions registered.
 
@@ -80,7 +80,7 @@ In PHP, Callboard registers its own extensions on `init` at priority 5, then fir
 In the script, an extension goes through four steps:
 
 1. `registerExtension( id, args )`.
-2. `setup( app )`, once per page. `app` is `window.callboard`. This is the place for anything that lasts across views: the player bar, the tab, the badge.
+2. `setup( app )`, once per page. `app` is `window.callboard`. This is the place for anything that lasts across views: the player bar and the tab.
 3. `init( view )`, on every view: the first load, and each time navigation swaps a new view into `<main>`. `view` is `{ slug, set, main, signal }`, where `slug` is `''` on home, `set` is a frozen copy of the playlist or `null`, and `main` is the element.
 4. `teardown( view )`, just before the next swap replaces `<main>`. `view.signal` aborts straight after, so `addEventListener( type, fn, { signal: view.signal } )` removes itself without a teardown at all.
 
@@ -104,7 +104,6 @@ PHP names are snake_case and script names camelCase; where a point exists on bot
 | Transport controls | `slots.transport(): string` | bind to it in `setup` | PHP, beside loop and repeat | Once per page |
 | Panels | `slots.panels(): string` | bind to it in `setup` | PHP, after the lyrics panel, outside `<main>` | Once per page |
 | Before play | none | `beforePlay( context, signal )` | The script, before a track that was asked to play starts | Every time a track is loaded to play |
-| App badge | none | `badge( app ): number \| Promise<number>` | The script sums every contribution, then `setAppBadge( sum )`, or `clearAppBadge()` for zero | On ready, when the page becomes visible, and `callboard.invalidate( 'badge' )` |
 | Events | none | `events: { track: fn, … }` | wp.hooks actions (see [Events](#events)) | As they fire |
 | Commands | none | `commands: { name: fn }` | `callboard.run( 'ns/name/command', …args )` | When run |
 | REST routes | `rest: array( array( '/route', $args ) )` | none | `register_rest_route()` under `callboard/v1/ext/` (see [REST routes](#rest-routes)) | n/a |
@@ -197,8 +196,6 @@ The rest of `window.callboard`: `version` (the plugin), `hooks` (`wp.hooks`), `e
 | --- | --- | --- |
 | `callboard/count-in` | Track data `bpm`, app data `enabled`, a track badge (`♩ 96`, class `bpm`), and a `beforePlay` hold that taps four beats | No badge, and tracks start at once |
 | `callboard/quality` | Track data `quality`, app data `format`, and a Now Playing item (class `quality-pill`) | Now Playing shows no quality |
-| `callboard/badging` | An app badge contribution of zero, so opening the app clears what a notification set | The page leaves the badge alone |
-| `callboard/practice` | App data `url` and, for signed-in users, `nonce`; a REST route, `POST callboard/v1/practice/counts`; and listeners on the `track`, `loop`, `play`, `pause` and `ended` events. Registered only when the **Count practice** setting is on | Nothing is counted or sent |
 
 They live in `includes/extensions/` and in their own sections at the bottom of `assets/app.js`, where they can reach `window.callboard` and nothing else. To replace one:
 
@@ -216,7 +213,7 @@ $disable_count_in = (bool) get_option( 'acme_disable_count_in', false );
 add_filter( 'callboard_extension_enabled', fn( bool $on, string $id ) => $on && ! ( 'callboard/count-in' === $id && $disable_count_in ), 10, 2 );
 ```
 
-More of Callboard's features become extensions in later releases: offline saving, lyrics, director's notes and push.
+More of Callboard's features become extensions in later releases: offline saving, lyrics and director's notes.
 
 `tests/mu-plugins/callboard-example-extension.php` and `tests/mu-plugins/callboard-example/example.js` are a complete extension built on nothing but this API, exercising every point. `tests/e2e/extensions.spec.js` and `tests/php/test-extensions.php` hold it, and Callboard's own extensions, to this document.
 
@@ -230,7 +227,6 @@ The registry is built on the plugin's hooks, which do not change. A site that us
 | `app_data` | `callboard_app_data`, priority 5 |
 | `slots.*` in PHP | `callboard_slot()` in the templates; `callboard_template_path` still replaces a whole template |
 | `slots.*` in the script | `wp.hooks` filters `callboard.slot.trackBadges`, `callboard.slot.trackMeta`, `callboard.slot.nowPlayingMeta` |
-| `badge` | `wp.hooks` filter `callboard.badge` |
 | `beforePlay` | `wp.hooks` filter `callboard.beforePlay` |
 | `events` | `wp.hooks` actions `callboard.*` |
 
@@ -239,11 +235,9 @@ The top-level `bpm` and `quality` on each track are also written inside `callboa
 In the script the extension id is the `wp.hooks` namespace, so a registry contribution and `wp.hooks.addFilter( 'callboard.slot.trackBadges', 'acme/call-sheet', fn )` are the same thing, and `removeFilter` with that namespace removes both. What a hand-written filter receives and must return:
 
 - A slot filter receives the items so far and the same arguments as the slot, and returns the list with its own items added.
-- `callboard.badge` receives the contributions so far (an array of numbers or promises of numbers) and `window.callboard`. Return the array with your own number or promise added. Callboard waits for every promise, counts anything that is not a positive number as zero, a rejected promise included, and sums the rest. If the result is not an array, or the array is empty, the badge is left alone.
 - `callboard.beforePlay` receives the holds so far and the context, `{ set, track, index, at }`. Return the array with your own entry added: `{ id, callback( context, signal ) }`, or a bare function with that signature. Callboard calls each entry in order, as described under [Contribution points](#contribution-points). If the result is not an array, or the array is empty, the track starts at once.
 
 ```js
-wp.hooks.addFilter( 'callboard.badge', 'acme/call-sheet', ( counts, app ) => counts.concat( [ unreadPages() ] ) );
 wp.hooks.addFilter( 'callboard.beforePlay', 'acme/call-sheet', ( holds ) =>
 	holds.concat( [ { id: 'acme/call-sheet', callback: ( context, signal ) => turnToPage( context.track, signal ) } ] )
 );

@@ -6,12 +6,10 @@
  */
 
 use Callboard\Abilities;
-use Callboard\Calls;
 use Callboard\Roles;
 
 /**
  * @covers \Callboard\Abilities
- * @covers \Callboard\Calls
  */
 class Test_Callboard_Abilities extends WP_UnitTestCase {
 
@@ -71,13 +69,6 @@ class Test_Callboard_Abilities extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Tomorrow at 19:00 in the site's time zone, as the editor's When field sends it.
-	 */
-	private function tomorrow(): string {
-		return wp_date( 'Y-m-d', time() + DAY_IN_SECONDS ) . 'T19:00';
-	}
-
-	/**
 	 * Whether a user with a role passes an ability's permission check.
 	 *
 	 * @param string $name Ability name.
@@ -88,9 +79,9 @@ class Test_Callboard_Abilities extends WP_UnitTestCase {
 		return true === wp_get_ability( $name )->check_permissions( array() );
 	}
 
-	public function test_the_three_abilities_are_registered_in_the_callboard_category(): void {
+	public function test_the_ability_is_registered_in_the_callboard_category(): void {
 		$this->assertTrue( wp_has_ability_category( Abilities::CATEGORY ) );
-		foreach ( array( 'callboard/list-playlists', 'callboard/list-upcoming-calls', 'callboard/post-call' ) as $name ) {
+		foreach ( array( 'callboard/list-playlists' ) as $name ) {
 			$this->assertTrue( wp_has_ability( $name ), "{$name} is not registered" );
 			$ability = wp_get_ability( $name );
 			$this->assertSame( Abilities::CATEGORY, $ability->get_category() );
@@ -105,63 +96,12 @@ class Test_Callboard_Abilities extends WP_UnitTestCase {
 		$this->assertTrue( $this->allowed( 'callboard/list-playlists', Roles::DIRECTOR ) );
 	}
 
-	public function test_listing_upcoming_calls_needs_the_capability_to_edit_calls(): void {
-		$this->assertFalse( $this->allowed( 'callboard/list-upcoming-calls', 'subscriber' ) );
-		$this->assertFalse( $this->allowed( 'callboard/list-upcoming-calls', Roles::CAST_MEMBER ), 'opening the front end is not enough' );
-		$this->assertTrue( $this->allowed( 'callboard/list-upcoming-calls', Roles::DIRECTOR ) );
-	}
-
-	public function test_posting_a_call_needs_the_capability_to_publish_calls(): void {
-		$this->assertFalse( $this->allowed( 'callboard/post-call', 'subscriber' ) );
-		$this->assertFalse( $this->allowed( 'callboard/post-call', 'contributor' ), 'a contributor can write a call but not publish it' );
-		$this->assertTrue( $this->allowed( 'callboard/post-call', 'author' ) );
-		$this->assertTrue( $this->allowed( 'callboard/post-call', Roles::DIRECTOR ) );
-
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'contributor' ) ) );
-		$this->assertWPError( wp_get_ability( 'callboard/post-call' )->execute( array( 'title' => 'Not allowed' ) ) );
-		$this->assertSame( array(), get_posts( array( 'post_type' => Calls::TYPE ) ) );
-	}
-
-	public function test_a_posted_call_shows_in_the_upcoming_calls(): void {
-		$track    = $this->track();
-		$director = self::factory()->user->create( array( 'role' => Roles::DIRECTOR ) );
-		wp_set_current_user( $director );
-		$when = $this->tomorrow();
-
-		$call = wp_get_ability( 'callboard/post-call' )->execute(
-			array(
-				'title'   => 'Act I run',
-				'note'    => 'Bring your script.',
-				'when'    => $when,
-				'where'   => 'Studio B',
-				'numbers' => array( $track ),
-			)
-		);
-		$this->assertNotWPError( $call );
-		$this->assertSame( 'publish', get_post_status( $call['id'] ) );
-		$this->assertSame( $director, (int) get_post_field( 'post_author', $call['id'] ) );
-
-		$calls = wp_get_ability( 'callboard/list-upcoming-calls' )->execute();
-		$this->assertNotWPError( $calls );
-		$listed = array_column( $calls['calls'], null, 'id' )[ $call['id'] ] ?? null;
-		$this->assertNotNull( $listed, 'the posted call is not on the board' );
-		$this->assertSame( 'Act I run', $listed['title'] );
-		$this->assertSame( 'Studio B', $listed['where'] );
-		$this->assertSame( str_replace( 'T', ' ', $when ), wp_date( 'Y-m-d H:i', $listed['when'] ), 'the time is read in the site time zone' );
-		$this->assertSame( array( 'Ability Track' ), array_column( $listed['numbers'], 'title' ) );
-		$this->assertStringContainsString( 'Bring your script.', $listed['body'] );
-		$this->assertTrue( $listed['is_next'] );
-	}
-
 	public function test_the_lists_match_their_output_schemas(): void {
 		$this->track();
 		wp_set_current_user( self::factory()->user->create( array( 'role' => Roles::DIRECTOR ) ) );
-		$this->assertNotWPError( Calls::post( 'Act II run', '', $this->tomorrow(), 'Main stage' ) );
-		$this->assertNotWPError( Calls::post( 'Costume fittings are posted' ) );
 
 		foreach ( array(
-			'callboard/list-playlists'      => 'playlists',
-			'callboard/list-upcoming-calls' => 'calls',
+			'callboard/list-playlists' => 'playlists',
 		) as $name => $key ) {
 			$ability = wp_get_ability( $name );
 			$output  = $ability->execute();
@@ -176,6 +116,5 @@ class Test_Callboard_Abilities extends WP_UnitTestCase {
 		$playlist  = array_column( $playlists, null, 'slug' )['ability-playlist'];
 		$this->assertSame( array( 'Ability Track' ), array_column( $playlist['tracks'], 'title' ) );
 		$this->assertSame( home_url( '/ability-playlist/' ), $playlist['url'] );
-		$this->assertCount( 2, wp_get_ability( 'callboard/list-upcoming-calls' )->execute()['calls'] );
 	}
 }

@@ -503,13 +503,12 @@ final class Pwa {
 		// so an installed app opens with its extensions when there is no network.
 		$assets = array_values( array_unique( array_merge( $assets, Extensions::precache_urls() ) ) );
 		$sw     = str_replace(
-			array( '__VERSION__', '__PLUGIN_PATH__', '__ASSETS__', '__APP_VERSION__', '__PUSH_API__', '__HOME__', '__MANIFEST__', '__SITE__' ),
+			array( '__VERSION__', '__PLUGIN_PATH__', '__ASSETS__', '__APP_VERSION__', '__HOME__', '__MANIFEST__', '__SITE__' ),
 			array(
 				(string) time(),
 				wp_make_link_relative( CALLBOARD_URL ),
 				wp_json_encode( $assets, JSON_UNESCAPED_SLASHES ),
 				CALLBOARD_VERSION,
-				Settings::get( 'push' ) && Push::available() ? wp_make_link_relative( rest_url( 'callboard/v1/push/' ) ) : '',
 				self::scope(),
 				wp_make_link_relative( self::manifest_url() ),
 				self::serves_files() ? (string) get_current_blog_id() : '',
