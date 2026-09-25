@@ -1,6 +1,6 @@
 # Extending Callboard
 
-Callboard has one way to add a feature to the player, and its own features use it. A count-in and the quality readout in Now Playing are registered as extensions, through the same functions a plugin calls. A site can switch any of them off or replace it by id. When Callboard needs something a plugin could not do, the fix is to add it to this document and to the API.
+Callboard has one way to add a feature to the player, and its own features use it. The quality readout in Now Playing is registered as an extension, through the same functions a plugin calls. A site can switch it off or replace it by id. When Callboard needs something a plugin could not do, the fix is to add it to this document and to the API.
 
 This is API version 1: `CALLBOARD_API_VERSION` in PHP, `callboard.apiVersion` in the page.
 
@@ -69,7 +69,7 @@ window.callboard.registerExtension( 'acme/call-sheet', {
 
 The PHP functions are `callboard_register_extension( $id, $args )`, `callboard_unregister_extension( $id )`, `callboard_get_extension( $id )` and `callboard_get_extensions()`. The first returns the registered extension or `false`; the second returns the removed one or `false`.
 
-`callboard_get_setting( $key )` reads one of Callboard's settings, with its default when the site never saved one, and returns `null` for a key that does not exist. The keys are the ones on the settings screen: `tagline`, `footer_note`, `badge`, `accent`, `confetti`, `hearts`, `show_hint`, `offline`, `count_in`, `require_signin` and `require_access`. The count-in reads `count_in` this way.
+`callboard_get_setting( $key )` reads one of Callboard's settings, with its default when the site never saved one, and returns `null` for a key that does not exist. The keys are the ones on the settings screen: `tagline`, `footer_note`, `badge`, `accent`, `confetti`, `hearts`, `show_hint`, `offline`, `require_signin` and `require_access`.
 
 Every contribution takes either a callable or `array( 'callback' => …, 'priority' => … )` (`{ callback, priority }` in the script). Priority defaults to the extension's own `priority`, which defaults to 10. Lower runs first; equal priorities run in the order extensions registered.
 
@@ -111,7 +111,7 @@ PHP names are snake_case and script names camelCase; where a point exists on bot
 
 Track data, playlist data and app data are arrays in PHP and objects in the page. PHP encodes an empty array as `[]`, so the page turns an extension's empty data into `{}`. An extension that returned `array()` reads `{}` from `callboard.data( id )`, `set.ext[ id ]` and `track.ext[ id ]`, the same shape as one that returned fields.
 
-A `beforePlay` contribution gets `context`, which is `{ set, track, index, at }`. Return nothing to let the track start, `false` to stop it, or a promise of either. Contributions run one after another in priority order and the track starts once every one has said yes. `signal` aborts if the person presses Play (which starts the track at once), picks another track, or closes the player bar; an extension that holds the start should stop what it is doing when that happens. The count-in is built on this.
+A `beforePlay` contribution gets `context`, which is `{ set, track, index, at }`. Return nothing to let the track start, `false` to stop it, or a promise of either. Contributions run one after another in priority order and the track starts once every one has said yes. `signal` aborts if the person presses Play (which starts the track at once), picks another track, or closes the player bar; an extension that holds the start should stop what it is doing when that happens.
 
 Callboard removes every other script and style from its pages. An extension's assets are kept, depend on Callboard's script, load deferred in the footer, and are kept by the service worker for an offline start.
 
@@ -194,10 +194,9 @@ The rest of `window.callboard`: `version` (the plugin), `hooks` (`wp.hooks`), `e
 
 | Id | What it contributes | Switched off |
 | --- | --- | --- |
-| `callboard/count-in` | Track data `bpm`, app data `enabled`, a track badge (`♩ 96`, class `bpm`), and a `beforePlay` hold that taps four beats | No badge, and tracks start at once |
 | `callboard/quality` | Track data `quality`, app data `format`, and a Now Playing item (class `quality-pill`) | Now Playing shows no quality |
 
-They live in `includes/extensions/` and in their own sections at the bottom of `assets/app.js`, where they can reach `window.callboard` and nothing else. To replace one:
+It lives in `includes/extensions/` and in its own section at the bottom of `assets/app.js`, where they can reach `window.callboard` and nothing else. To replace one:
 
 ```php
 add_action( 'callboard_register_extensions', function () {
@@ -209,11 +208,11 @@ add_action( 'callboard_register_extensions', function () {
 To switch one off from a setting that only changes when you save it:
 
 ```php
-$disable_count_in = (bool) get_option( 'acme_disable_count_in', false );
-add_filter( 'callboard_extension_enabled', fn( bool $on, string $id ) => $on && ! ( 'callboard/count-in' === $id && $disable_count_in ), 10, 2 );
+$hide_quality = (bool) get_option( 'acme_hide_quality', false );
+add_filter( 'callboard_extension_enabled', fn( bool $on, string $id ) => $on && ! ( 'callboard/quality' === $id && $hide_quality ), 10, 2 );
 ```
 
-More of Callboard's features become extensions in later releases: offline saving, lyrics and director's notes.
+More of Callboard's features become extensions in later releases: offline saving and lyrics.
 
 `tests/mu-plugins/callboard-example-extension.php` and `tests/mu-plugins/callboard-example/example.js` are a complete extension built on nothing but this API, exercising every point. `tests/e2e/extensions.spec.js` and `tests/php/test-extensions.php` hold it, and Callboard's own extensions, to this document.
 
@@ -230,7 +229,7 @@ The registry is built on the plugin's hooks, which do not change. A site that us
 | `beforePlay` | `wp.hooks` filter `callboard.beforePlay` |
 | `events` | `wp.hooks` actions `callboard.*` |
 
-The top-level `bpm` and `quality` on each track are also written inside `callboard_set_data` at priority 5, from the extensions' track data. Before 2.3.0 they were there from the start, so a filter on `callboard_set_data` at a priority below 5 no longer sees them. Read `ext[ 'callboard/count-in' ]` and `ext[ 'callboard/quality' ]` at priority 6 or later.
+The top-level `quality` on each track is also written inside `callboard_set_data` at priority 5, from the extension's track data. Before 2.3.0 it was there from the start, so a filter on `callboard_set_data` at a priority below 5 no longer sees it. Read `ext[ 'callboard/quality' ]` at priority 6 or later. Since 3.0.0 there is no `bpm`: the count-in is gone.
 
 In the script the extension id is the `wp.hooks` namespace, so a registry contribution and `wp.hooks.addFilter( 'callboard.slot.trackBadges', 'acme/call-sheet', fn )` are the same thing, and `removeFilter` with that namespace removes both. What a hand-written filter receives and must return:
 
@@ -248,8 +247,8 @@ Core's `wp-hooks` is the only WordPress script Callboard itself puts on the page
 ## The contract
 
 - **Versions.** Within API version 1, contribution points, arguments, event names and payload fields are only ever added. Renaming or removing one takes a deprecation that ships in at least one minor release first, and the removal waits for API version 2 and a major release of the plugin.
-- **Deprecations.** PHP uses `_deprecated_hook`, `_deprecated_function` and `_deprecated_argument`. The script uses `callboard.deprecated()`, which warns once per name in the shape of `@wordpress/deprecated`. Tracks still carry `bpm` and `quality` at the top level for API version 1; they belong to `ext[ 'callboard/count-in' ]` and `ext[ 'callboard/quality' ]` now. Every copy of a track an extension receives has both fields, whether `SCRIPT_DEBUG` is on or off. With it on, reading one from a copy logs a deprecation warning.
-- **Names.** Ids are `namespace/name`. Data sits under `ext[ id ]`. Script hooks and events are `namespace.name.*`. Classes an extension adds start with its namespace (`acme-`). `cb-` and the plugin's unprefixed classes are Callboard's; its own extensions keep the classes they always had (`bpm`, `quality-pill`). So that an extension's classes cannot collide with Callboard's, these namespaces are reserved, and since 2.4.0 registering under one is refused, in PHP and in the page: `callboard`, `cb`, `wp`, `core`, `ext`, `deck`, `set`, `seek`, `loop`, `track`, `lyrics`, `dl`, `wave`, `remote`, `sheet` and `quality`. `callboard/*` is for Callboard's own extensions, and none of them can be called `callboard/ext`. The PHP list is `Callboard\Extensions::RESERVED_NAMESPACES`.
+- **Deprecations.** PHP uses `_deprecated_hook`, `_deprecated_function` and `_deprecated_argument`. The script uses `callboard.deprecated()`, which warns once per name in the shape of `@wordpress/deprecated`. Tracks still carry `quality` at the top level for API version 1; it belongs to `ext[ 'callboard/quality' ]` now. Every copy of a track an extension receives has the field, whether `SCRIPT_DEBUG` is on or off. With it on, reading it from a copy logs a deprecation warning.
+- **Names.** Ids are `namespace/name`. Data sits under `ext[ id ]`. Script hooks and events are `namespace.name.*`. Classes an extension adds start with its namespace (`acme-`). `cb-` and the plugin's unprefixed classes are Callboard's; its own extensions keep the classes they always had (`quality-pill`). So that an extension's classes cannot collide with Callboard's, these namespaces are reserved, and since 2.4.0 registering under one is refused, in PHP and in the page: `callboard`, `cb`, `wp`, `core`, `ext`, `deck`, `set`, `seek`, `loop`, `track`, `lyrics`, `dl`, `wave`, `remote`, `sheet` and `quality`. `callboard/*` is for Callboard's own extensions, and none of them can be called `callboard/ext`. The PHP list is `Callboard\Extensions::RESERVED_NAMESPACES`.
 - **Escaping.** Callboard escapes items and runs markup through kses. An extension sanitises its own data before returning it. Data is JSON and small: app data carries every playlist and every track on every page, so anything heavy belongs behind a route.
 - **Strings.** Translate in PHP and pass strings through `app_data`. The page loads no `wp-i18n`.
 

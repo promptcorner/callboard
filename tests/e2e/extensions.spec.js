@@ -47,20 +47,11 @@ test.describe( 'Extensions', () => {
 		const rows = page.locator( '.track' );
 		await expect( rows ).toHaveCount( 10 );
 
-		// Server items: the example at priority 5, Callboard's ♩ at 10, example/late at 20.
-		const tempo = page.locator( '.track', {
-			has: page.locator( '.bpm' ),
-		} );
-		await expect( tempo.locator( '.len .cb-item' ) ).toHaveCount( 3 );
-		await expect( tempo.locator( '.len .cb-item' ).nth( 0 ) ).toHaveClass(
-			/example-badge/
-		);
-		await expect( tempo.locator( '.len .cb-item' ).nth( 1 ) ).toHaveClass(
-			/\bbpm\b/
-		);
-		await expect( tempo.locator( '.len .cb-item' ).nth( 2 ) ).toHaveClass(
-			/example-late/
-		);
+		// Server items: the example at priority 5, example/late at 20.
+		const items = rows.first().locator( '.len .cb-item' );
+		await expect( items ).toHaveCount( 2 );
+		await expect( items.nth( 0 ) ).toHaveClass( /example-badge/ );
+		await expect( items.nth( 1 ) ).toHaveClass( /example-late/ );
 		// Text is text: the markup in it is printed, and the quote in its class name did not open an attribute.
 		const badge = page.locator( '.track .example-badge' ).first();
 		await expect( badge ).toHaveText( '<b>demo</b>' );
@@ -131,7 +122,6 @@ test.describe( 'Extensions', () => {
 		expect( api.hooks ).toBe( 'function' );
 		expect( api.extensions ).toEqual(
 			expect.arrayContaining( [
-				'callboard/count-in',
 				'callboard/quality',
 				'example/demo',
 				'example/late',
@@ -495,7 +485,7 @@ test.describe( 'Extensions', () => {
 	} );
 
 	for ( const debug of [ true, false ] ) {
-		test( `a copy of a track keeps bpm and quality with debugging ${
+		test( `a copy of a track keeps quality with debugging ${
 			debug ? 'on' : 'off'
 		}, and only warns with it on`, async ( { page } ) => {
 			const warnings = [];
@@ -513,7 +503,7 @@ test.describe( 'Extensions', () => {
 					( s ) => s.slug === 'demo-set'
 				);
 				const index = set.tracks.findIndex(
-					( t ) => t.ext[ 'callboard/count-in' ]?.bpm
+					( t ) => t.ext[ 'callboard/quality' ]?.quality
 				);
 				const player = set.tracks[ index ];
 				await window.callboard.commands.goTo( 'demo-set', index, {
@@ -523,33 +513,25 @@ test.describe( 'Extensions', () => {
 				const keys = Object.keys( copy );
 				return {
 					debug: !! window.CALLBOARD.debug,
-					keys: [ 'bpm', 'quality' ].filter( ( k ) =>
-						keys.includes( k )
-					),
+					keys: [ 'quality' ].filter( ( k ) => keys.includes( k ) ),
 					inJson: Object.keys(
 						JSON.parse(
 							JSON.stringify( window.callboard.state.set )
 						).tracks[ index ]
-					).includes( 'bpm' ),
-					bpm: copy.bpm,
-					expected: player.ext[ 'callboard/count-in' ].bpm,
+					).includes( 'quality' ),
 					quality:
 						copy.quality ===
 						player.ext[ 'callboard/quality' ].quality,
 					// The player's own track is plain data in both modes.
-					plain: [ 'bpm', 'quality' ].every(
-						( k ) =>
-							'value' in
-							Object.getOwnPropertyDescriptor( player, k )
-					),
+					plain:
+						'value' in
+						Object.getOwnPropertyDescriptor( player, 'quality' ),
 				};
 			} );
 			expect( result ).toEqual( {
 				debug,
-				keys: [ 'bpm', 'quality' ],
+				keys: [ 'quality' ],
 				inJson: true,
-				bpm: result.expected,
-				expected: expect.any( Number ),
 				quality: true,
 				plain: true,
 			} );
@@ -563,7 +545,7 @@ test.describe( 'Extensions', () => {
 				.toBe( true );
 			expect(
 				warnings.filter( ( w ) =>
-					w.includes( 'track.bpm is deprecated' )
+					w.includes( 'track.quality is deprecated' )
 				)
 			).toHaveLength( debug ? 1 : 0 );
 		} );
@@ -687,43 +669,6 @@ test.describe( 'Extensions', () => {
 } );
 
 test.describe( 'Callboard’s own features are extensions', () => {
-	test( 'count-in: switched off by id, the badge and the count both go', async ( {
-		page,
-	} ) => {
-		await useExample( page, { callboard_example_count_in: '1' } );
-		await page.goto( '/demo-set/' );
-		await page.evaluate( () => localStorage.clear() );
-		await page.reload();
-		await expect( page.locator( '.track .bpm' ) ).toHaveText( '♩ 96' );
-		const tempo = page.locator( '.track', { has: page.locator( '.bpm' ) } );
-		await tempo.click();
-		await expect( page.locator( '#deck' ) ).toHaveClass( /counting/ );
-		await expect( page.locator( '#now-title' ) ).toHaveClass( /is-count/ );
-
-		await useExample( page, {
-			callboard_example_count_in: '1',
-			callboard_example_disable: 'callboard/count-in',
-		} );
-		await page.evaluate( () => localStorage.clear() );
-		await page.goto( '/demo-set/' );
-		await expect( page.locator( '.track' ) ).toHaveCount( 10 );
-		await expect( page.locator( '.track .bpm' ) ).toHaveCount( 0 );
-		expect(
-			await page.evaluate( () =>
-				window.callboard.isActive( 'callboard/count-in' )
-			)
-		).toBe( false );
-		// Its script is still in the file, and still asks to register; the page refuses it.
-		expect(
-			await page.evaluate( () => window.callboard.extensions() )
-		).not.toContain( 'callboard/count-in' );
-		await page.locator( '.track' ).nth( 2 ).click();
-		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Trombone Detritus'
-		);
-		await expect( page.locator( '#deck' ) ).not.toHaveClass( /counting/ );
-	} );
-
 	test( 'quality: switched off, Now Playing has no pill; replaced, it shows the replacement', async ( {
 		page,
 	} ) => {

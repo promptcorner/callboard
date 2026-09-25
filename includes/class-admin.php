@@ -91,17 +91,9 @@ final class Admin {
 	 * @param WP_Post $track Audio attachment.
 	 */
 	private static function track_row( WP_Post $track ): void {
-		$meta  = (array) wp_get_attachment_metadata( $track->ID );
-		$bpm   = (int) get_post_meta( $track->ID, '_callboard_bpm', true );
-		$notes = Notes::get( (int) $track->ID );
-		$lines = array();
-		foreach ( $notes as $note ) {
-			$lines[] = callboard_fmt( (float) $note['t'] ) . ' ' . $note['text'];
-		}
+		$meta = (array) wp_get_attachment_metadata( $track->ID );
 		printf(
-			'<li data-id="%1$d"><div class="callboard-track-row"><span class="callboard-track-number" aria-hidden="true"></span><span class="dashicons dashicons-move callboard-drag" aria-hidden="true"></span><input type="hidden" name="callboard_order[]" value="%1$d"><label class="screen-reader-text" for="callboard-title-%1$d">%6$s</label><input type="text" class="regular-text callboard-track-title" id="callboard-title-%1$d" name="callboard_title[%1$d]" value="%2$s"><span class="callboard-len">%3$s</span><span class="callboard-track-reorder"><button type="button" class="button-link callboard-move" data-dir="-1" aria-label="%7$s"><span class="dashicons dashicons-arrow-up-alt2" aria-hidden="true"></span></button><button type="button" class="button-link callboard-move" data-dir="1" aria-label="%8$s"><span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></button></span><span class="callboard-track-actions"><a href="%4$s">%5$s</a><span aria-hidden="true">&middot;</span><button type="button" class="button-link button-link-delete callboard-remove-track">%9$s</button></span></div>'
-			. '<details class="callboard-track-more"%10$s><summary>%11$s</summary><div class="callboard-track-fields"><p><label for="callboard-bpm-%1$d">%12$s</label> <input type="number" id="callboard-bpm-%1$d" name="callboard_bpm[%1$d]" value="%13$s" min="30" max="300" step="1" class="small-text"> <span class="description">%14$s</span></p>'
-			. '<p><label for="callboard-notes-%1$d">%15$s</label><textarea id="callboard-notes-%1$d" name="callboard_notes[%1$d]" rows="3" class="large-text code" placeholder="1:32 Softer here">%16$s</textarea><span class="description">%17$s</span></p></div></details></li>',
+			'<li data-id="%1$d"><div class="callboard-track-row"><span class="callboard-track-number" aria-hidden="true"></span><span class="dashicons dashicons-move callboard-drag" aria-hidden="true"></span><input type="hidden" name="callboard_order[]" value="%1$d"><label class="screen-reader-text" for="callboard-title-%1$d">%6$s</label><input type="text" class="regular-text callboard-track-title" id="callboard-title-%1$d" name="callboard_title[%1$d]" value="%2$s"><span class="callboard-len">%3$s</span><span class="callboard-track-reorder"><button type="button" class="button-link callboard-move" data-dir="-1" aria-label="%7$s"><span class="dashicons dashicons-arrow-up-alt2" aria-hidden="true"></span></button><button type="button" class="button-link callboard-move" data-dir="1" aria-label="%8$s"><span class="dashicons dashicons-arrow-down-alt2" aria-hidden="true"></span></button></span><span class="callboard-track-actions"><a href="%4$s">%5$s</a><span aria-hidden="true">&middot;</span><button type="button" class="button-link button-link-delete callboard-remove-track">%9$s</button></span></div></li>',
 			(int) $track->ID,
 			esc_attr( $track->post_title ),
 			esc_html( $meta['length_formatted'] ?? '' ),
@@ -111,15 +103,7 @@ final class Admin {
 			esc_attr( sprintf( __( 'Title for %s', 'callboard' ), $track->post_title ) ),
 			esc_attr__( 'Move up', 'callboard' ),
 			esc_attr__( 'Move down', 'callboard' ),
-			esc_html__( 'Remove', 'callboard' ),
-			$bpm || $lines ? ' open' : '',
-			esc_html__( 'Details', 'callboard' ),
-			esc_html__( 'Tempo (BPM)', 'callboard' ),
-			esc_attr( $bpm ? (string) $bpm : '' ),
-			esc_html__( 'Optional. Count-in uses this tempo before playback starts.', 'callboard' ),
-			esc_html__( 'Timed notes', 'callboard' ),
-			esc_textarea( implode( "\n", $lines ) ),
-			esc_html__( 'One per line: a time, then the note. Notes appear at that moment in the player.', 'callboard' )
+			esc_html__( 'Remove', 'callboard' )
 		);
 	}
 
@@ -219,7 +203,6 @@ final class Admin {
 		$order   = array_values( array_unique( array_filter( array_map( 'absint', (array) ( $_POST['callboard_order'] ?? array() ) ) ) ) );
 		$removed = array_values( array_unique( array_filter( array_map( 'absint', (array) ( $_POST['callboard_removed'] ?? array() ) ) ) ) );
 		$titles  = isset( $_POST['callboard_title'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_title'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
-		$bpms    = array_map( 'intval', (array) ( $_POST['callboard_bpm'] ?? array() ) );
 		foreach ( $removed as $track_id ) {
 			if ( (int) get_post_field( 'post_parent', $track_id ) !== $post_id || ! current_user_can( 'edit_post', $track_id ) || ! str_starts_with( (string) get_post_mime_type( $track_id ), 'audio/' ) ) {
 				continue;
@@ -249,9 +232,6 @@ final class Admin {
 				$update['post_title'] = $titles[ $track_id ];
 			}
 			wp_update_post( $update );
-			update_post_meta( $track_id, '_callboard_bpm', Importer::clamp_bpm( (int) ( $bpms[ $track_id ] ?? 0 ) ) );
-			$raw = isset( $_POST['callboard_notes'][ $track_id ] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['callboard_notes'][ $track_id ] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized here.
-			Notes::set( $track_id, self::parse_notes( $raw, Notes::get( $track_id ) ) );
 		}
 
 		$credits = isset( $_POST['callboard_credits'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_credits'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
@@ -312,36 +292,6 @@ final class Admin {
 	}
 
 	/**
-	 * "m:ss text" lines into dated notes. A line that already existed keeps its date.
-	 *
-	 * @param string            $raw      Textarea content.
-	 * @param array<int, mixed> $existing Stored notes.
-	 * @return array<int, array{t: float, text: string, date: string}>
-	 */
-	public static function parse_notes( string $raw, array $existing ): array {
-		$dates = array();
-		foreach ( $existing as $n ) {
-			if ( is_array( $n ) && isset( $n['t'], $n['text'] ) ) {
-				$dates[ (string) (float) $n['t'] . '|' . $n['text'] ] = (string) ( $n['date'] ?? '' );
-			}
-		}
-		$notes = array();
-		foreach ( preg_split( '/\r\n|\r|\n/', $raw ) ?: array() as $line ) { // phpcs:ignore Universal.Operators.DisallowShortTernary.Found
-			if ( ! preg_match( '/^\s*(?:(\d+):)?(\d+(?:\.\d+)?)\s+(.+?)\s*$/', $line, $m ) ) {
-				continue;
-			}
-			$t       = ( (int) $m[1] ) * 60 + (float) $m[2];
-			$text    = sanitize_text_field( $m[3] );
-			$notes[] = array(
-				't'    => $t,
-				'text' => $text,
-				'date' => $dates[ (string) $t . '|' . $text ] ?? '',
-			);
-		}
-		return Importer::sanitize_notes( $notes );
-	}
-
-	/**
 	 * Settings and Import submenus.
 	 */
 	public static function menu(): void {
@@ -367,7 +317,6 @@ final class Admin {
 		add_settings_section( 'callboard_identity', __( 'Player identity', 'callboard' ), array( self::class, 'section_identity' ), 'callboard' );
 		add_settings_section( 'callboard_listening', __( 'Listening experience', 'callboard' ), array( self::class, 'section_listening' ), 'callboard' );
 		add_settings_section( 'callboard_access', __( 'Access', 'callboard' ), array( self::class, 'section_access' ), 'callboard' );
-		add_settings_section( 'callboard_rehearsal', __( 'Rehearsal tools', 'callboard' ), array( self::class, 'section_rehearsal' ), 'callboard' );
 		$fields = array(
 			'tagline'        => array( __( 'Tagline', 'callboard' ), 'text', __( 'Shown under the title and in link previews.', 'callboard' ), 'callboard_identity' ),
 			'footer_note'    => array( __( 'Home page footer', 'callboard' ), 'text', __( 'A short credit, rights note, or listening instruction.', 'callboard' ), 'callboard_identity' ),
@@ -375,11 +324,10 @@ final class Admin {
 			'accent'         => array( __( 'Accent colour', 'callboard' ), 'color', __( 'A hex colour such as #3b82f6 for the played wave, the filament, and the marks. Empty keeps the Callboard orange.', 'callboard' ), 'callboard_identity' ),
 			'show_hint'      => array( __( 'Show the "Add to Home Screen" hint on iPhone', 'callboard' ), 'checkbox', '', 'callboard_listening' ),
 			'offline'        => array( __( 'Offer "Save offline"', 'callboard' ), 'checkbox', '', 'callboard_listening' ),
+			'confetti'       => array( __( 'Confetti text', 'callboard' ), 'text', __( 'Triple-tap the big title to release it. A lucky number, a name. Empty turns it off.', 'callboard' ), 'callboard_listening' ),
+			'hearts'         => array( __( 'Mix hearts into the confetti', 'callboard' ), 'checkbox', '', 'callboard_listening' ),
 			'require_signin' => array( __( 'Require a WordPress sign-in', 'callboard' ), 'checkbox', __( 'Off, anyone with the address can open the player. On, the front end uses whatever sign-in the site already has. Audio files keep their own upload addresses either way.', 'callboard' ), 'callboard_access' ),
-			'require_access' => array( __( 'Only let in users with access to Callboard', 'callboard' ), 'checkbox', __( 'Needs the sign-in setting above. On, a signed-in user also needs the view_callboard capability. Cast members, directors and anyone who can edit posts have it. Subscribers do not.', 'callboard' ), 'callboard_access' ),
-			'confetti'       => array( __( 'Confetti text', 'callboard' ), 'text', __( 'Triple-tap the big title to release it. A lucky number, a name. Empty turns it off.', 'callboard' ), 'callboard_rehearsal' ),
-			'hearts'         => array( __( 'Mix hearts into the confetti', 'callboard' ), 'checkbox', '', 'callboard_rehearsal' ),
-			'count_in'       => array( __( 'Count in tracks that have a tempo', 'callboard' ), 'checkbox', __( 'Four clicks at the marked tempo before a track starts from the top, so singers come in on the beat. Off, the tempo still shows on the track.', 'callboard' ), 'callboard_rehearsal' ),
+			'require_access' => array( __( 'Only let in users with access to Callboard', 'callboard' ), 'checkbox', __( 'Needs the sign-in setting above. On, a signed-in user also needs the view_callboard capability. Listeners and anyone who can edit posts have it. Subscribers do not.', 'callboard' ), 'callboard_access' ),
 		);
 		foreach ( $fields as $key => list( $label, $type, $help, $section ) ) {
 			add_settings_field(
@@ -417,13 +365,6 @@ final class Admin {
 	 */
 	public static function section_access(): void {
 		echo '<p>' . esc_html__( 'The player is link-accessible by default. Add WordPress authentication only when the library needs it.', 'callboard' ) . '</p>';
-	}
-
-	/**
-	 * Rehearsal settings introduction.
-	 */
-	public static function section_rehearsal(): void {
-		echo '<p>' . esc_html__( 'Optional tools for casts, choirs, and directed practice.', 'callboard' ) . '</p>';
 	}
 
 	/**
@@ -692,22 +633,16 @@ wp callboard run   <?php esc_html_e( '# or drain everything queued above', 'call
 			'callboard-admin',
 			'CALLBOARD_ADMIN',
 			array(
-				'postId'           => $post instanceof WP_Post ? $post->ID : 0,
-				'frameTitle'       => __( 'Choose tracks', 'callboard' ),
-				'frameButton'      => __( 'Add to set', 'callboard' ),
-				'titleLabel'       => __( 'Track title', 'callboard' ),
-				'moveUp'           => __( 'Move up', 'callboard' ),
-				'moveDown'         => __( 'Move down', 'callboard' ),
-				'editMedia'        => __( 'Edit file', 'callboard' ),
-				'remove'           => __( 'Remove', 'callboard' ),
-				'details'          => __( 'Details', 'callboard' ),
-				'tempo'            => __( 'Tempo (BPM)', 'callboard' ),
-				'tempoHelp'        => __( 'Optional. Count-in uses this tempo before playback starts.', 'callboard' ),
-				'notes'            => __( 'Timed notes', 'callboard' ),
-				'notesPlaceholder' => __( '1:32 Softer here', 'callboard' ),
-				'notesHelp'        => __( 'One per line: a time, then the note. Notes appear at that moment in the player.', 'callboard' ),
+				'postId'      => $post instanceof WP_Post ? $post->ID : 0,
+				'frameTitle'  => __( 'Choose tracks', 'callboard' ),
+				'frameButton' => __( 'Add to set', 'callboard' ),
+				'titleLabel'  => __( 'Track title', 'callboard' ),
+				'moveUp'      => __( 'Move up', 'callboard' ),
+				'moveDown'    => __( 'Move down', 'callboard' ),
+				'editMedia'   => __( 'Edit file', 'callboard' ),
+				'remove'      => __( 'Remove', 'callboard' ),
 				/* translators: %s: comma-separated track titles. */
-				'alreadyUsed'      => __( 'These files already belong to another set and were not added: %s', 'callboard' ),
+				'alreadyUsed' => __( 'These files already belong to another set and were not added: %s', 'callboard' ),
 			)
 		);
 	}

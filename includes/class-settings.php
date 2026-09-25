@@ -31,7 +31,6 @@ final class Settings {
 			'hearts'         => false,
 			'show_hint'      => true,
 			'offline'        => true,
-			'count_in'       => false,
 			'require_signin' => false,
 			'require_access' => false,
 		);
@@ -72,7 +71,6 @@ final class Settings {
 			'hearts'         => ! empty( $input['hearts'] ),
 			'show_hint'      => ! empty( $input['show_hint'] ),
 			'offline'        => ! empty( $input['offline'] ),
-			'count_in'       => ! empty( $input['count_in'] ),
 			'require_signin' => ! empty( $input['require_signin'] ),
 			'require_access' => ! empty( $input['require_access'] ),
 		);
@@ -91,7 +89,6 @@ final class Settings {
 			'hearts'   => (bool) $s['hearts'],
 			'hint'     => (bool) $s['show_hint'],
 			'offline'  => (bool) $s['offline'],
-			'count_in' => (bool) $s['count_in'],
 		);
 	}
 }

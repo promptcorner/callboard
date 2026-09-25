@@ -206,13 +206,13 @@ write(
 	true
 );
 write( path.join( dir, 'levels.json' ), envelopes );
-write( path.join( dir, 'notes.json' ), {
+write( path.join( dir, 'lyrics.json' ), {
 	detritus: [
-		{ t: 4, text: 'Softer here', date: '2026-09-01' },
-		{ t: 9, text: 'Lean into the turn', date: '2026-09-04' },
+		[ 4, 6, 'Softer here' ],
+		[ 9, 11, 'Lean into the turn' ],
 	],
 } );
-write( path.join( dir, 'tempo.json' ), { detritus: 96 } );
+fs.writeFileSync( path.join( dir, 'lyrics.approved' ), '' );
 if ( ! configuredCache ) {
 	fs.rmSync( tmp, { recursive: true, force: true } );
 }

@@ -6,7 +6,6 @@
  */
 
 use Callboard\Meta;
-use Callboard\Notes;
 
 /**
  * @covers \Callboard\Meta
@@ -58,8 +57,6 @@ class Test_Callboard_Meta extends WP_UnitTestCase {
 		foreach ( Meta::map() as $fields ) {
 			$keys = array_merge( $keys, array_keys( $fields ) );
 		}
-		// Comment meta lives outside Meta::map(); Notes owns the only key today.
-		$keys[] = Notes::META_AT;
 		return $keys;
 	}
 
@@ -164,16 +161,6 @@ class Test_Callboard_Meta extends WP_UnitTestCase {
 
 		update_post_meta( $track, '_callboard_levels', '0123456789' );
 		$this->assertSame( '0123456789', get_post_meta( $track, '_callboard_levels', true ) );
-
-		$notes = array(
-			array(
-				't'    => 3.4,
-				'text' => 'Softer here',
-				'date' => '2026-01-02',
-			),
-		);
-		update_post_meta( $track, '_callboard_notes', $notes );
-		$this->assertSame( $notes, get_post_meta( $track, '_callboard_notes', true ), 'the notes array survived registration intact' );
 	}
 
 	public function test_the_levels_sanitizer_keeps_only_digits(): void {

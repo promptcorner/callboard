@@ -1,90 +1,13 @@
 /**
  * Browser APIs the player depends on, where nothing on screen would show that they stopped working:
- * Web Audio for the count-in, the Screen Wake Lock, and ResizeObserver for the waveform. The gapless
- * loop has its own spec, gapless-loop.spec.js. See #119.
+ * the Screen Wake Lock and ResizeObserver for the waveform. The gapless loop has its own spec,
+ * gapless-loop.spec.js. See #119.
  */
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
 const expandDeck = ( page ) => page.locator( '#open-lyrics' ).click();
 
 test.describe( 'Player browser APIs', () => {
-	test( 'count-in plays four clicks at the track tempo, then starts the track', async ( {
-		page,
-	} ) => {
-		await page.addInitScript( () => {
-			// Turn count-in on for this page only, instead of changing the site setting.
-			let data;
-			Object.defineProperty( window, 'CALLBOARD', {
-				configurable: true,
-				get: () => data,
-				set: ( value ) => {
-					data = value;
-					const ext = data?.ext?.[ 'callboard/count-in' ];
-					if ( ext ) {
-						ext.enabled = true;
-					}
-				},
-			} );
-			// Record every oscillator start (the clicks) and every play() call, with the time it happened.
-			window.clicks = [];
-			window.plays = [];
-			const createOscillator = AudioContext.prototype.createOscillator;
-			AudioContext.prototype.createOscillator = function recordClicks() {
-				const osc = createOscillator.call( this );
-				const start = osc.start.bind( osc );
-				osc.start = ( ...args ) => {
-					window.clicks.push( {
-						at: performance.now(),
-						hz: osc.frequency.value,
-					} );
-					return start( ...args );
-				};
-				return osc;
-			};
-			const play = HTMLMediaElement.prototype.play;
-			HTMLMediaElement.prototype.play = function recordPlay() {
-				window.plays.push( performance.now() );
-				return play.call( this ).catch( () => {} );
-			};
-		} );
-		await page.goto( '/demo-set/' );
-		await expect( page.locator( '.track .bpm' ) ).toHaveText( '♩ 96' );
-		await page.locator( '.track' ).nth( 2 ).click(); // the 96 BPM track
-
-		await expect
-			.poll( () => page.evaluate( () => window.clicks.length ) )
-			.toBe( 4 );
-		const beat = 60000 / 96;
-		// Wait for the track to start after the last click.
-		await expect
-			.poll( () =>
-				page.evaluate( () =>
-					window.plays.some( ( t ) => t > window.clicks[ 3 ].at )
-				)
-			)
-			.toBe( true );
-		const { clicks, plays } = await page.evaluate( () => ( {
-			clicks: window.clicks,
-			plays: window.plays,
-		} ) );
-
-		// The first click is higher, like a metronome's downbeat.
-		expect( clicks.map( ( c ) => c.hz ) ).toEqual( [
-			1320, 880, 880, 880,
-		] );
-		// About one beat apart. A busy machine can fire any of the timers late, so allow some slack.
-		for ( let k = 1; k < 4; k++ ) {
-			const gap = clicks[ k ].at - clicks[ k - 1 ].at;
-			expect( gap ).toBeGreaterThan( beat - 200 );
-			expect( gap ).toBeLessThan( beat + 300 );
-		}
-		// Nothing plays during the count, and the track starts about a beat after the last click.
-		const first = clicks[ 0 ].at,
-			last = clicks[ 3 ].at;
-		expect( plays.filter( ( t ) => t > first && t < last ) ).toEqual( [] );
-		expect( plays.some( ( t ) => t > last + beat - 200 ) ).toBe( true );
-	} );
-
 	test( 'the screen stays awake while a loop is set or the lyrics sheet is open', async ( {
 		page,
 	} ) => {
@@ -109,7 +32,7 @@ test.describe( 'Player browser APIs', () => {
 		const held = () => page.evaluate( () => window.wakeLock.held );
 
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // has a director's note, so it has a sheet
+		await page.locator( '.track' ).nth( 2 ).click(); // has lyrics, so it has a sheet
 		await expandDeck( page );
 		expect( await held() ).toBe( false );
 

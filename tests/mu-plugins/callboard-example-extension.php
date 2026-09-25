@@ -11,8 +11,7 @@
  *
  *   callboard_example=1                register the example extensions
  *   callboard_example_replace=1        with them, unregister callboard/quality and register example/quality
- *   callboard_example_disable=callboard/count-in,callboard/quality   switch those off by id
- *   callboard_example_count_in=1       the count-in setting, on for this request only
+ *   callboard_example_disable=callboard/quality   switch those off by id
  *   callboard_example_gate=1           the front end closed to everyone, for this request only
  *   callboard_example_visitor=<text>   a value example/demo returns from app_data
  *   callboard_example_signin=1         the "require sign-in" setting, on for this request only
@@ -57,7 +56,7 @@ add_action(
 					'visitor'  => callboard_example_cookie( 'callboard_example_visitor' ),
 				),
 				'slots'       => array(
-					// Ahead of the count-in's ♩ badge, which sits at the default 10.
+					// Ahead of example/late, which sits at 20.
 					'track_badges' => array(
 						'priority' => 5,
 						'callback' => static fn() => array(
@@ -101,7 +100,7 @@ add_action(
 			)
 		);
 
-		// After the count-in's ♩ badge.
+		// After example/demo's badge.
 		callboard_register_extension(
 			'example/late',
 			array(
@@ -166,16 +165,6 @@ add_action(
 		}
 	}
 );
-
-$callboard_example_count_in = static function ( $settings ) {
-	if ( '1' === callboard_example_cookie( 'callboard_example_count_in' ) ) {
-		$settings             = is_array( $settings ) ? $settings : array();
-		$settings['count_in'] = true;
-	}
-	return $settings;
-};
-add_filter( 'option_callboard_settings', $callboard_example_count_in );
-add_filter( 'default_option_callboard_settings', $callboard_example_count_in );
 
 add_filter(
 	'callboard_can_view',

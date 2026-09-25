@@ -67,17 +67,17 @@ class Test_Callboard_Gate extends WP_UnitTestCase {
 		$this->require_signin( true );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
 
-		$this->assertTrue( Gate::allowed(), 'a subscriber is a cast member, not an editor' );
+		$this->assertTrue( Gate::allowed(), 'a subscriber is a listener, not an editor' );
 	}
 
-	public function test_with_the_capability_required_a_subscriber_is_turned_away_and_a_cast_member_is_let_in(): void {
+	public function test_with_the_capability_required_a_subscriber_is_turned_away_and_a_listener_is_let_in(): void {
 		$this->require_signin( true, true );
 
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
 		$this->assertTrue( Gate::capability_required() );
 		$this->assertFalse( Gate::allowed() );
 
-		wp_set_current_user( self::factory()->user->create( array( 'role' => Roles::CAST_MEMBER ) ) );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => Roles::LISTENER ) ) );
 		$this->assertTrue( Gate::allowed() );
 
 		wp_set_current_user( 0 );

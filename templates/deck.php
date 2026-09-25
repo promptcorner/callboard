@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
 	<?php /* Now Playing: the expanded deck is a full screen, not a taller bar. Same controls, same element — only the layout changes, so nothing has two copies of its state. */ ?>
 	<?php /* Grabber bar. Click, Enter or Space closes Now Playing; so does dragging it down (app.js), Escape, and the browser's back. */ ?>
 	<button type="button" class="deck-down" id="deck-down" aria-label="<?php esc_attr_e( 'Close player', 'callboard' ); ?>"><i aria-hidden="true"></i></button>
-	<?php /* A generic set cover tells a cast nothing about the sonnet they are on. Where a track carries words — captions, or the director's notes — the words are the useful thing, so the way to them is a control, not a hidden tap on the title. */ ?>
+	<?php /* A generic set cover tells a cast nothing about the sonnet they are on. Where a track carries words, the words are the useful thing, so the way to them is a control, not a hidden tap on the title. */ ?>
 	<div class="deck-top"><button type="button" class="remote-chip is-away" id="remote" data-state="" aria-label="<?php esc_attr_e( 'Play on another device', 'callboard' ); ?>"><?php echo callboard_icon( 'cast' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG shipped with the plugin. ?></button><button type="button" class="sheet-pill" id="sheet-pill" hidden aria-controls="lyrics" aria-expanded="false"></button></div>
 	<div class="deck-cover" aria-hidden="true"><img id="deck-cover" alt="" draggable="false" decoding="async" sizes="(max-width:700px) 74vw, 380px"></div>
 	<div class="deck-inner deck-display">
@@ -67,7 +67,7 @@ defined( 'ABSPATH' ) || exit;
 	<button type="button" class="a2hs-x" id="a2hs-close" aria-label="<?php esc_attr_e( 'Dismiss', 'callboard' ); ?>">&times;</button>
 </div>
 
-<?php /* Lyrics and notes sheet. Opened with show() (non-modal) so the player controls stay usable. */ ?>
+<?php /* Lyrics sheet. Opened with show() (non-modal) so the player controls stay usable. */ ?>
 <dialog class="lyrics" id="lyrics" aria-label="<?php esc_attr_e( 'Lyrics', 'callboard' ); ?>">
 	<div class="lyrics-head">
 		<span class="label" id="sheet-label"><?php esc_html_e( 'Lyrics · auto-captions, may be rough', 'callboard' ); ?></span>

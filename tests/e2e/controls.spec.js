@@ -262,7 +262,7 @@ test.describe( 'Controls', () => {
 		page,
 	} ) => {
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // carries a director's note
+		await page.locator( '.track' ).nth( 2 ).click(); // has lyrics
 		await expandDeck( page ); // the first tap on the bar opens Now Playing; the sheet is inside it
 		await page.locator( '#open-lyrics' ).click();
 		await expect( page.locator( '#lyrics' ) ).toBeVisible();
@@ -276,7 +276,7 @@ test.describe( 'Controls', () => {
 		await page.locator( '#open-lyrics' ).click();
 		await page.locator( '#close-lyrics' ).click();
 		await expect( page.locator( '#lyrics' ) ).toBeHidden();
-		await page.goto( '/demo-set/' ); // no lyrics or notes here, so the title button finds the track instead
+		await page.goto( '/demo-set/' ); // the second track has no lyrics, so the title button finds the track instead
 		await page.locator( '.track' ).nth( 1 ).click();
 		await page.locator( 'a.back' ).click();
 		await expect( page ).toHaveURL( /\/$/ );
@@ -512,7 +512,7 @@ test.describe( 'Deck view: compact and expanded', () => {
 	} ) => {
 		await spyWakeLock( page );
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // carries a director's note, so it has a sheet
+		await page.locator( '.track' ).nth( 2 ).click(); // has lyrics, so it has a sheet
 		await expandDeck( page );
 		await page.locator( '#open-lyrics' ).click();
 		await expect( page.locator( '#lyrics' ) ).toBeVisible();

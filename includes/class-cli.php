@@ -113,9 +113,8 @@ final class Cli {
 	/**
 	 * Write a set out as a .callboard file.
 	 *
-	 * A whole set in one file: the audio, the order, the levels, the lyrics, the notes and the
-	 * tempo. Unzip it and it is an import folder; leave it zipped and `wp callboard import
-	 * --file=` reads it back on another site.
+	 * A whole set in one file: the audio, the order, the levels and the lyrics. Unzip it and it is
+	 * an import folder; leave it zipped and `wp callboard import --file=` reads it back on another site.
 	 *
 	 * ## OPTIONS
 	 *
@@ -238,43 +237,6 @@ final class Cli {
 		file_put_contents( $dir . '/levels.json', wp_json_encode( $levels ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 		WP_CLI::log( Importer::import_folder( $dir ) );
 		WP_CLI::success( 'Levels written for ' . count( $levels ) . ' tracks.' );
-	}
-
-	/**
-	 * Turn legacy `_callboard_notes` post meta into `callboard_note` comments.
-	 *
-	 * New notes are already saved as comments. This rewrites arrays that were stored before that,
-	 * leaving the old meta in place so a downgrade still has something to read. Safe to run more
-	 * than once: a track that already has note comments is skipped.
-	 *
-	 * ## OPTIONS
-	 *
-	 * [--dry-run]
-	 * : Count tracks and notes without writing.
-	 *
-	 * ## EXAMPLES
-	 *
-	 *     wp callboard migrate-notes
-	 *     wp callboard migrate-notes --dry-run
-	 *
-	 * @param string[]              $args       Positional args.
-	 * @param array<string, string> $assoc_args Named args.
-	 */
-	public function migrate_notes( array $args, array $assoc_args ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- WP-CLI signature.
-		$dry    = isset( $assoc_args['dry-run'] );
-		$result = Notes::migrate( $dry );
-		$msg    = sprintf(
-			/* translators: 1: number of tracks, 2: number of notes, 3: number of tracks skipped. */
-			__( '%1$d tracks, %2$d notes, %3$d already migrated.', 'callboard' ),
-			$result['tracks'],
-			$result['notes'],
-			$result['skipped']
-		);
-		if ( $dry ) {
-			WP_CLI::success( 'Dry run: ' . $msg );
-			return;
-		}
-		WP_CLI::success( $msg );
 	}
 
 	/**

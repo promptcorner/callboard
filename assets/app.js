@@ -107,7 +107,6 @@
 	// reading one from a copy logs a deprecation warning. The player's own tracks are never changed, so
 	// a copy has the same fields with debugging on or off.
 	const MOVED = {
-		bpm: "track.ext[ 'callboard/count-in' ].bpm",
 		quality: "track.ext[ 'callboard/quality' ].quality",
 	};
 	const warnOnMoved = ( track ) =>
@@ -144,7 +143,7 @@
 		}
 		return v;
 	};
-	// kind is 'track' or 'set'. With SCRIPT_DEBUG on, reading bpm or quality from that copy logs a warning.
+	// kind is 'track' or 'set'. With SCRIPT_DEBUG on, reading quality from that copy logs a warning.
 	const snapshot = ( v, kind = '' ) => {
 		if ( v === null || v === undefined ) {
 			return null;
@@ -365,19 +364,14 @@
 		openLyrics.setAttribute(
 			'aria-label',
 			sheetOpen()
-				? sheetKind === 'notes'
-					? T.hide_notes
-					: T.hide_lyrics
-				: sheetKind === 'notes'
-				? T.show_notes
+				? T.hide_lyrics
 				: sheetKind === 'lyrics'
 				? T.show_lyrics
 				: T.show_track
 		);
 		paintSheetPill();
 	}
-	// The pill exists only where the track has words. Its label is the sheet's own name so the
-	// control says what it opens rather than "Lyrics" over a page of director's notes.
+	// The pill exists only where the track has lyrics.
 	function paintSheetPill() {
 		const pill = $( 'sheet-pill' );
 		if ( ! pill ) {
@@ -388,7 +382,7 @@
 			return;
 		}
 		const open = sheetOpen();
-		pill.textContent = sheetKind === 'notes' ? T.notes : T.lyrics;
+		pill.textContent = T.lyrics;
 		pill.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
 	}
 	// Two states and no memory of them. Expanded is Now Playing over the whole screen, and a screen
@@ -920,32 +914,6 @@
 			);
 		}
 		syncLyrics( now );
-		syncNotes( now );
-	}
-	let noteShown = null;
-	const fmtDate = ( d ) =>
-		d
-			? new Date( `${ d }T00:00` ).toLocaleDateString( undefined, {
-					month: 'short',
-					day: 'numeric',
-			  } )
-			: '';
-	function syncNotes( t, force = false ) {
-		const notes = queue?.tracks[ i ]?.notes || [];
-		const n = notes.find( ( x ) => t >= x.t && t < x.t + 6 ) || null;
-		if ( n === noteShown && ! force ) {
-			return;
-		}
-		noteShown = n;
-		nowTitle.classList.toggle( 'is-note', !! n );
-		if ( n ) {
-			const detail = [ n.author, fmtDate( n.date ) ]
-				.filter( Boolean )
-				.join( ' · ' );
-			setTitle( n.text, detail );
-		} else if ( i >= 0 ) {
-			setTitle( queue.tracks[ i ].title );
-		}
 	}
 	function positionState() {
 		if (
@@ -999,8 +967,6 @@
 		}
 		deck.hidden = false;
 		document.body.classList.add( 'has-deck' );
-		noteShown = null;
-		nowTitle.classList.remove( 'is-note' );
 		setTitle( t.title );
 		dur.textContent = remaining( t.duration, 0 );
 		lastSec = -1;
@@ -1023,8 +989,8 @@
 		renderNowPlayingMeta();
 		if ( play ) {
 			ensureAnalyser();
-			// An extension can hold the start: the count-in taps four beats first. Play pressed while
-			// one holds skips the wait (see the toggle below).
+			// An extension can hold the start through beforePlay. Play pressed while one holds skips
+			// the wait (see the toggle below).
 			const start = holdStart( {
 				set: queue.slug,
 				track: snapshot( t, 'track' ),
@@ -1576,7 +1542,7 @@
 		} ).observe( deck );
 	}
 
-	// ---- Marks on the seek line: ticks where singing resumes after a rest (from the lyrics), pins for director notes
+	// ---- Marks on the seek line: ticks where singing resumes after a rest (from the lyrics)
 	const marks = $( 'seek-marks' );
 	let ticks = [];
 	function paintMarks( t ) {
@@ -1602,29 +1568,13 @@
 			}
 			prevEnd = e;
 		} );
-		( t.notes || [] ).forEach( ( n ) => ticks.push( n.t ) );
 		ticks.forEach( ( at ) => {
 			const el = document.createElement( 'i' );
 			el.className = 'tick';
 			el.style.left = `${ ( ( at / d ) * 100 ).toFixed( 2 ) }%`;
 			marks.appendChild( el );
 		} );
-		( t.notes || [] ).forEach( ( n ) => {
-			const el = document.createElement( 'i' );
-			el.className = 'pin';
-			el.dataset.t = n.t;
-			el.style.left = `${ ( ( n.t / d ) * 100 ).toFixed( 2 ) }%`;
-			marks.appendChild( el );
-		} );
 	}
-	marks?.addEventListener( 'click', ( e ) => {
-		const pin = e.target.closest( '.pin' );
-		if ( ! pin ) {
-			return;
-		}
-		audio.currentTime = +pin.dataset.t;
-		audio.play().catch( () => {} );
-	} );
 	const settle = ( t, d ) => {
 		const near = ticks.find( ( x ) => Math.abs( x - t ) < d * 0.02 );
 		if ( near !== undefined && near !== t ) {
@@ -1751,7 +1701,6 @@
 			loopChip.dataset.state = 'on';
 			loopChip.setAttribute( 'aria-label', loopChip.dataset.labelOn );
 		}
-		requestAnimationFrame( () => syncNotes( audio.currentTime, true ) );
 		if ( audio.currentTime < a || audio.currentTime > b ) {
 			audio.currentTime = a;
 		}
@@ -1785,7 +1734,6 @@
 					loopChip.dataset.labelOff
 				);
 			}
-			requestAnimationFrame( () => syncNotes( audio.currentTime, true ) );
 		}
 	}
 	// One control, three taps: mark the start, mark the end, clear. Two fingers on the line or [ ] do the same.
@@ -1979,40 +1927,27 @@
 	}
 	function renderSheet( id ) {
 		cues = ( queue?.lyrics && queue.lyrics[ id ] ) || [];
-		const notes = queue?.tracks[ i ]?.notes || [];
 		cueIdx = -1;
 		lyricsList.innerHTML = '';
-		sheetKind = cues.length ? 'lyrics' : notes.length ? 'notes' : '';
+		sheetKind = cues.length ? 'lyrics' : '';
 		if ( sheetKind ) {
-			openLyrics.dataset.sheet =
-				sheetKind === 'lyrics' ? T.lyrics_label : T.notes;
+			openLyrics.dataset.sheet = T.lyrics_label;
 		} else {
 			delete openLyrics.dataset.sheet;
 		}
 		// Who the track is by, otherwise the set's name, otherwise the sheet's — never blank, so the
 		// deck keeps a constant height. The sheet's name is the last resort now that Now Playing has
-		// a pill that says it: two controls a thumb apart both reading "Notes" is one too many.
+		// a pill that says it: two controls a thumb apart both reading "Lyrics" is one too many.
 		openLyrics.dataset.line =
 			queue?.tracks[ i ]?.artist ||
 			queue?.name ||
 			openLyrics.dataset.sheet ||
 			'';
 		syncOpenLyricsA11y();
-		$( 'sheet-label' ).textContent =
-			sheetKind === 'notes' ? T.notes_sheet : T.lyrics_sheet;
-		const item = ( at, text, detail ) => {
+		$( 'sheet-label' ).textContent = T.lyrics_sheet;
+		const item = ( at, text ) => {
 			const li = document.createElement( 'li' );
-			if ( detail !== undefined ) {
-				const time = document.createElement( 'time' );
-				time.textContent = fmt( at );
-				li.appendChild( time );
-			}
 			li.appendChild( document.createTextNode( text ) );
-			if ( detail ) {
-				const d = document.createElement( 'small' );
-				d.textContent = detail;
-				li.appendChild( d );
-			}
 			li.tabIndex = 0;
 			li.addEventListener( 'click', () => {
 				audio.currentTime = at;
@@ -2021,14 +1956,7 @@
 			lyricsList.appendChild( li );
 			return li;
 		};
-		cueEls = cues.length
-			? cues.map( ( [ s, , text ] ) => item( s, text ) )
-			: notes.map( ( n ) => {
-					const detail = [ n.author, fmtDate( n.date ) ]
-						.filter( Boolean )
-						.join( ' · ' );
-					return item( n.t, n.text, detail );
-			  } );
+		cueEls = cues.map( ( [ s, , text ] ) => item( s, text ) );
 		loadCues();
 	}
 	function syncLyrics( t ) {
@@ -3143,7 +3071,7 @@
 			curator_url: set.credits?.curator_url || '',
 			tracks: [],
 		};
-		const side = { levels: {}, lyrics: {}, notes: {}, tempo: {} };
+		const side = { levels: {}, lyrics: {} };
 		const entries = [],
 			names = new Set();
 		for ( const t of set.tracks ) {
@@ -3174,17 +3102,6 @@
 			const trackCues = set.lyrics?.[ t.id ];
 			if ( trackCues?.length ) {
 				side.lyrics[ trackKey ] = trackCues;
-			}
-			if ( t.notes?.length ) {
-				side.notes[ trackKey ] = t.notes.map( ( n ) => ( {
-					t: n.t,
-					text: n.text,
-					date: n.date,
-				} ) );
-			}
-			const bpm = t.ext?.[ 'callboard/count-in' ]?.bpm || t.bpm;
-			if ( bpm ) {
-				side.tempo[ trackKey ] = bpm;
 			}
 		}
 		const json = ( data ) =>
@@ -4340,80 +4257,6 @@
 		document.addEventListener( 'DOMContentLoaded', ready, { once: true } );
 		window.addEventListener( 'load', ready, { once: true } );
 	}
-} )();
-
-// ---- callboard/count-in. A track with a tempo, played from the top, taps four beats first: a soft
-// click and the count on the title. Built on window.callboard alone, through beforePlay.
-( () => {
-	const cb = window.callboard;
-	if ( ! cb ) {
-		return;
-	}
-	let ctx = null;
-	const click = ( first ) => {
-		try {
-			ctx =
-				ctx ||
-				new ( window.AudioContext || window.webkitAudioContext )();
-			const o = ctx.createOscillator(),
-				g = ctx.createGain(),
-				at = ctx.currentTime;
-			o.frequency.value = first ? 1320 : 880;
-			g.gain.setValueAtTime( 0.0001, at );
-			g.gain.exponentialRampToValueAtTime( 0.18, at + 0.006 );
-			g.gain.exponentialRampToValueAtTime( 0.0001, at + 0.07 );
-			o.connect( g ).connect( ctx.destination );
-			o.start( at );
-			o.stop( at + 0.08 );
-		} catch {}
-	};
-	/**
-	 * Count-in, as an extension: holds the start of a track through beforePlay.
-	 */
-	cb.registerExtension( 'callboard/count-in', {
-		version: '1.0.0',
-		apiVersion: 1,
-		beforePlay( { track, at }, signal ) {
-			const bpm = track?.ext?.[ 'callboard/count-in' ]?.bpm;
-			if ( ! cb.data( 'callboard/count-in' )?.enabled || ! bpm || at ) {
-				return;
-			}
-			const deck = document.getElementById( 'deck' );
-			const beat = 60000 / bpm;
-			return new Promise( ( resolve ) => {
-				const timers = [];
-				const done = ( ok ) => {
-					timers.forEach( clearTimeout );
-					deck?.classList.remove( 'counting' );
-					cb.commands.display( null );
-					resolve( ok );
-				};
-				signal.addEventListener( 'abort', () => done( false ), {
-					once: true,
-				} );
-				deck?.classList.add( 'counting' );
-				for ( let k = 1; k <= 4; k++ ) {
-					timers.push(
-						setTimeout(
-							() => {
-								// the count accumulates: 1, 1 2, 1 2 3, 1 2 3 4
-								cb.commands.display(
-									Array.from(
-										{ length: k },
-										( _, n ) => n + 1
-									).join( '   ' ),
-									{ className: 'is-count' }
-								);
-								click( k === 1 ); // the beat is audible only: a timer is not a gesture, so no haptic can ride on it
-							},
-							( k - 1 ) * beat
-						)
-					);
-				}
-				timers.push( setTimeout( () => done( true ), 4 * beat ) );
-			} );
-		},
-	} );
 } )();
 
 // ---- callboard/quality. What the copy is, in Now Playing: the attachment's own bit depth and sample

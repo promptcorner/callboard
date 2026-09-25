@@ -6,7 +6,7 @@
  * same place — a signed-in user — so asking `is_user_logged_in()` and nothing else inherits
  * Sign in with Apple, Google SSO, membership plugins, and Two Factor with its WebAuthn
  * provider without knowing any of them exist. Core still ships no passkeys of its own.
- * A site can also require the `view_callboard` capability, which the Cast member role has.
+ * A site can also require the `view_callboard` capability, which the Listener role has.
  *
  * Off by default: a link in a group chat is the whole setup, and that is the point of the
  * plugin. The switch is for companies that need more.

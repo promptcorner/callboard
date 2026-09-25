@@ -223,48 +223,6 @@
 	min-width: 0;
 }
 
-.callboard-track-more {
-	margin: 4px 0 0 56px;
-}
-
-.callboard-track-more summary {
-	display: inline-block;
-	padding: 4px 0;
-	color: #2271b1;
-	cursor: pointer;
-}
-
-.callboard-track-more summary::before {
-	content: "\f140";
-	display: inline-block;
-	width: 18px;
-	font: 20px/1 dashicons;
-	vertical-align: -4px;
-}
-
-.callboard-track-more[open] summary::before {
-	content: "\f142";
-}
-
-.callboard-track-fields {
-	max-width: 760px;
-	padding: 4px 0 6px 18px;
-}
-
-.callboard-track-fields p {
-	margin: 10px 0;
-}
-
-.callboard-track-fields textarea {
-	display: block;
-	margin-top: 5px;
-}
-
-.callboard-track-fields .description {
-	display: inline-block;
-	margin-top: 4px;
-}
-
 .callboard-track-reorder {
 	display: flex;
 	align-items: center;
@@ -351,9 +309,5 @@
 
 	.callboard-track-actions {
 		grid-column: 4;
-	}
-
-	.callboard-track-more {
-		margin-left: 48px;
 	}
 }

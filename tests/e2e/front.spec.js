@@ -52,17 +52,13 @@ test.describe( 'Front end', () => {
 		); // pinned to the bottom edge
 	} );
 
-	test( 'a director note link opens its track at the note time', async ( {
+	test( 'a track link opens its track at the given time', async ( {
 		page,
 	} ) => {
-		// The demo set's third track has a note at 0:04, "Softer here".
 		await page.goto( '/demo-set/?track=2&at=4' );
 		await expect(
 			page.locator( '.track[aria-current="true"]' )
 		).toContainText( 'Trombone Detritus' );
-		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Softer here'
-		);
 		await expect
 			.poll( () =>
 				page
@@ -70,11 +66,11 @@ test.describe( 'Front end', () => {
 					.evaluate( ( audio ) => audio.currentTime )
 			)
 			.toBeGreaterThanOrEqual( 4 );
-		// The parameters are dropped, so reloading does not jump back to the note.
+		// The parameters are dropped, so reloading does not jump back there.
 		await expect( page ).toHaveURL( /\/demo-set\/$/ );
 	} );
 
-	test( 'a set page without a note link still opens where the listener left off', async ( {
+	test( 'a set page without a track link still opens where the listener left off', async ( {
 		page,
 	} ) => {
 		await page.addInitScript( () =>
@@ -508,18 +504,13 @@ test.describe( 'Front end', () => {
 		);
 	} );
 
-	test( 'ticks and note pins mark the seek line; a pin jumps there', async ( {
+	test( 'ticks mark the seek line where the singing comes back', async ( {
 		page,
 	} ) => {
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // the annotated track
+		await page.locator( '.track' ).nth( 2 ).click(); // the track with lyrics
 		await expandDeck( page ); // the seek line and its marks are expanded-only now
-		await expect( page.locator( '#seek-marks .pin' ) ).toHaveCount( 2 ); // one per director's note
-		await page.locator( '#seek-marks .pin' ).first().click();
-		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Softer here'
-		);
-		await expect( page.locator( '#now-title' ) ).toContainText( 'Sep 1' );
+		await expect( page.locator( '#seek-marks .tick' ) ).toHaveCount( 2 );
 	} );
 
 	test( 'an A-B loop from the keyboard shows the band and clears', async ( {
@@ -545,7 +536,7 @@ test.describe( 'Front end', () => {
 		page,
 	} ) => {
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).first().click(); // levels and a note
+		await page.locator( '.track' ).first().click(); // levels
 		await expandDeck( page ); // the wave only draws in the expanded view
 		await expect( page.locator( '#deck' ) ).toHaveClass( /has-wave/ );
 		expect(
@@ -567,7 +558,7 @@ test.describe( 'Front end', () => {
 			/translateX\(50(\.0+)?%\)/
 		);
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).first().click(); // levels, no lyrics or notes
+		await page.locator( '.track' ).first().click(); // levels, no lyrics
 		await expandDeck( page ); // compare like with like: Now Playing in both cases
 		const without = ( await page.locator( '#deck' ).boundingBox() ).height;
 		expect( Math.abs( withLyrics - without ) ).toBeLessThan( 1 );
@@ -648,63 +639,6 @@ test.describe( 'Front end', () => {
 			useInnerText: true,
 		} );
 		await expect( quality ).toContainText( /kHz/, { useInnerText: true } );
-	} );
-
-	test( 'a track with a tempo counts in before it plays, once the setting is on', async ( {
-		page,
-		admin,
-	} ) => {
-		const settings = async ( on ) => {
-			await admin.visitAdminPage(
-				'edit.php',
-				'post_type=callboard_set&page=callboard-settings'
-			);
-			if ( on ) {
-				await page.check( '#callboard-count_in' );
-			} else {
-				await page.uncheck( '#callboard-count_in' );
-			}
-			await page.click( '#submit' );
-			await expect(
-				page
-					.locator(
-						'#setting-error-settings_updated, .notice-success'
-					)
-					.first()
-			).toBeVisible();
-		};
-		await page.goto( '/demo-set/' );
-		await expect( page.locator( '.track .bpm' ) ).toHaveText( '♩ 96' );
-		await page.locator( '.track' ).nth( 2 ).click(); // 96 BPM: off by default, it just plays
-		// Read once, straight after the tap (#29). A count starts inside the click and runs for four beats,
-		// so a retrying not.toHaveClass simply waited it out and passed.
-		expect(
-			await page
-				.locator( '#deck' )
-				.evaluate( ( d ) => d.classList.contains( 'counting' ) )
-		).toBe( false );
-		try {
-			await settings( true );
-			await page.goto( '/demo-set/' );
-			await page.evaluate( () => localStorage.clear() ); // forget the position, or the same row just toggles play
-			await page.reload();
-			await page.locator( '.track' ).nth( 2 ).click();
-			await expect( page.locator( '#deck' ) ).toHaveClass( /counting/ );
-			await expect( page.locator( '#now-title' ) ).toHaveText(
-				/^1(\s+[2-4])*$/
-			);
-			await expect( page.locator( '#deck' ) ).not.toHaveClass(
-				/counting/,
-				{
-					timeout: 4000,
-				}
-			);
-			await expect( page.locator( '#now-title' ) ).toContainText(
-				'Trombone Detritus'
-			);
-		} finally {
-			await settings( false ); // back off for the other tests, whether this one passed or not
-		}
 	} );
 
 	test( 'the deck offers AirPlay or Cast only while a device is in reach', async ( {
@@ -1174,8 +1108,7 @@ const isCompact = ( page ) =>
 
 // Returns the controls whose touch area is smaller than 44px. Probes 21px out from each control's centre
 // with elementFromPoint, so an invisible ::after touch area counts even when the visible box is smaller.
-// A probe that lands on a neighbouring control whose centre is just as close (two note pins 44px apart)
-// is not a miss.
+// A probe that lands on a neighbouring control whose centre is just as close is not a miss.
 const touchAreaUnder44 = ( page, selector ) =>
 	page.evaluate( ( sel ) => {
 		const short = [],
@@ -1797,7 +1730,7 @@ test.describe( 'Touch', () => {
 		page,
 	} ) => {
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // has a note, so a note pin and the lyrics button show
+		await page.locator( '.track' ).nth( 2 ).click(); // has lyrics, so the lyrics button shows
 		expect(
 			await touchAreaUnder44(
 				page,
@@ -1809,7 +1742,7 @@ test.describe( 'Touch', () => {
 		expect(
 			await touchAreaUnder44(
 				page,
-				'#deck button, #deck input, .seek-marks .pin'
+				'#deck button, #deck input'
 			)
 		).toEqual( [] );
 	} );
@@ -1818,7 +1751,7 @@ test.describe( 'Touch', () => {
 		page,
 	}, testInfo ) => {
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 1 ).click(); // no lyrics or notes, so no marks to snap to
+		await page.locator( '.track' ).nth( 1 ).click(); // no lyrics, so no marks to snap to
 		await expandDeck( page );
 		await isExpanded( page );
 		await page.evaluate( () => {
