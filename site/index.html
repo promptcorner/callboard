@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Callboard</title>
-<meta name="description" content="A callboard in the cast's pocket. A WordPress plugin: the call posted, the numbers to run, a player that keeps playing, offline, installable from Safari.">
+<meta name="description" content="Rehearsal calls and practice tracks on every phone in the cast. A WordPress plugin.">
 <meta property="og:title" content="Callboard">
 <meta property="og:description" content="A callboard in the cast's pocket. A WordPress plugin.">
 <meta property="og:image" content="{{pages_url}}og.png">
@@ -16,163 +16,167 @@
 <meta name="theme-color" content="#161616" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
 <style>
-:root{--bg:#eceae5;--surface:#f6f5f2;--line:#d3d1cb;--line-2:#e2e0da;--ink:#1c1c1c;--ink-2:#55544f;--ink-3:#6f6e69;--accent:#e8541e;--warmth:rgba(214,184,150,.18);--glass:rgba(236,234,229,.72);--ease:cubic-bezier(.2,.7,.2,1);--t:.2s;--t-slow:.6s}
-@media (prefers-color-scheme:dark){:root{--bg:#161616;--surface:#1f1f1f;--line:#2e2e2e;--line-2:#262626;--ink:#f2f1ee;--ink-2:#b3b2ae;--ink-3:#95948f;--accent:#ff6a2e;--warmth:rgba(120,92,68,.1);--glass:rgba(22,22,22,.72)}}
+:root{--bg:#eceae5;--surface:#f6f5f2;--line:#d3d1cb;--line-2:#e2e0da;--ink:#1c1c1c;--ink-2:#55544f;--ink-3:#6f6e69;--accent:#e8541e;--warmth:rgba(214,184,150,.18);--glass:rgba(236,234,229,.72);--ease:cubic-bezier(.2,.7,.2,1);--t:.2s;--t-slow:.6s;--gap:clamp(40px,5vw,72px);--section:clamp(96px,13vw,168px)}
+@media (prefers-color-scheme:dark){:root{--bg:#161616;--surface:#1d1d1d;--line:#2e2e2e;--line-2:#262626;--ink:#f2f1ee;--ink-2:#b3b2ae;--ink-3:#95948f;--accent:#ff6a2e;--warmth:rgba(120,92,68,.1);--glass:rgba(22,22,22,.72)}}
 *{box-sizing:border-box}
 html{font:-apple-system-body;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Helvetica,Inter,Arial,sans-serif;scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{margin:0;background-color:var(--bg);background-image:radial-gradient(120% 70% at 50% -10%,var(--warmth),transparent 60%),url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .12 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");background-size:auto,200px 200px;background-repeat:no-repeat,repeat;background-blend-mode:normal,overlay;color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
 a{color:inherit}
-.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
-/* nav: a glass hairline */
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+/* nav: the product name, two links, one button */
 .nav{position:sticky;top:0;z-index:10;background:var(--glass);-webkit-backdrop-filter:saturate(160%) blur(16px);backdrop-filter:saturate(160%) blur(16px);border-bottom:1px solid var(--line-2)}
-.nav .wrap{height:56px;display:flex;align-items:center;justify-content:space-between}
-.mark{display:inline-flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;letter-spacing:-.01em;font-size:.9375rem}
+.nav .wrap{height:52px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.mark{display:inline-flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;letter-spacing:-.01em;font-size:1.0625rem}
 .mark i{width:24px;height:24px;border-radius:50%;background:var(--ink);position:relative;flex:none}
 .mark i::before{content:"";position:absolute;left:9.5px;top:7px;border-left:8px solid var(--bg);border-top:5px solid transparent;border-bottom:5px solid transparent}
 .mark i::after{content:"";position:absolute;right:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
-.nav nav a{color:var(--ink-2);text-decoration:none;margin-left:24px;font-size:.875rem;transition:color var(--t)}
-.nav nav a:hover{color:var(--ink)}
-/* type */
-h1,h2{letter-spacing:-.03em;line-height:1.02;font-weight:700;margin:0;text-wrap:balance}
-h1{font-size:clamp(2.75rem,7vw,5.5rem)}
-h2{font-size:clamp(2rem,4.2vw,3.25rem)}
-.lede{font-size:clamp(1.125rem,1.6vw,1.375rem);color:var(--ink-2);max-width:36rem;text-wrap:pretty;line-height:1.4}
-/* buttons: machined, no chrome beyond the hairline */
-.btn{appearance:none;border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:999px;padding:0 22px;height:50px;display:inline-flex;align-items:center;gap:10px;font-weight:600;text-decoration:none;font-size:.9375rem;transition:transform var(--t) var(--ease),background var(--t)}
-.btn.quiet{background:transparent;color:var(--ink);border-color:var(--line)}
+.nav nav{display:flex;align-items:center;gap:24px}
+.nav nav a:not(.btn){color:var(--ink-2);text-decoration:none;font-size:.8125rem;transition:color var(--t)}
+.nav nav a:not(.btn):hover{color:var(--ink)}
+.nav .btn{height:30px;padding:0 14px;font-size:.8125rem}
+/* type: four sizes. A label, a headline, one line under it, and small print */
+.eyebrow{margin:0 0 12px;font-size:clamp(1.0625rem,1.6vw,1.3125rem);font-weight:600;color:var(--ink-3);letter-spacing:-.01em}
+h1,h2{letter-spacing:-.035em;line-height:1.02;font-weight:700;margin:0;text-wrap:balance}
+h1{font-size:clamp(3rem,8vw,6rem)}
+h2{font-size:clamp(2.5rem,6vw,4.5rem)}
+.lede{margin:20px auto 0;font-size:clamp(1.1875rem,2vw,1.625rem);font-weight:500;color:var(--ink-2);max-width:34rem;line-height:1.3;letter-spacing:-.01em;text-wrap:balance}
+.fine{margin:0;font-size:.875rem;color:var(--ink-3);text-wrap:pretty}
+/* sections: one idea each, centred, text above the picture */
+section{padding:var(--section) 0;text-align:center}
+.alt{background:var(--surface)}
+.shot{margin-top:var(--gap);display:flex;justify-content:center}
+/* buttons: a filled pill, and a plain link with a chevron */
+.btn{appearance:none;border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:999px;padding:0 24px;height:48px;display:inline-flex;align-items:center;font-weight:600;text-decoration:none;font-size:1.0625rem;transition:transform var(--t) var(--ease),opacity var(--t)}
 .btn:hover{transform:translateY(-1px)}
 .btn:active{transform:scale(.98)}
+.more{color:var(--accent);text-decoration:none;font-size:1.0625rem;font-weight:500}
+.more::after{content:" ›"}
+.more:hover{text-decoration:underline;text-underline-offset:3px}
+.cta{margin-top:32px;display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center;justify-content:center}
 /* device frame: a thin machined bezel, nothing more */
-.device{display:inline-block;padding:10px;border-radius:46px;background:#0d0d0d;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 40px 90px -20px rgba(0,0,0,.45)}
-.device img{display:block;width:100%;border-radius:36px}
-/* hero */
-.hero{padding:96px 0 72px}
-.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center}
-.hero .lede{margin:24px 0 32px}
-.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-.stage{display:flex;justify-content:center}
-.stage .device{width:340px;transform:rotate(-1.5deg)}
-/* statements: one idea, one image, alternating */
-.stmt{padding:120px 0}
-.stmt .wrap{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
-.stmt.flip .wrap>:first-child{order:2}
-.stmt .stmt p{font-size:1.125rem;color:var(--ink-2);max-width:32rem;margin:20px 0 0;text-wrap:pretty}
-.crop{overflow:hidden;border-radius:28px;border:1px solid var(--line);background:var(--surface);aspect-ratio:4/3;position:relative}
-.crop img{position:absolute;left:50%;transform:translateX(-50%);width:min(100%,420px);border-radius:24px 24px 0 0;box-shadow:0 30px 70px -20px rgba(0,0,0,.35)}
-.crop.top img{top:8%}
-.crop.bottom img{bottom:-12%;top:auto;border-radius:24px}
-/* live demo: a phone-sized preview beside the controls that change it and start the demo */
-.yours{padding:120px 0 40px}
-.yours .lede{max-width:40rem}
-.demo{margin-top:48px;display:grid;grid-template-columns:minmax(0,24rem) 390px;gap:56px;align-items:center;justify-content:center}
-.demo-panel{display:grid;gap:14px;justify-items:start}
-.demo-h{margin:0;font-size:1.0625rem;letter-spacing:-.01em}
-.demo-text{margin:0;color:var(--ink-2);font-size:.9375rem;text-wrap:pretty}
-.presets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink-2);border-radius:999px;min-height:44px;padding:0 16px;font:inherit;font-size:.9375rem;font-weight:600;cursor:pointer;transition:color var(--t),border-color var(--t),background var(--t)}
+.device{display:inline-block;width:min(360px,78vw);padding:10px;border-radius:46px;background:#0d0d0d;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 40px 90px -20px rgba(0,0,0,.45)}
+.device img{display:block;width:100%;height:auto;border-radius:36px}
+.hero{padding:clamp(64px,9vw,112px) 0 var(--section)}
+.hero .device{width:min(380px,80vw)}
+.admin{display:block;width:100%;height:auto;border-radius:18px;border:1px solid var(--line);box-shadow:0 40px 90px -30px rgba(0,0,0,.4);background:#f0f0f1}
+/* three short facts under a picture */
+.facts{list-style:none;margin:var(--gap) auto 0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:32px;max-width:52rem}
+.facts strong{display:block;font-size:1.3125rem;letter-spacing:-.01em}
+.facts span{color:var(--ink-2)}
+/* the dark room: the player, at scale */
+.dark{background:#111;color:#f2f1ee}
+.dark .eyebrow{color:#95948f}
+.dark .lede,.dark .facts span{color:#b3b2ae}
+/* live demo: examples above a phone-sized preview, the button below */
+.presets{margin-top:36px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink-2);border-radius:999px;min-height:44px;padding:0 18px;font:inherit;font-size:.9375rem;font-weight:600;cursor:pointer;transition:color var(--t),border-color var(--t),background var(--t)}
 .chip:hover{color:var(--ink);border-color:var(--ink)}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .chip:disabled{opacity:.5;cursor:progress}
+.demo{margin-top:40px;display:grid;justify-items:center;gap:28px}
 .phone{width:min(390px,100%);padding:10px;border-radius:46px;background:#0d0d0d;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 40px 90px -20px rgba(0,0,0,.45)}
 .screen{position:relative;aspect-ratio:390/844;border-radius:36px;overflow:hidden;background:#161616}
 .screen img,.screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 .screen img{object-fit:contain;z-index:1}
 .screen [hidden]{display:none}
+.demo-go{display:grid;justify-items:center;gap:12px;max-width:26rem}
 .demo-start[aria-disabled="true"]{opacity:.6;cursor:progress}
 .demo-status{margin:0;font-size:.9375rem;color:var(--ink);text-wrap:pretty}
-.demo-panel a:not(.btn){color:var(--ink-2);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
-@media (max-width:900px){.yours{padding:80px 0 20px}.demo{grid-template-columns:1fr;justify-items:center;gap:32px}.demo-panel{max-width:24rem}.phone{width:min(340px,100%)}}
-/* the board: the editor doing the work, the phone showing the result */
-.board{padding:120px 0 96px}
-.board .lede{max-width:40rem}
-.pair{margin-top:56px}
-.pair .admin{display:block;width:100%;border-radius:18px;border:1px solid var(--line);box-shadow:0 40px 90px -30px rgba(0,0,0,.4);background:#f0f0f1}
-@media (max-width:900px){.board{padding:80px 0 40px}.pair{margin-top:40px}}
-/* the dark room: the player, at scale */
-.dark{background:#111;color:#f2f1ee;padding:140px 0;position:relative}
-.dark .lede{color:#b3b2ae}
-.dark .wrap{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
-.dark .device{width:360px;justify-self:center}
-.dark h2{color:#f2f1ee}
-/* under the hood: the geek section, four columns of specification links */
-.under{padding:120px 0 96px}
-.specs{margin:40px 0 0;padding-top:28px;border-top:1px solid var(--line);color:var(--ink-3);font-size:1rem;line-height:1.7;text-wrap:pretty}
-.specs a{color:var(--ink-2);text-decoration:none;border-bottom:1px solid var(--line);transition:color var(--t),border-color var(--t)}
-.specs a:hover{color:var(--ink);border-color:var(--ink)}
-footer{border-top:1px solid var(--line);padding:32px 0 64px;color:var(--ink-3);font-size:.875rem}
+.demo-status:empty{display:none}
+/* tech specs: grouped, small, for whoever wants them */
+.specs{margin:var(--gap) 0 0;display:grid;grid-template-columns:repeat(4,1fr);gap:32px;text-align:left;border-top:1px solid var(--line);padding-top:32px}
+.specs h3{margin:0 0 10px;font-size:1.0625rem;letter-spacing:-.01em}
+.specs ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.9375rem}
+.specs a{color:var(--ink-2);text-decoration:none;transition:color var(--t)}
+.specs a:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.needs{margin-top:28px}
+footer{border-top:1px solid var(--line);padding:24px 0 56px;color:var(--ink-3);font-size:.8125rem}
 footer .wrap{display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between}
 footer a{text-decoration:none;color:var(--ink-2)}
 /* reveals: confirm arrival, nothing more */
 html.js .r{opacity:0;transform:translateY(14px);transition:opacity var(--t-slow) var(--ease),transform var(--t-slow) var(--ease)}
 html.js .r.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.r{opacity:1;transform:none;transition:none}.btn:hover{transform:none}}
-@media (max-width:900px){.hero{padding:56px 0 40px}.hero .wrap,.stmt .wrap,.dark .wrap{grid-template-columns:1fr;gap:40px}.stmt.flip .wrap>:first-child{order:0}.stage .device{width:280px}.dark .device{width:300px}.stmt,.dark{padding:80px 0}}
-@media (max-width:560px){.stage .device{width:64%}.nav nav{display:none}}
+@media (max-width:900px){.specs{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.nav nav a:not(.btn){display:none}.facts{grid-template-columns:1fr;gap:20px}}
 </style>
 </head>
 <body>
-<div class="nav"><div class="wrap"><a class="mark" href="#top"><i aria-hidden="true"></i>Callboard</a><nav><a href="#yours">Yours</a><a href="#board">The board</a><a href="#player">The player</a><a href="#now-playing">Now Playing</a><a href="#hand">Hand it to someone</a><a href="#under">Under the hood</a><a href="https://github.com/promptcorner/callboard">GitHub</a></nav></div></div>
+<div class="nav"><div class="wrap"><a class="mark" href="#top"><i aria-hidden="true"></i>Callboard</a><nav><a href="#yours">Try it</a><a href="#under">Tech specs</a><a href="https://github.com/promptcorner/callboard">GitHub</a><a class="btn" href="https://github.com/promptcorner/callboard/releases/latest">Download</a></nav></div></div>
 
 <main id="top">
 <section class="hero"><div class="wrap">
 	<div class="r">
+		<p class="eyebrow">Callboard</p>
 		<h1>The callboard, in the cast's pocket.</h1>
-		<p class="lede">The call at the top. The numbers to run underneath. A player that keeps playing when the phone goes in a pocket. Yours, on your own site.</p>
-		<div class="cta"><a class="btn" href="https://github.com/promptcorner/callboard/releases/latest">Download</a><a class="btn quiet" href="https://github.com/promptcorner/callboard">Source</a></div>
+		<p class="lede">Rehearsal calls and practice tracks on every phone. From your own WordPress site.</p>
+		<div class="cta"><a class="btn" href="https://github.com/promptcorner/callboard/releases/latest">Download</a><a class="more" href="#yours">Try the demo</a></div>
 	</div>
-	<div class="stage r" aria-hidden="true"><span class="device"><img src="home-light.png" alt=""></span></div>
+	<div class="shot r"><span class="device"><img src="home-light.png" width="780" height="1328" alt="The home screen: the sets, each with its track count and length"></span></div>
 </div></section>
 
-<section class="yours" id="yours"><div class="wrap">
-	<div class="r"><h2>Make it yours.</h2><p class="lede" style="margin-top:20px">Your name on the door. Your colour on the wave. Your badge on the track that is playing. Your lucky number in the confetti. Every one is a setting, not code, and so is the lock: leave the address open, which is what a cast usually wants, or ask for a sign-in and whatever the site already uses guards the app too. Try three of them on a real copy, running in your browser.</p></div>
-	<div class="demo r">
-		<div class="demo-panel">
-			<h3 class="demo-h" id="demo-examples">Example settings</h3>
-			<p class="demo-text">Each example changes the site name and accent colour. The preview shows the result.</p>
-			<div class="presets" role="group" aria-labelledby="demo-examples">
-				<button type="button" class="chip" aria-pressed="true" data-preset="show" data-src="demo-spring-show.png">Spring Show</button>
-				<button type="button" class="chip" aria-pressed="false" data-preset="choir" data-src="demo-chamber-choir.png">Chamber Choir</button>
-				<button type="button" class="chip" aria-pressed="false" data-preset="maya" data-src="demo-maya-sings.png">Maya Sings</button>
-			</div>
-			<h3 class="demo-h">Live demo</h3>
-			<p class="demo-text">Starts a temporary WordPress site with Callboard and a sample playlist, using WordPress Playground. It runs in your browser, nothing is installed, and the site is deleted when you leave the page. It takes about 10 to 30 seconds to start.</p>
-			<a class="btn demo-start" id="demo-start" href="https://playground.wordpress.net/?mode=seamless&blueprint-url={{pages_url}}blueprint.json" target="_blank" rel="noopener">Start the live demo</a>
-			<p class="demo-status" id="demo-status" role="status"></p>
-		</div>
-		<div class="phone">
-			<div class="screen">
-				<img id="demo-still" src="demo-spring-show.png" width="780" height="1688" alt="Preview of the Spring Show example: Callboard on a phone, with the next rehearsal call and the Compositions jazz set">
-				<iframe id="demo" title="Live demo of Callboard running in WordPress Playground" hidden></iframe>
-			</div>
-		</div>
-	</div>
-</div></section>
-
-<section class="board" id="board"><div class="wrap">
-	<div class="r"><h2>Posted once, in WordPress.</h2><p class="lede" style="margin-top:20px">The stage manager writes the call the way any post is written: a title, a note, when, where, the numbers being worked. Schedule it for the night before. It lands at the top of every phone, and every number is a tap that starts the track.</p></div>
-	<div class="pair r" aria-hidden="true"><img class="admin" src="admin-call.png" alt=""></div>
+<section class="alt" id="board"><div class="wrap">
+	<div class="r"><p class="eyebrow">The board</p><h2>Post it once.</h2><p class="lede">Write the call in WordPress. It lands on every phone.</p></div>
+	<div class="shot r"><img class="admin" src="admin-call.png" width="2560" height="1920" alt="Editing a call in WordPress: a title, a note, when, where, and the numbers being worked"></div>
 </div></section>
 
 <section class="dark" id="player"><div class="wrap">
-	<span class="device r"><img src="set-dark.png" alt="The set page with the player along the bottom"></span>
-	<div class="r"><h2>The player.</h2><p class="lede" style="margin-top:20px">Previous, play, next. A waveform to scrub. A loop for the hard eight bars. Lyrics and the director's notes in time with the track. Save a set once and it plays with no signal in the building.</p></div>
+	<div class="r"><p class="eyebrow">The player</p><h2>Keeps playing in a pocket.</h2><p class="lede">Screen off, phone away, track still going.</p></div>
+	<div class="shot r"><span class="device"><img src="set-dark.png" width="780" height="1328" alt="The set page with the player along the bottom"></span></div>
+	<ul class="facts r">
+		<li><strong>Loop</strong><span>The hard eight bars, again.</span></li>
+		<li><strong>Lyrics</strong><span>And notes, in time with the track.</span></li>
+		<li><strong>Offline</strong><span>Save once. No signal needed.</span></li>
+	</ul>
 </div></section>
 
-<section class="stmt flip" id="now-playing"><div class="wrap">
-	<div class="r"><h2>Now Playing.</h2><p class="lede" style="margin-top:20px">Tap the player bar and the track fills the screen: its cover, the waveform, the time left, and controls big enough to hit without looking. Drag it down, or go back, and you are on the list where you left it.</p></div>
-	<span class="device r"><img src="now-playing-dark.png" alt="Now Playing on a phone: the track's cover, title and waveform, the time, and the loop, repeat, previous, pause and next controls"></span>
+<section id="now-playing"><div class="wrap">
+	<div class="r"><p class="eyebrow">Now Playing</p><h2>Big enough to hit without looking.</h2><p class="lede">Tap the bar and the track fills the screen. Drag it down to go back.</p></div>
+	<div class="shot r"><span class="device"><img src="now-playing-dark.png" width="780" height="1328" alt="Now Playing on a phone: the track's cover, title and waveform, the time, and the loop, repeat, previous, pause and next controls"></span></div>
 </div></section>
 
-<section class="stmt" id="hand"><div class="wrap">
-	<div class="r"><h2>Hand it to someone.</h2><p class="lede" style="margin-top:20px">A set is a file. It carries the audio, the order, the levels, and everything anybody wrote about it. The Share button sends the set's link; when there is no bandwidth, load a set from a file and hand over the track file itself by AirDrop. Or write it to a stick, and the show plays in the car on the drive in.</p></div>
-	<span class="device r"><img src="set-light.png" alt="A set, with Load from files beside Save offline"></span>
+<section class="alt" id="hand"><div class="wrap">
+	<div class="r"><p class="eyebrow">Sharing</p><h2>Hand it to someone.</h2><p class="lede">Send the link. No signal? Pass the set file phone to phone.</p></div>
+	<div class="shot r"><span class="device"><img src="set-light.png" width="780" height="1328" alt="A set, with Load from files beside Save offline"></span></div>
 </div></section>
 
+<section id="yours"><div class="wrap">
+	<div class="r"><p class="eyebrow">Make it yours</p><h2>Your name. Your colour.</h2><p class="lede">Pick one and watch the phone change.</p></div>
+	<div class="presets r" role="group" aria-label="Example settings">
+		<button type="button" class="chip" aria-pressed="true" data-preset="show" data-src="demo-spring-show.png">Spring Show</button>
+		<button type="button" class="chip" aria-pressed="false" data-preset="choir" data-src="demo-chamber-choir.png">Chamber Choir</button>
+		<button type="button" class="chip" aria-pressed="false" data-preset="maya" data-src="demo-maya-sings.png">Maya Sings</button>
+	</div>
+	<div class="demo r">
+		<div class="phone">
+			<div class="screen">
+				<img id="demo-still" src="demo-spring-show.png" width="780" height="1688" alt="Preview of the Spring Show example: Callboard on a phone, with the next rehearsal call and the Shakespeare's Sonnets set">
+				<iframe id="demo" title="Live demo of Callboard running in WordPress Playground" hidden></iframe>
+			</div>
+		</div>
+		<div class="demo-go">
+			<a class="btn demo-start" id="demo-start" href="https://playground.wordpress.net/?mode=seamless&blueprint-url={{pages_url}}blueprint.json" target="_blank" rel="noopener">Start the live demo</a>
+			<p class="demo-status" id="demo-status" role="status"></p>
+			<p class="fine">A real WordPress site, running in your browser. Nothing to install.</p>
+		</div>
+	</div>
+</div></section>
 
-<section class="under" id="under"><div class="wrap">
-	<div class="r"><h2>Under the hood.</h2><p class="lede" style="margin-top:20px">A WordPress plugin, one stylesheet and one main script, plus WordPress's hooks script and any extension scripts, and as much of the web platform as the phones in a rehearsal room can run.</p></div>
-	<p class="specs r"><a href="https://html.spec.whatwg.org/multipage/media.html">HTML media element</a>, <a href="https://www.w3.org/TR/mediasession/">Media Session</a>, <a href="https://www.w3.org/TR/webaudio/">Web Audio</a>, <a href="https://w3c.github.io/audio-session/">Audio Session</a>, <a href="https://www.w3.org/TR/remote-playback/">Remote Playback</a>, <a href="https://www.w3.org/TR/web-locks/">Web Locks</a>, <a href="https://html.spec.whatwg.org/multipage/media.html#text-track-api">TextTrack</a>, <a href="https://w3c.github.io/ServiceWorker/">Service Worker</a>, <a href="https://w3c.github.io/ServiceWorker/#cache-interface">Cache API</a>, <a href="https://www.rfc-editor.org/rfc/rfc9110.html#name-range-requests">Range requests</a>, <a href="https://streams.spec.whatwg.org/">Streams</a>, <a href="https://storage.spec.whatwg.org/">Storage</a>, <a href="https://www.w3.org/TR/appmanifest/">Web App Manifest</a>, <a href="https://www.w3.org/TR/css-view-transitions-1/">View Transitions</a>, <a href="https://www.w3.org/TR/push-api/">Push API</a>, <a href="https://notifications.spec.whatwg.org/">Notifications</a>, <a href="https://www.w3.org/TR/badging/">Badging</a>, <a href="https://www.w3.org/TR/web-share/">Web Share</a>, <a href="https://www.rfc-editor.org/rfc/rfc8292">VAPID</a>, <a href="https://webkit.org/blog/15054/an-html-switch-control/">WebKit switch haptics</a>, <a href="https://html.spec.whatwg.org/multipage/canvas.html">Canvas 2D</a>, <a href="https://www.w3.org/TR/css-anchor-position-1/">anchor positioning</a>, <a href="https://www.w3.org/TR/css-contain-3/">container queries</a>, <a href="https://www.w3.org/TR/css-inline-3/#text-box-trim">text-box-trim</a>, <a href="https://www.w3.org/TR/css-text-4/#text-wrap">text-wrap: pretty</a>.
+<section class="alt" id="under"><div class="wrap">
+	<div class="r"><p class="eyebrow">Tech specs</p><h2>Built on the web.</h2><p class="lede">One WordPress plugin. No app store, no framework, no build step.</p></div>
+	<div class="specs r">
+		<div><h3>Playback</h3><ul><li><a href="https://html.spec.whatwg.org/multipage/media.html">HTML media element</a></li><li><a href="https://www.w3.org/TR/mediasession/">Media Session</a></li><li><a href="https://www.w3.org/TR/webaudio/">Web Audio</a></li><li><a href="https://w3c.github.io/audio-session/">Audio Session</a></li><li><a href="https://www.w3.org/TR/remote-playback/">Remote Playback</a></li><li><a href="https://www.w3.org/TR/web-locks/">Web Locks</a></li><li><a href="https://html.spec.whatwg.org/multipage/media.html#text-track-api">TextTrack</a></li><li><a href="https://html.spec.whatwg.org/multipage/canvas.html">Canvas 2D</a></li></ul></div>
+		<div><h3>Offline</h3><ul><li><a href="https://w3c.github.io/ServiceWorker/">Service Worker</a></li><li><a href="https://w3c.github.io/ServiceWorker/#cache-interface">Cache API</a></li><li><a href="https://www.rfc-editor.org/rfc/rfc9110.html#name-range-requests">Range requests</a></li><li><a href="https://streams.spec.whatwg.org/">Streams</a></li><li><a href="https://storage.spec.whatwg.org/">Storage</a></li></ul></div>
+		<div><h3>App</h3><ul><li><a href="https://www.w3.org/TR/appmanifest/">Web App Manifest</a></li><li><a href="https://www.w3.org/TR/push-api/">Push API</a></li><li><a href="https://www.rfc-editor.org/rfc/rfc8292">VAPID</a></li><li><a href="https://notifications.spec.whatwg.org/">Notifications</a></li><li><a href="https://www.w3.org/TR/badging/">Badging</a></li><li><a href="https://www.w3.org/TR/web-share/">Web Share</a></li><li><a href="https://webkit.org/blog/15054/an-html-switch-control/">WebKit switch haptics</a></li></ul></div>
+		<div><h3>Interface</h3><ul><li><a href="https://www.w3.org/TR/css-view-transitions-1/">View Transitions</a></li><li><a href="https://www.w3.org/TR/css-anchor-position-1/">Anchor positioning</a></li><li><a href="https://www.w3.org/TR/css-contain-3/">Container queries</a></li><li><a href="https://www.w3.org/TR/css-inline-3/#text-box-trim">text-box-trim</a></li><li><a href="https://www.w3.org/TR/css-text-4/#text-wrap">text-wrap: pretty</a></li></ul></div>
+	</div>
+	<p class="fine needs r">Requires WordPress 6.5 and PHP 8.1 or later.</p>
+</div></section>
+
+<section class="closing"><div class="wrap r">
+	<h2>Ready for rehearsal.</h2>
+	<div class="cta"><a class="btn" href="https://github.com/promptcorner/callboard/releases/latest">Download</a><a class="more" href="https://github.com/promptcorner/callboard">View the source</a></div>
 </div></section>
 </main>
 

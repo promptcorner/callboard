@@ -35,7 +35,6 @@ tests/fixtures/callboard/*/share-[0-9]*x[0-9]*.png
 
 # PHPUnit
 .phpunit.result.cache
-.impeccable/hook.cache.json
 
 # Agent worktrees: separate checkouts, never part of this one
 .claude/worktrees/
