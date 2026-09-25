@@ -1,6 +1,6 @@
 {
   "name": "callboard",
-  "version": "2.7.0",
+  "version": "3.0.0",
   "description": "A focused music player for WordPress with offline listening and optional rehearsal tools.",
   "license": "GPL-2.0-or-later",
   "private": true,
