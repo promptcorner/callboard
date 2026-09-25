@@ -1,8 +1,6 @@
-<p align="center"><img src="site/banner.png" alt="Callboard: two phones showing the posted call and a set with the player" width="100%"></p>
-
 # Callboard
 
-An open-source music player for WordPress. Publish an owned, app-like listening experience with persistent playback, offline sets, waveform seeking, lyrics, and lock-screen controls. Rehearsal workflows for casts and choirs are built in, not bolted on.
+An open-source music player for WordPress. Publish an owned, app-like listening experience with persistent playback, offline sets, waveform seeking, lyrics, and lock-screen controls.
 
 <p><a href="https://promptcorner.github.io/callboard/">Landing page and live demo</a> · <a href="https://playground.wordpress.net/?mode=seamless&blueprint-url=https://promptcorner.github.io/callboard/blueprint.json">Open in WordPress Playground</a> · <a href="https://github.com/promptcorner/callboard/releases/latest">Latest release</a></p>
 
@@ -10,9 +8,8 @@ An open-source music player for WordPress. Publish an owned, app-like listening 
 
 <table>
 <tr>
-<td align="center" width="33%"><img src="site/home-light.png" alt="The home screen with the next call, the sets, and the player" width="260"><br><sub>The board</sub></td>
-<td align="center" width="33%"><img src="site/set-dark.png" alt="A set: numbered tracks, the waveform, and the transport" width="260"><br><sub>A set</sub></td>
-<td align="center" width="33%"><img src="site/admin-call.png" alt="The call editor in WordPress" width="400"><br><sub>Posting a call</sub></td>
+<td align="center" width="50%"><img src="site/home-light.png" alt="The home screen with the sets" width="260"><br><sub>Home</sub></td>
+<td align="center" width="50%"><img src="site/set-dark.png" alt="A set: numbered tracks, the waveform, and the transport" width="260"><br><sub>A set</sub></td>
 </tr>
 </table>
 
