@@ -1,6 +1,6 @@
 # Callboard
 
-An open-source music player for WordPress. Publish an owned, app-like listening experience with persistent playback, offline sets, waveform seeking, lyrics, and lock-screen controls.
+An open-source music player for WordPress. Publish an owned, app-like listening experience with persistent playback, offline sets, waveform seeking, and lock-screen controls.
 
 <p><a href="https://promptcorner.github.io/callboard/">Landing page and live demo</a> · <a href="https://playground.wordpress.net/?mode=seamless&blueprint-url=https://promptcorner.github.io/callboard/blueprint.json">Open in WordPress Playground</a> · <a href="https://github.com/promptcorner/callboard/releases/latest">Latest release</a></p>
 
@@ -17,7 +17,7 @@ An open-source music player for WordPress. Publish an owned, app-like listening 
 
 - **Owned music player.** WordPress manages the library while Callboard replaces the theme on the front end with a focused listening app. Share one URL; listeners do not need an account by default.
 - **Sets.** A set is a post; its tracks are audio attachments. Add audio through the Media Library, fetch a playlist with WP-CLI, or import a folder.
-- **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, an A/B loop (two fingers on the wave, or the bracket keys), lyrics in time with the track, AirPlay, and lock-screen controls. The tab title carries the track as well, for whoever has the board open behind a rehearsal PDF.
+- **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, repeat, AirPlay, and lock-screen controls. The tab title carries the track as well.
 - **Offline.** Save a set once. It plays from the phone with no connection, or load it from a file when there is no signal to save it with.
 - **Settings.** Site name, accent colour, badge, confetti behind a triple tap on the title. Hooks and template overrides for developers.
 
@@ -67,7 +67,6 @@ Design rules: animate only transform and opacity, never use font weight for stat
 | Audio attachment | A track. `menu_order` is its position. Quality shown to listeners — bit depth and sample rate for lossless, bitrate and sample rate for lossy — reads WordPress's own attachment metadata, not a callboard field; lossy formats show no bit depth, since MP3 does not have one |
 | `_callboard_duration` | Seconds |
 | `_callboard_levels` | Loudness envelope, digits 0–9, ten per second. Drives the waveform and the filament, which auto-ranges to its own recent peak — rising at once, forgotten over ~6s — so a quiet reading lights it as fully as a loud mix. iPhones cannot analyse audio live |
-| `_callboard_lyrics`, `_callboard_lyrics_approved` | Timed lines from captions, shown after approval |
 | `_callboard_video_id`, `_callboard_source_url`, `_callboard_uploader` | Source. The uploader is also sent per track as `artist` — right for one playlist by one uploader, wrong for a set where every track differs |
 | `_callboard_codec`, `_callboard_reencoded` | What a fetch actually got (e.g. `aac`) and whether `ffmpeg` had to re-encode to get it — provenance, not a measurement of the file itself |
 
@@ -78,8 +77,8 @@ Design rules: animate only transform and opacity, never use font weight for stat
 <details>
 <summary>Import</summary>
 
-1. **Fetch.** `Fetcher` runs `yt-dlp` (and `ffmpeg` when it needs to) on a YouTube URL, playlist, or search and writes `wp-content/uploads/callboard/<slug>/`: the audio, a `manifest.json`, and sidecars keyed by video id (`levels.json`, `lyrics.json`). It keeps the native m4a/AAC stream YouTube already serves rather than re-encoding it — re-encoding a lossy source is a pure loss, and can even inflate the bitrate while making it sound worse — and only asks `ffmpeg` to convert when a video truly offers no AAC audio, preferring m4a there too and falling back to mp3 only if the ffmpeg build cannot encode AAC at all. A search (yt-dlp's `ytsearch:` syntax) is narrowed to one candidate first: an auto-generated "Topic" upload, then a channel YouTube has verified, skipping obvious live versions, covers and remixes where another copy exists. Binary paths are filterable.
-2. **Import.** `Importer` reads that folder into posts. The folder is only an input; posts are the source of truth. Re-importing refreshes order, credits, and lyrics but keeps titles edited in the admin.
+1. **Fetch.** `Fetcher` runs `yt-dlp` (and `ffmpeg` when it needs to) on a YouTube URL, playlist, or search and writes `wp-content/uploads/callboard/<slug>/`: the audio, a `manifest.json`, and a `levels.json` sidecar keyed by video id. It keeps the native m4a/AAC stream YouTube already serves rather than re-encoding it — re-encoding a lossy source is a pure loss, and can even inflate the bitrate while making it sound worse — and only asks `ffmpeg` to convert when a video truly offers no AAC audio, preferring m4a there too and falling back to mp3 only if the ffmpeg build cannot encode AAC at all. A search (yt-dlp's `ytsearch:` syntax) is narrowed to one candidate first: an auto-generated "Topic" upload, then a channel YouTube has verified, skipping obvious live versions, covers and remixes where another copy exists. Binary paths are filterable.
+2. **Import.** `Importer` reads that folder into posts. The folder is only an input; posts are the source of truth. Re-importing refreshes order, credits, and levels but keeps titles edited in the admin.
 
 Hosts that cannot run binaries: build the folder on a laptop with the same command, upload it, import. `Requests` is an admin queue of URLs; `wp callboard run` drains it where the tools exist. Because `Requests` only accepts a real YouTube URL, a search query is a WP-CLI-only way in for now.
 
@@ -182,13 +181,13 @@ Features are extensions: an id, a version, and named contribution points shared 
 | `callboard.apiVersion` | number | The extension contract's version: 1 |
 | `callboard.registerExtension( id, args )` | function | Register the page half of an extension PHP registered |
 | `callboard.unregisterExtension( id )` | function | Remove its client contributions |
-| `callboard.state` | object | The view, the playlist and track in the player bar, position, duration, paused, loop, online |
+| `callboard.state` | object | The view, the playlist and track in the player bar, position, duration, paused, online |
 | `callboard.commands` | object | `play`, `pause`, `seek`, `next`, `prev`, `goTo`, `display` |
 | `callboard.registerCommand( name, fn )` | function | Add a command named `namespace/name/command` for a registered extension |
 | `callboard.run( name, ...args )` | function | Run a command with arguments and return what it returns |
 | `callboard.data( id )`, `callboard.emit( name, detail )`, `callboard.invalidate( ...points )` | functions | An extension's app data, its own events, re-rendering |
 | `callboard.deprecated( name, { since, alternative, hint } )` | function | Log a deprecation warning once per name, in the shape of `@wordpress/deprecated` |
-| `callboard.ready`, `.view`, `.viewTeardown`, `.track`, `.play`, `.pause`, `.ended`, `.seek`, `.loop`, `.save`, `.unsave`, `.online`, `.offline` | `wp.hooks` actions | Also fired as `callboard:<event>` on `document`, which is how `callboard:track` and `callboard:view` have always arrived |
+| `callboard.ready`, `.view`, `.viewTeardown`, `.track`, `.play`, `.pause`, `.ended`, `.seek`, `.save`, `.unsave`, `.online`, `.offline` | `wp.hooks` actions | Also fired as `callboard:<event>` on `document`, which is how `callboard:track` and `callboard:view` have always arrived |
 | `callboard.slot.trackBadges`, `.slot.trackMeta`, `.slot.nowPlayingMeta`, `callboard.badge`, `callboard.beforePlay` | `wp.hooks` filters | The contribution points underneath the registry |
 
 </details>
@@ -224,9 +223,9 @@ Links go to the specifications.
 
 - [Service Workers](https://w3c.github.io/ServiceWorker/) with navigation preload, [Cache API](https://w3c.github.io/ServiceWorker/#cache-interface), [Fetch](https://fetch.spec.whatwg.org/) with [Range requests](https://www.rfc-editor.org/rfc/rfc9110.html#name-range-requests)
 - [Web App Manifest](https://www.w3.org/TR/appmanifest/), [display-mode](https://www.w3.org/TR/mediaqueries-5/#display-mode), [beforeinstallprompt](https://wicg.github.io/manifest-incubations/#installation-prompts), [Apple web app meta tags](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html)
-- [HTML media element](https://html.spec.whatwg.org/multipage/media.html), [Media Session](https://www.w3.org/TR/mediasession/), [Audio Session](https://w3c.github.io/audio-session/), [Remote Playback](https://www.w3.org/TR/remote-playback/), [TextTrack](https://html.spec.whatwg.org/multipage/media.html#text-track-api) for lyric cues
-- [Web Audio](https://www.w3.org/TR/webaudio/) for the level meter and sample-accurate loop
-- [Web Locks](https://www.w3.org/TR/web-locks/) so one tab plays at a time, [Screen Wake Lock](https://www.w3.org/TR/screen-wake-lock/) while a loop is set or the lyrics sheet is open
+- [HTML media element](https://html.spec.whatwg.org/multipage/media.html), [Media Session](https://www.w3.org/TR/mediasession/), [Audio Session](https://w3c.github.io/audio-session/), [Remote Playback](https://www.w3.org/TR/remote-playback/)
+- [Web Audio](https://www.w3.org/TR/webaudio/) for the level meter
+- [Web Locks](https://www.w3.org/TR/web-locks/) so one tab plays at a time
 - [Storage](https://storage.spec.whatwg.org/) estimate and persist, [Streams](https://streams.spec.whatwg.org/) with `tee()` for save progress, [AbortController](https://dom.spec.whatwg.org/#interface-abortcontroller), [Web Storage](https://html.spec.whatwg.org/multipage/webstorage.html)
 - [Web Share](https://www.w3.org/TR/web-share/) for the set's link with a [Clipboard](https://www.w3.org/TR/clipboard-apis/) fallback, and for the track's own file, which reaches AirDrop and "Save to Files", [Vibration](https://www.w3.org/TR/vibration/), [WebKit switch control](https://webkit.org/blog/15054/an-html-switch-control/) for iPhone haptics
 - [Canvas 2D](https://html.spec.whatwg.org/multipage/canvas.html) for the waveform, [View Transitions](https://www.w3.org/TR/css-view-transitions-1/), [History API](https://html.spec.whatwg.org/multipage/nav-history-apis.html#the-history-interface), [Pointer Events](https://www.w3.org/TR/pointerevents/), [ResizeObserver](https://www.w3.org/TR/resize-observer/), [requestIdleCallback](https://www.w3.org/TR/requestidlecallback/), [online/offline events](https://html.spec.whatwg.org/multipage/system-state.html#navigator.online), [back/forward cache](https://web.dev/articles/bfcache) via `pageshow`
@@ -293,7 +292,6 @@ Browser and WordPress features considered for this plugin, with a verdict, so no
 <details>
 <summary>Ruled out</summary>
 
-- [Popover API](https://html.spec.whatwg.org/multipage/popover.html) for the lyrics sheet: the top layer would cover the player.
 - [Vibration API](https://www.w3.org/TR/vibration/) on iPhone: not implemented; the switch control is used instead.
 - wavesurfer.js and peaks.js: they decode audio in the browser, which iPhone Safari cannot do for long files. Levels are measured at import instead.
 - [IndexedDB](https://www.w3.org/TR/IndexedDB/) or [OPFS](https://fs.spec.whatwg.org/) for audio: the Cache API already serves files with Range support.
@@ -305,7 +303,7 @@ Browser and WordPress features considered for this plugin, with a verdict, so no
 
 Two suites, both against wp-env. PHPUnit in `tests/php/` covers the PHP, leading with the two boundaries that matter: what a `.callboard` file is allowed to unpack, and who the gate lets through. After those come the data model, settings sanitizing, and the helpers behind every line of text a cast reads. Playwright in `tests/e2e/` covers the browser. The pre-commit hook that `npm install` sets up runs a fast smoke pass, and GitHub Actions runs the full suite on every pull request. One test saves a set, takes the browser offline, and opens and plays it. Headless Chromium cannot decode mp3, so player tests assert on state, not audio.
 
-The demo fixture is *Compositions* (2012), ten jazz recordings performed by the Airmen of Note, United States Air Force Band. `tests/fixtures/jazz.js` downloads the source recordings from Wikimedia Commons, cuts compact 40-second excerpts, encodes them, and writes `manifest.json`, `levels.json`, and `lyrics.json` (it needs ffmpeg, ffprobe, and a network connection). The Air Force and Commons identify each composition, performance, and recording as a public-domain U.S. Government work; the manifest retains the composer, performer, source page, and [rights evidence](https://commons.wikimedia.org/wiki/Template:PD-USGov-Military-Air_Force). The source files are public domain in the United States rather than GPL-licensed; status outside the United States may vary. Two fixture sets remain: `demo-set` and `empty-set`. Covers are drawn by the plugin's `Art` class.
+The demo fixture is *Compositions* (2012), ten jazz recordings performed by the Airmen of Note, United States Air Force Band. `tests/fixtures/jazz.js` downloads the source recordings from Wikimedia Commons, cuts compact 40-second excerpts, encodes them, and writes `manifest.json` and `levels.json` (it needs ffmpeg, ffprobe, and a network connection). The Air Force and Commons identify each composition, performance, and recording as a public-domain U.S. Government work; the manifest retains the composer, performer, source page, and [rights evidence](https://commons.wikimedia.org/wiki/Template:PD-USGov-Military-Air_Force). The source files are public domain in the United States rather than GPL-licensed; status outside the United States may vary. Two fixture sets remain: `demo-set` and `empty-set`. Covers are drawn by the plugin's `Art` class.
 
 ## Source and maintainer
 

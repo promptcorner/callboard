@@ -113,7 +113,7 @@ final class Cli {
 	/**
 	 * Write a set out as a .callboard file.
 	 *
-	 * A whole set in one file: the audio, the order, the levels and the lyrics. Unzip it and it is
+	 * A whole set in one file: the audio, the order and the levels. Unzip it and it is
 	 * an import folder; leave it zipped and `wp callboard import --file=` reads it back on another site.
 	 *
 	 * ## OPTIONS

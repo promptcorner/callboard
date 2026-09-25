@@ -3,7 +3,7 @@
  * Imports sets from folders in uploads/callboard/<slug>/ (manifest.json + audio files).
  *
  * The folder is an import format; once imported, posts are the source of truth.
- * Re-imports refresh order, credits and lyrics but never overwrite titles edited in the admin.
+ * Re-imports refresh order, credits and levels but never overwrite titles edited in the admin.
  *
  * @package Callboard
  */
@@ -131,11 +131,7 @@ final class Importer {
 		if ( in_array( $palette, Art::palettes(), true ) ) {
 			update_post_meta( $set->ID, '_callboard_palette', $palette );
 		}
-		if ( file_exists( $dir . '/lyrics.approved' ) ) {
-			update_post_meta( $set->ID, '_callboard_lyrics_approved', 1 );
-		}
 
-		$lyrics   = self::sidecar( $dir, 'lyrics' );
 		$levels   = self::sidecar( $dir, 'levels' );
 		$existing = array();
 		foreach ( Sets::track_posts( $set->ID ) as $track ) {
@@ -179,9 +175,6 @@ final class Importer {
 			}
 			if ( isset( $t['duration'] ) ) {
 				update_post_meta( $track_id, '_callboard_duration', (float) $t['duration'] );
-			}
-			if ( ! empty( $lyrics[ $video_id ] ) && is_array( $lyrics[ $video_id ] ) ) {
-				update_post_meta( $track_id, '_callboard_lyrics', self::sanitize_cues( $lyrics[ $video_id ] ) );
 			}
 			if ( ! empty( $levels[ $video_id ] ) && is_string( $levels[ $video_id ] ) ) {
 				update_post_meta( $track_id, '_callboard_levels', preg_replace( '/[^0-9]/', '', $levels[ $video_id ] ) );
@@ -345,23 +338,7 @@ final class Importer {
 	}
 
 	/**
-	 * Cues as [[start, end, text], ...] with sane types.
-	 *
-	 * @param array<int, mixed> $cues Raw cues.
-	 * @return array<int, array{0: float, 1: float, 2: string}>
-	 */
-	private static function sanitize_cues( array $cues ): array {
-		$out = array();
-		foreach ( $cues as $cue ) {
-			if ( is_array( $cue ) && count( $cue ) >= 3 ) {
-				$out[] = array( (float) $cue[0], (float) $cue[1], sanitize_text_field( (string) $cue[2] ) );
-			}
-		}
-		return $out;
-	}
-
-	/**
-	 * A JSON sidecar file next to the audio (lyrics.json, levels.json), keyed by video id. A file from before 3.0.0 may also carry notes.json and tempo.json, which are ignored.
+	 * A JSON sidecar file next to the audio (levels.json), keyed by video id. A file from before 3.0.0 may also carry lyrics.json, notes.json and tempo.json, which are ignored.
 	 *
 	 * @param string $dir  Set folder.
 	 * @param string $name File name without extension.

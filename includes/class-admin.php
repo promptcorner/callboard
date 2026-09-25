@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin: track order, credits, lyrics approval, settings, import.
+ * Admin: track order, credits, settings, import.
  *
  * @package Callboard
  */
@@ -41,7 +41,6 @@ final class Admin {
 	public static function meta_boxes(): void {
 		add_meta_box( 'callboard-tracks', __( 'Tracks', 'callboard' ), array( self::class, 'box_tracks' ), Post_Types::SET, 'normal', 'high' );
 		add_meta_box( 'callboard-credits', __( 'Source & credits', 'callboard' ), array( self::class, 'box_credits' ), Post_Types::SET, 'normal' );
-		add_meta_box( 'callboard-lyrics', __( 'Lyrics', 'callboard' ), array( self::class, 'box_lyrics' ), Post_Types::SET, 'side' );
 		add_meta_box( 'callboard-cover', __( 'Cover colours', 'callboard' ), array( self::class, 'box_palette' ), Post_Types::SET, 'side' );
 	}
 
@@ -130,21 +129,6 @@ final class Admin {
 		}
 		echo '</table>';
 		echo '<p class="description">' . esc_html__( 'Per-track uploader credits come from each audio file\'s metadata and are shown automatically.', 'callboard' ) . '</p>';
-	}
-
-	/**
-	 * Lyrics approval.
-	 *
-	 * @param WP_Post $post Set post.
-	 */
-	public static function box_lyrics( WP_Post $post ): void {
-		$on = (bool) get_post_meta( $post->ID, '_callboard_lyrics_approved', true );
-		printf(
-			'<label><input type="checkbox" name="callboard_lyrics_approved" value="1" %s> %s</label><p class="description">%s</p>',
-			checked( $on, true, false ),
-			esc_html__( 'Show lyrics for this set', 'callboard' ),
-			esc_html__( 'Only turn this on after checking the imported captions for accuracy.', 'callboard' )
-		);
 	}
 
 	/**
@@ -244,7 +228,6 @@ final class Admin {
 				'curator_url'  => esc_url_raw( $credits['curator_url'] ?? '' ),
 			)
 		);
-		update_post_meta( $post_id, '_callboard_lyrics_approved', empty( $_POST['callboard_lyrics_approved'] ) ? 0 : 1 );
 
 		$palette = isset( $_POST['callboard_palette'] ) ? sanitize_key( wp_unslash( $_POST['callboard_palette'] ) ) : '';
 		$palette = in_array( $palette, Art::palettes(), true ) ? $palette : '';

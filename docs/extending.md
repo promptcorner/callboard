@@ -62,7 +62,7 @@ window.callboard.registerExtension( 'acme/call-sheet', {
 		nowPlayingMeta: ( track ) => [ { text: `Script p. ${ track.ext[ 'acme/call-sheet' ].page }` } ],
 	},
 	events: {
-		loop: ( loop ) => loop && console.log( 'working a section', loop.a, loop.b ),
+		track: ( { track } ) => console.log( 'now on', track.title ),
 	},
 } );
 ```
@@ -101,8 +101,8 @@ PHP names are snake_case and script names camelCase; where a point exists on bot
 | Track row metadata | `slots.track_meta( $track, $set ): item[]` | `slots.trackMeta( track, view ): item[]` | The row's second line, after the artist | As badges |
 | Playlist header | `slots.set_header( $set ): string` | bind to it in `init` | PHP, beside Play all, Save and Share, on a playlist with tracks | Every render |
 | Now Playing metadata | none | `slots.nowPlayingMeta( track, app ): item[]` | The script, between elapsed and remaining | On every track, and `callboard.invalidate( 'nowPlayingMeta' )` |
-| Transport controls | `slots.transport(): string` | bind to it in `setup` | PHP, beside loop and repeat | Once per page |
-| Panels | `slots.panels(): string` | bind to it in `setup` | PHP, after the lyrics panel, outside `<main>` | Once per page |
+| Transport controls | `slots.transport(): string` | bind to it in `setup` | PHP, beside repeat | Once per page |
+| Panels | `slots.panels(): string` | bind to it in `setup` | PHP, outside `<main>` | Once per page |
 | Before play | none | `beforePlay( context, signal )` | The script, before a track that was asked to play starts | Every time a track is loaded to play |
 | Events | none | `events: { track: fn, … }` | wp.hooks actions (see [Events](#events)) | As they fire |
 | Commands | none | `commands: { name: fn }` | `callboard.run( 'ns/name/command', …args )` | When run |
@@ -159,7 +159,6 @@ Events are `wp.hooks` actions named `callboard.<event>`. Each also fires as a DO
 | `track` | `{ set, track, index }`, when a track loads into the player bar, playing or not |
 | `play`, `pause`, `ended` | `{ set, track, index, position }` |
 | `seek` | `{ from, to }` in seconds |
-| `loop` | `{ a, b }` in seconds when an A-B loop is set, `null` when it is cleared |
 | `save` | `{ set, track, state }` where `state` is `saved` (downloaded) or `loaded` (from a file) |
 | `unsave` | `{ set, track, state: '' }` |
 | `online`, `offline` | `{}` |
@@ -181,7 +180,6 @@ Tracks and playlists in event details are frozen copies, so changing one has no 
 | `track`, `index` | The track in the player bar and its index, or `null` and `-1` |
 | `position`, `duration` | Seconds |
 | `paused` | Whether the element is paused |
-| `loop` | `{ a, b }` or `null` |
 | `online` | `navigator.onLine` |
 
 `callboard.commands` moves it: `play()`, `pause()`, `seek( seconds )`, `next()`, `prev()`, `goTo( slug, index = 0, { at = 0, play = true } )` (opens the playlist if it is not on screen, and resolves to `true` or `false`), and `display( text | null, { detail, className } )`, which puts text on the player bar's title line until it is called with `null`.
@@ -212,7 +210,7 @@ $hide_quality = (bool) get_option( 'acme_hide_quality', false );
 add_filter( 'callboard_extension_enabled', fn( bool $on, string $id ) => $on && ! ( 'callboard/quality' === $id && $hide_quality ), 10, 2 );
 ```
 
-More of Callboard's features become extensions in later releases: offline saving and lyrics.
+More of Callboard's features become extensions in later releases: offline saving.
 
 `tests/mu-plugins/callboard-example-extension.php` and `tests/mu-plugins/callboard-example/example.js` are a complete extension built on nothing but this API, exercising every point. `tests/e2e/extensions.spec.js` and `tests/php/test-extensions.php` hold it, and Callboard's own extensions, to this document.
 

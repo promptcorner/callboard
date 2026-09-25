@@ -193,7 +193,7 @@ Callboard\\Sets::flush();
 		await phone( 'now-playing-dark.png', 'dark', async ( p ) => {
 			await p.goto( `${ BASE }/demo-set/`, { waitUntil: 'networkidle' } );
 			await p.locator( '.track' ).nth( 2 ).click();
-			await p.locator( '#open-lyrics' ).click(); // the player bar opens Now Playing
+			await p.locator( '#deck-open' ).click(); // the player bar opens Now Playing
 			await p.waitForTimeout( 900 );
 		} );
 	};

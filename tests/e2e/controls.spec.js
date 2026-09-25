@@ -1,7 +1,7 @@
 /**
  * Every control on the deck and the set page, driven the way a hand would. Not every headless Chromium
  * build plays the fixture MP3s, so these assert on what the controls change (track, position, chips,
- * sheet, lock) and count the play() calls they make rather than waiting for sound.
+ * lock) and count the play() calls they make rather than waiting for sound.
  */
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
@@ -35,45 +35,7 @@ const setTime = ( page, t ) =>
 // a track loads, so it starts every test already expanded. The compact/expanded behaviour itself — the
 // default and the tap to expand — gets its own describe block below. Closing it (back, Escape, the close button)
 // is tested in front.spec.js under "Touch", so it runs on the iPhone project too.
-const expandDeck = ( page ) => page.locator( '#open-lyrics' ).click();
-// Headless Chromium grants no screen wake lock, so stand in for one and count what is held. Hiding the
-// page releases every lock, the way the platform does.
-const spyWakeLock = ( page ) =>
-	page.addInitScript( () => {
-		const held = new Set();
-		window.__wake = held;
-		Object.defineProperty( navigator, 'wakeLock', {
-			configurable: true,
-			value: {
-				request: async () => {
-					const sentinel = {
-						released: false,
-						release: async () => {
-							sentinel.released = true;
-							held.delete( sentinel );
-						},
-					};
-					held.add( sentinel );
-					return sentinel;
-				},
-			},
-		} );
-		document.addEventListener( 'visibilitychange', () => {
-			if ( document.visibilityState === 'hidden' ) {
-				held.forEach( ( sentinel ) => ( sentinel.released = true ) );
-				held.clear();
-			}
-		} );
-	} );
-const locksHeld = ( page ) => page.evaluate( () => window.__wake.size );
-const setVisibility = ( page, state ) =>
-	page.evaluate( ( value ) => {
-		Object.defineProperty( document, 'visibilityState', {
-			configurable: true,
-			get: () => value,
-		} );
-		document.dispatchEvent( new Event( 'visibilitychange' ) );
-	}, state );
+const expandDeck = ( page ) => page.locator( '#deck-open' ).click();
 
 test.describe( 'Controls', () => {
 	test.beforeEach( async ( { page } ) => {
@@ -204,7 +166,7 @@ test.describe( 'Controls', () => {
 		page,
 	} ) => {
 		await page.locator( '.track' ).first().click();
-		await expandDeck( page ); // the seek line and the A-B loop are Now Playing's, not the bar's
+		await expandDeck( page ); // the seek line is Now Playing's, not the bar's
 		const seek = page.locator( '#seek' );
 		await seek.evaluate( ( el ) => {
 			el.value = 500;
@@ -219,12 +181,12 @@ test.describe( 'Controls', () => {
 		expect( await time( page ) ).toBeCloseTo( 25, 0 );
 	} );
 
-	test( 'keyboard: space, arrows, shift-arrows, brackets, escape', async ( {
+	test( 'keyboard: space, arrows, shift-arrows, escape', async ( {
 		page,
 	} ) => {
 		await page.locator( '.track' ).first().click();
 		await page.locator( 'h1' ).click(); // focus off the controls, before Now Playing covers it
-		await expandDeck( page ); // the seek line and the A-B loop are Now Playing's, not the bar's
+		await expandDeck( page ); // the seek line is Now Playing's, not the bar's
 		const before = await transport( page );
 		await page.keyboard.press( 'Space' );
 		expect( await transport( page ) ).toBe( before + 1 );
@@ -241,13 +203,6 @@ test.describe( 'Controls', () => {
 		await expect( page.locator( '#now-title' ) ).toContainText(
 			'Intensities in Ten Cities'
 		);
-		await setTime( page, 4 );
-		await page.keyboard.press( '[' );
-		await setTime( page, 9 );
-		await page.keyboard.press( ']' );
-		await expect( page.locator( '#loop-band' ) ).toHaveClass( /on/ );
-		await page.keyboard.press( '\\' );
-		await expect( page.locator( '#loop-band' ) ).not.toHaveClass( /on/ );
 		await page.evaluate( () => document.getElementById( 'audio' ).pause() ); // no decode leaves paused unsettled
 		// Escape closes Now Playing first, then dismisses the paused player bar.
 		await page.keyboard.press( 'Escape' );
@@ -258,26 +213,20 @@ test.describe( 'Controls', () => {
 		await expect( page.locator( '.track.active' ) ).toHaveCount( 0 );
 	} );
 
-	test( 'the title button opens and closes the sheet, or finds the track', async ( {
+	test( 'the title button opens Now Playing, then finds the track', async ( {
 		page,
 	} ) => {
-		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // has lyrics
-		await expandDeck( page ); // the first tap on the bar opens Now Playing; the sheet is inside it
-		await page.locator( '#open-lyrics' ).click();
-		await expect( page.locator( '#lyrics' ) ).toBeVisible();
-		await expect( page.locator( '#open-lyrics' ) ).toHaveAttribute(
-			'aria-expanded',
-			'true'
-		);
-		await expect( page.locator( 'body' ) ).toHaveClass( /sheet-open/ );
-		await page.keyboard.press( 'Escape' );
-		await expect( page.locator( '#lyrics' ) ).toBeHidden();
-		await page.locator( '#open-lyrics' ).click();
-		await page.locator( '#close-lyrics' ).click();
-		await expect( page.locator( '#lyrics' ) ).toBeHidden();
-		await page.goto( '/demo-set/' ); // the second track has no lyrics, so the title button finds the track instead
 		await page.locator( '.track' ).nth( 1 ).click();
+		const open = page.locator( '#deck-open' );
+		await expect( open ).toHaveAttribute( 'aria-label', 'Expand player' );
+		await expect( open ).toHaveAttribute( 'aria-expanded', 'false' );
+		await expandDeck( page );
+		await expect( open ).toHaveAttribute(
+			'aria-label',
+			'Show current track'
+		);
+		await expect( open ).not.toHaveAttribute( 'aria-expanded', /.*/ );
+		await page.locator( '#deck-down' ).click();
 		await page.locator( 'a.back' ).click();
 		await expect( page ).toHaveURL( /\/$/ );
 		// The bar's own tap opens Now Playing now, so "Playing from" is what carries you back to the
@@ -288,7 +237,7 @@ test.describe( 'Controls', () => {
 		await expect( page.locator( '#deck' ) ).not.toHaveClass(
 			/is-expanded/
 		);
-		await page.locator( '#open-lyrics' ).click(); // on the set the bar opens Now Playing again
+		await page.locator( '#deck-open' ).click(); // on the set the bar opens Now Playing again
 		await expandDeck( page ); // and once open, the title finds the row
 		await expect( page.locator( '.track' ).nth( 1 ) ).toBeFocused();
 	} );
@@ -396,7 +345,7 @@ test.describe( 'Deck view: compact and expanded', () => {
 		await page.locator( '#toggle' ).click(); // the play button, not the bar
 		expect( await transport( page ) ).toBe( before + 1 );
 		await expect( page.locator( '#deck' ) ).toHaveClass( /is-compact/ );
-		await page.locator( '#open-lyrics' ).click(); // the rest of the bar
+		await page.locator( '#deck-open' ).click(); // the rest of the bar
 		await expect( page.locator( '#deck' ) ).toHaveClass( /is-expanded/ );
 		await expect( page.locator( '#next' ) ).toBeVisible();
 		// Now Playing covers the set, so the art and a way back out are the two things it owes you.
@@ -487,53 +436,6 @@ test.describe( 'Deck view: compact and expanded', () => {
 		await expect( page.locator( '#now-title' ) ).toContainText(
 			'Intensities in Ten Cities'
 		);
-	} );
-
-	test( 'the A-B loop chip has an affordance and reads its state', async ( {
-		page,
-	} ) => {
-		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).first().click();
-		await expandDeck( page );
-		const loop = page.locator( '#loop' );
-		await expect( loop ).toBeVisible();
-		await expect( loop ).toHaveAttribute( 'data-state', '' );
-		await setTime( page, 4 );
-		await page.keyboard.press( '[' );
-		await setTime( page, 9 );
-		await page.keyboard.press( ']' );
-		await expect( loop ).toHaveAttribute( 'data-state', 'on' );
-		await expect( loop ).toHaveAttribute( 'aria-label', /Clear/ );
-	} );
-
-	// #169: the sheet used to own the wake lock on its own, so closing it mid-loop let the phone sleep.
-	test( 'an A-B loop holds the screen awake once the sheet closes, and again after the page comes back', async ( {
-		page,
-	} ) => {
-		await spyWakeLock( page );
-		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // has lyrics, so it has a sheet
-		await expandDeck( page );
-		await page.locator( '#open-lyrics' ).click();
-		await expect( page.locator( '#lyrics' ) ).toBeVisible();
-		await expect.poll( () => locksHeld( page ) ).toBe( 1 );
-		await setTime( page, 4 );
-		await page.keyboard.press( '[' );
-		await setTime( page, 9 );
-		await page.keyboard.press( ']' );
-		await expect( page.locator( '#loop-band' ) ).toHaveClass( /on/ );
-		await expect.poll( () => locksHeld( page ) ).toBe( 1 ); // asking twice would strand the first lock
-		await page.keyboard.press( 'Escape' ); // closes the sheet, leaving the loop running
-		await expect( page.locator( '#lyrics' ) ).toBeHidden();
-		await expect.poll( () => locksHeld( page ) ).toBe( 1 );
-		// The platform drops the lock whenever the page hides; coming back to a loop takes it again.
-		await setVisibility( page, 'hidden' );
-		await expect.poll( () => locksHeld( page ) ).toBe( 0 );
-		await setVisibility( page, 'visible' );
-		await expect.poll( () => locksHeld( page ) ).toBe( 1 );
-		await page.keyboard.press( '\\' ); // clearing the loop with the sheet closed lets it sleep
-		await expect( page.locator( '#loop-band' ) ).not.toHaveClass( /on/ );
-		await expect.poll( () => locksHeld( page ) ).toBe( 0 );
 	} );
 
 	test( 'a chip reads active only once it has a state to be active about', async ( {

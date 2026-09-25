@@ -144,6 +144,7 @@ class Test_Callboard_Exporter extends WP_UnitTestCase {
 				'notes.txt'     => 'not a sidecar',
 				'.htaccess'     => 'nope',
 				'01 Real.mp3'   => 'ID3 not really',
+				'levels.json'   => '{}',
 				'lyrics.json'   => '{}',
 				'notes.json'    => '{}',
 				'cover.png'     => 'PNG',
@@ -158,7 +159,8 @@ class Test_Callboard_Exporter extends WP_UnitTestCase {
 		$this->assertFileDoesNotExist( $dir . '/notes.txt' );
 		$this->assertFileDoesNotExist( $dir . '/.htaccess' );
 		$this->assertFileExists( $dir . '/01 Real.mp3' );
-		$this->assertFileExists( $dir . '/lyrics.json', 'a JSON sidecar is part of a set' );
+		$this->assertFileExists( $dir . '/levels.json', 'a JSON sidecar is part of a set' );
+		$this->assertFileDoesNotExist( $dir . '/lyrics.json', 'lyrics were removed in 3.0.0; an older file keeps them, and they are dropped' );
 		$this->assertFileDoesNotExist( $dir . '/notes.json', 'notes were removed in 3.0.0; an older file keeps them, and they are dropped' );
 		$this->assertFileExists( $dir . '/cover.png' );
 	}

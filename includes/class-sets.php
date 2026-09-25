@@ -158,10 +158,8 @@ final class Sets {
 	 * @return array<string, mixed>
 	 */
 	public static function build( WP_Post $post ): array {
-		$approved  = (bool) get_post_meta( $post->ID, '_callboard_lyrics_approved', true );
 		$credits   = (array) get_post_meta( $post->ID, '_callboard_credits', true );
 		$tracks    = array();
-		$lyrics    = array();
 		$uploaders = array();
 
 		$index = 0;
@@ -192,10 +190,6 @@ final class Sets {
 				$uploader_url           = get_post_meta( $track->ID, '_callboard_uploader_url', true );
 				$uploaders[ $uploader ] = $uploader_url ? $uploader_url : null;
 			}
-			$cues = $approved ? get_post_meta( $track->ID, '_callboard_lyrics', true ) : null;
-			if ( is_array( $cues ) && $cues ) {
-				$lyrics[ $track->ID ] = $cues;
-			}
 		}
 
 		// A set from one playlist has one uploader, and it belongs in the footer said once. A set
@@ -216,7 +210,6 @@ final class Sets {
 			'name'    => $post->post_title,
 			'tracks'  => $tracks,
 			'meta'    => callboard_meta( $tracks ),
-			'lyrics'  => $lyrics ? $lyrics : (object) array(),
 			'art'     => self::art( $post->ID ),
 			'cover'   => $thumb ? wp_get_attachment_image_url( $thumb, 'callboard-cover-512' ) : null,
 			// Native responsive images: the sizes WordPress already made for the featured image, so a

@@ -27,10 +27,10 @@ const report = ( results ) =>
 		)
 		.join( '\n' );
 
-// The deck opens compact by default and remembers the last view in localStorage; the repeat control, the
-// A-B loop chip, the quality pill, and the cast/share chips only exist in the expanded view, so the axe
+// The deck opens compact by default and remembers the last view in localStorage; the repeat control,
+// the quality pill, and the cast/share chips only exist in the expanded view, so the axe
 // pass below covers both rather than only ever seeing the compact bar.
-const expandDeck = ( page ) => page.locator( '#open-lyrics' ).click();
+const expandDeck = ( page ) => page.locator( '#deck-open' ).click();
 
 for ( const scheme of [ 'light', 'dark' ] ) {
 	test.describe( `axe, ${ scheme }`, () => {
@@ -102,7 +102,7 @@ test( 'the whole player works from the keyboard', async ( { page } ) => {
 		'true'
 	);
 	await expect( page.locator( '#deck' ) ).toHaveClass( /is-compact/ );
-	await page.locator( '#open-lyrics' ).focus();
+	await page.locator( '#deck-open' ).focus();
 	await page.keyboard.press( 'Enter' ); // the compact bar's tap-to-expand target, reachable by keyboard too
 	await expect( page.locator( '#deck' ) ).toHaveClass( /is-expanded/ );
 	await page.locator( '#next' ).focus();

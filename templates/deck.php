@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 <?php
 /*
  * Two states, remembered in localStorage (see `ls` and `setDeckView()` in app.js): compact (title, artist,
- * play/pause) and expanded (everything, plus the wave, times, pill, and chips). The JS class lands on #deck
+ * play/pause) and expanded (everything, plus the wave, times, and chips). The JS class lands on #deck
  * before first paint reads it, so there is no compact->expanded flash on load.
  */
 ?>
@@ -19,13 +19,12 @@ defined( 'ABSPATH' ) || exit;
 	<?php /* Now Playing: the expanded deck is a full screen, not a taller bar. Same controls, same element — only the layout changes, so nothing has two copies of its state. */ ?>
 	<?php /* Grabber bar. Click, Enter or Space closes Now Playing; so does dragging it down (app.js), Escape, and the browser's back. */ ?>
 	<button type="button" class="deck-down" id="deck-down" aria-label="<?php esc_attr_e( 'Close player', 'callboard' ); ?>"><i aria-hidden="true"></i></button>
-	<?php /* A generic set cover tells a cast nothing about the sonnet they are on. Where a track carries words, the words are the useful thing, so the way to them is a control, not a hidden tap on the title. */ ?>
-	<div class="deck-top"><button type="button" class="remote-chip is-away" id="remote" data-state="" aria-label="<?php esc_attr_e( 'Play on another device', 'callboard' ); ?>"><?php echo callboard_icon( 'cast' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG shipped with the plugin. ?></button><button type="button" class="sheet-pill" id="sheet-pill" hidden aria-controls="lyrics" aria-expanded="false"></button></div>
+	<div class="deck-top"><button type="button" class="remote-chip is-away" id="remote" data-state="" aria-label="<?php esc_attr_e( 'Play on another device', 'callboard' ); ?>"><?php echo callboard_icon( 'cast' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG shipped with the plugin. ?></button></div>
 	<div class="deck-cover" aria-hidden="true"><img id="deck-cover" alt="" draggable="false" decoding="async" sizes="(max-width:700px) 74vw, 380px"></div>
 	<div class="deck-inner deck-display">
 		<div class="deck-text">
 			<?php /* Doubles as the compact bar's tap-to-expand target; app.js switches its job (and label) by deck state. */ ?>
-			<button type="button" class="deck-open" id="open-lyrics" aria-expanded="false" aria-controls="lyrics" aria-label="<?php esc_attr_e( 'Show current track', 'callboard' ); ?>" data-label-expand="<?php esc_attr_e( 'Expand player', 'callboard' ); ?>">
+			<button type="button" class="deck-open" id="deck-open" aria-expanded="false" aria-controls="deck" aria-label="<?php esc_attr_e( 'Show current track', 'callboard' ); ?>" data-label-expand="<?php esc_attr_e( 'Expand player', 'callboard' ); ?>">
 				<span class="deck-title" id="now-title" aria-live="polite"><span class="mq"><span><?php esc_html_e( 'Choose a track', 'callboard' ); ?></span></span></span>
 			</button>
 			
@@ -33,17 +32,15 @@ defined( 'ABSPATH' ) || exit;
 	</div>
 	<div class="seek-wrap">
 		<canvas class="wave wave-base" id="wave-base" aria-hidden="true"></canvas><canvas class="wave wave-hover" id="wave-hover" aria-hidden="true"></canvas><div class="wave-reveal" id="wave-reveal" aria-hidden="true"><canvas class="wave wave-played" id="wave-played"></canvas></div>
-		<span class="seek-line" aria-hidden="true"><i class="seek-fill" id="seek-fill"></i><i class="loop-band" id="loop-band"></i></span><span class="seek-marks" id="seek-marks" aria-hidden="true"></span><i class="seek-knob" id="seek-knob" aria-hidden="true"></i>
+		<span class="seek-line" aria-hidden="true"><i class="seek-fill" id="seek-fill"></i></span><i class="seek-knob" id="seek-knob" aria-hidden="true"></i>
 		<input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="<?php esc_attr_e( 'Seek', 'callboard' ); ?>" aria-valuetext="0:00">
 	</div>
 	<div class="deck-inner deck-times"><span class="deck-time" data-offline="<?php esc_attr_e( 'Offline', 'callboard' ); ?>"><span id="cur">0:00</span><span class="sep" aria-hidden="true"> / </span><?php /* Now Playing metadata: filled by extensions through nowPlayingMeta on every track, hidden while empty. */ ?><span class="deck-meta" id="deck-meta" hidden></span><span id="dur">0:00</span></span></div>
 	<div class="deck-inner deck-transport">
 		<div class="deck-controls">
 			<div class="deck-controls-secondary">
-				<?php /* A section of one track (brackets, or two fingers on the wave) — a different feature from repeat, which runs the whole set. */ ?>
-				<button type="button" class="ctl loop-toggle" id="loop" data-state="" aria-label="<?php esc_attr_e( 'Set an A-B loop', 'callboard' ); ?>" data-label-off="<?php esc_attr_e( 'Set an A-B loop', 'callboard' ); ?>" data-label-armed="<?php esc_attr_e( 'Mark the loop’s end', 'callboard' ); ?>" data-label-on="<?php esc_attr_e( 'Clear the A-B loop', 'callboard' ); ?>"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3M15 5h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 				<button type="button" class="ctl repeat-toggle" id="repeat" data-mode="off" aria-pressed="false" aria-label="<?php esc_attr_e( 'Repeat off', 'callboard' ); ?>" data-label-off="<?php esc_attr_e( 'Repeat off', 'callboard' ); ?>" data-label-set="<?php esc_attr_e( 'Repeat the set', 'callboard' ); ?>" data-label-one="<?php esc_attr_e( 'Repeat this track', 'callboard' ); ?>"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M17 2l4 4-4 4M3 12v-2a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 12v2a4 4 0 0 1-4 4H3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text class="repeat-one" x="12" y="15.5" font-size="7.5" text-anchor="middle" fill="currentColor" stroke="none">1</text></svg></button>
-				<?php /** Slot transport: extension controls beside loop and repeat. */ ?>
+				<?php /** Slot transport: extension controls beside repeat. */ ?>
 				<?php callboard_slot( 'transport' ); ?>
 			</div>
 			<div class="deck-controls-primary">
@@ -67,13 +64,5 @@ defined( 'ABSPATH' ) || exit;
 	<button type="button" class="a2hs-x" id="a2hs-close" aria-label="<?php esc_attr_e( 'Dismiss', 'callboard' ); ?>">&times;</button>
 </div>
 
-<?php /* Lyrics sheet. Opened with show() (non-modal) so the player controls stay usable. */ ?>
-<dialog class="lyrics" id="lyrics" aria-label="<?php esc_attr_e( 'Lyrics', 'callboard' ); ?>">
-	<div class="lyrics-head">
-		<span class="label" id="sheet-label"><?php esc_html_e( 'Lyrics · auto-captions, may be rough', 'callboard' ); ?></span>
-		<button type="button" class="ctl" id="close-lyrics" aria-label="<?php esc_attr_e( 'Close lyrics', 'callboard' ); ?>"><?php echo callboard_icon( 'close' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG shipped with the plugin. ?></button>
-	</div>
-	<ol class="lyrics-lines" id="lyrics-lines"></ol>
-</dialog>
 <?php /** Slot panels: extension panels, outside #main so they last across views like the deck. */ ?>
 <?php callboard_slot( 'panels' ); ?>

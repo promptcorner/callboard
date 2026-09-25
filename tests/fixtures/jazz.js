@@ -206,13 +206,6 @@ write(
 	true
 );
 write( path.join( dir, 'levels.json' ), envelopes );
-write( path.join( dir, 'lyrics.json' ), {
-	detritus: [
-		[ 4, 6, 'Softer here' ],
-		[ 9, 11, 'Lean into the turn' ],
-	],
-} );
-fs.writeFileSync( path.join( dir, 'lyrics.approved' ), '' );
 if ( ! configuredCache ) {
 	fs.rmSync( tmp, { recursive: true, force: true } );
 }

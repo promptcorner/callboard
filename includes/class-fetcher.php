@@ -13,7 +13,7 @@ use WP_Error;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Wraps yt-dlp to produce manifest.json, audio files, lyrics.json, cover.png and share.png.
+ * Wraps yt-dlp to produce manifest.json, audio files, levels.json, cover.png and share.png.
  *
  * The rule for the audio itself: the truest copy available, not the most processed one.
  * YouTube already serves lossy Opus or AAC, so re-encoding either of them again can only lose
@@ -113,7 +113,7 @@ final class Fetcher {
 			$audio_format = self::has_aac_encoder( $tools['ffmpeg'] ) ? 'm4a' : 'mp3';
 			array_push( $cmd, '--audio-format', $audio_format, '--audio-quality', '160K', '--ffmpeg-location', dirname( $tools['ffmpeg'] ) );
 		}
-		array_push( $cmd, '--write-auto-subs', '--sub-langs', 'en', '--sub-format', 'json3', '-o', 'subtitle:' . $dir . '/.subs/%(id)s', $url );
+		$cmd[]  = $url;
 		$stderr = '';
 		$out    = self::run( $cmd, $progress, $stderr );
 		if ( is_wp_error( $out ) ) {
@@ -166,50 +166,11 @@ final class Fetcher {
 			file_put_contents( $dir . '/levels.json', json_encode( $levels ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents, WordPress.WP.AlternativeFunctions.json_encode_json_encode -- plain digits, no WP needed.
 		}
 
-		$lyrics = self::lyrics( $dir );
-		if ( $lyrics ) {
-			file_put_contents( $dir . '/lyrics.json', wp_json_encode( $lyrics, JSON_UNESCAPED_UNICODE ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			$progress( sprintf( /* translators: %d: number of tracks with captions. */ __( 'Captions found for %d tracks (review before enabling).', 'callboard' ), count( $lyrics ) ) );
-		}
-
 		$progress( __( 'Drawing the cover and share card…', 'callboard' ) );
 		Art::cover( $manifest, $dir . '/cover.png' );
 		Art::share( $manifest, $dir . '/share.png' );
 
 		return $manifest;
-	}
-
-	/**
-	 * YouTube json3 auto-captions → [[start, end, text], ...] per video id. Only tracks with real lyrics.
-	 *
-	 * @param string $dir Set folder.
-	 * @return array<string, array<int, array{0: float, 1: float, 2: string}>>
-	 */
-	private static function lyrics( string $dir ): array {
-		$out   = array();
-		$files = glob( $dir . '/.subs/*.json3' );
-		foreach ( is_array( $files ) ? $files : array() as $f ) {
-			$vid  = explode( '.', basename( $f ) )[0];
-			$data = json_decode( (string) file_get_contents( $f ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			$cues = array();
-			foreach ( (array) ( $data['events'] ?? array() ) as $ev ) {
-				$text = '';
-				foreach ( (array) ( $ev['segs'] ?? array() ) as $seg ) {
-					$text .= (string) ( $seg['utf8'] ?? '' );
-				}
-				$text = trim( preg_replace( '/\s+/', ' ', str_replace( "\n", ' ', $text ) ) );
-				if ( '' === $text || preg_match( '/^\[.*\]$/', $text ) ) {
-					continue;
-				}
-				$start  = ( (float) ( $ev['tStartMs'] ?? 0 ) ) / 1000;
-				$cues[] = array( round( $start, 2 ), round( $start + ( (float) ( $ev['dDurationMs'] ?? 4000 ) ) / 1000, 2 ), $text );
-			}
-			$words = array_sum( array_map( static fn( $c ) => count( explode( ' ', $c[2] ) ), $cues ) );
-			if ( count( $cues ) >= 4 && $words >= 20 ) {
-				$out[ $vid ] = $cues;
-			}
-		}
-		return $out;
 	}
 
 	/**

@@ -6,7 +6,7 @@ const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
 // The deck opens compact by default (title, artist, play/pause) and remembers the last view; a few tests
 // here reach into the wave/times/chips row, which compact hides, so they ask for the expanded view first.
-const expandDeck = ( page ) => page.locator( '#open-lyrics' ).click();
+const expandDeck = ( page ) => page.locator( '#deck-open' ).click();
 
 test.describe( 'Front end', () => {
 	test( 'home lists sets with counts and the footer note', async ( {
@@ -504,35 +504,7 @@ test.describe( 'Front end', () => {
 		);
 	} );
 
-	test( 'ticks mark the seek line where the singing comes back', async ( {
-		page,
-	} ) => {
-		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // the track with lyrics
-		await expandDeck( page ); // the seek line and its marks are expanded-only now
-		await expect( page.locator( '#seek-marks .tick' ) ).toHaveCount( 2 );
-	} );
-
-	test( 'an A-B loop from the keyboard shows the band and clears', async ( {
-		page,
-	} ) => {
-		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).first().click();
-		await expandDeck( page );
-		await page.evaluate( () => {
-			document.getElementById( 'audio' ).currentTime = 2;
-		} );
-		await page.keyboard.press( '[' );
-		await page.evaluate( () => {
-			document.getElementById( 'audio' ).currentTime = 6;
-		} );
-		await page.keyboard.press( ']' );
-		await expect( page.locator( '#loop-band' ) ).toHaveClass( /on/ );
-		await page.keyboard.press( '\\' );
-		await expect( page.locator( '#loop-band' ) ).not.toHaveClass( /on/ );
-	} );
-
-	test( 'the deck draws the waveform and keeps one height with or without lyrics', async ( {
+	test( 'the deck draws the waveform', async ( {
 		page,
 	} ) => {
 		await page.goto( '/demo-set/' );
@@ -542,8 +514,6 @@ test.describe( 'Front end', () => {
 		expect(
 			await page.locator( '#wave-base' ).evaluate( ( c ) => c.width )
 		).toBeGreaterThan( 0 );
-		const withLyrics = ( await page.locator( '#deck' ).boundingBox() )
-			.height;
 		await page.locator( '#seek' ).evaluate( ( el ) => {
 			// drag to the middle: headless Chromium cannot decode the mp3, so drive the control, not the media
 			el.value = 500;
@@ -557,11 +527,6 @@ test.describe( 'Front end', () => {
 			'style',
 			/translateX\(50(\.0+)?%\)/
 		);
-		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).first().click(); // levels, no lyrics
-		await expandDeck( page ); // compare like with like: Now Playing in both cases
-		const without = ( await page.locator( '#deck' ).boundingBox() ).height;
-		expect( Math.abs( withLyrics - without ) ).toBeLessThan( 1 );
 	} );
 
 	// #66: each bar used to stand on a line two-thirds down with a faint reflection hanging below it.
@@ -992,7 +957,7 @@ test.describe( 'The filament', () => {
 			await page.locator( '.track' ).first().click();
 			await page.locator( 'a.back' ).click();
 			await expect( page.locator( 'a.set' ).first() ).toBeVisible();
-			await page.locator( '#open-lyrics' ).click();
+			await page.locator( '#deck-open' ).click();
 			await expect( page.locator( '#deck' ) ).toHaveClass(
 				/is-expanded/
 			);
@@ -1615,7 +1580,7 @@ test.describe( 'Touch', () => {
 			visible: ! narrow,
 		} );
 		// The title's tap target ends before the controls begin.
-		const open = await page.locator( '#open-lyrics' ).boundingBox();
+		const open = await page.locator( '#deck-open' ).boundingBox();
 		const first = await page
 			.locator( narrow ? '#toggle' : '#prev' )
 			.boundingBox();
@@ -1629,7 +1594,7 @@ test.describe( 'Touch', () => {
 		expect( await disc() ).toBe( 'rgba(0, 0, 0, 0)' );
 		expect( await size( '#prev' ) ).toEqual( [ 56, 56 ] );
 		expect( await glyph( '#prev svg', 14, 24 ) ).toBe( 21 );
-		expect( await size( '#loop' ) ).toEqual( [ 48, 48 ] );
+		expect( await size( '#repeat' ) ).toEqual( [ 48, 48 ] );
 		expect( await size( '#repeat svg' ) ).toEqual( [ 24, 24 ] );
 	} );
 
@@ -1730,7 +1695,7 @@ test.describe( 'Touch', () => {
 		page,
 	} ) => {
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // has lyrics, so the lyrics button shows
+		await page.locator( '.track' ).nth( 2 ).click();
 		expect(
 			await touchAreaUnder44(
 				page,
@@ -1751,7 +1716,7 @@ test.describe( 'Touch', () => {
 		page,
 	}, testInfo ) => {
 		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 1 ).click(); // no lyrics, so no marks to snap to
+		await page.locator( '.track' ).nth( 1 ).click();
 		await expandDeck( page );
 		await isExpanded( page );
 		await page.evaluate( () => {
@@ -1778,33 +1743,6 @@ test.describe( 'Touch', () => {
 				await page.evaluate( () => window.__seekTo )
 			).toBeLessThanOrEqual( at * 1000 + 5 );
 		}
-	} );
-
-	test( 'the lyrics sheet is a non-modal dialog', async ( { page } ) => {
-		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click();
-		await expandDeck( page );
-		await page.locator( '#sheet-pill' ).click();
-		await expect( page.locator( '#lyrics' ) ).toBeVisible();
-		expect(
-			await page
-				.locator( '#lyrics' )
-				.evaluate(
-					( el ) =>
-						el instanceof HTMLDialogElement &&
-						el.open &&
-						! el.matches( ':modal' )
-				)
-		).toBe( true );
-		await page.locator( '#next' ).click(); // the player controls still work while it is open
-		await expect( page.locator( '#now-title' ) ).toContainText(
-			"It's a Brand New Day"
-		);
-		await page.locator( '#wpadminbar' ).evaluate( ( el ) => {
-			el.style.pointerEvents = 'none';
-		} );
-		await page.locator( '#close-lyrics' ).click();
-		await expect( page.locator( '#lyrics' ) ).toBeHidden();
 	} );
 
 	test( 'in an iOS Home Screen app, swiping from the left edge goes back', async ( {
