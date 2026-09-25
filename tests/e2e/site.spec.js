@@ -273,7 +273,9 @@ test.describe( 'Landing page', () => {
 			const section = page.locator( '#now-playing' );
 			await section.scrollIntoViewIfNeeded();
 			await expect(
-				section.getByRole( 'heading', { name: 'Now Playing.' } )
+				section.getByRole( 'heading', {
+					name: 'Big enough to hit without looking.',
+				} )
 			).toBeVisible();
 			await expect( section.locator( '.lede' ) ).toContainText(
 				'Drag it down'
@@ -289,22 +291,27 @@ test.describe( 'Landing page', () => {
 		}
 	} );
 
-	test( 'navigation and copy include the set handoff details', async ( {
+	test( 'the nav is short and every link lands somewhere', async ( {
 		page,
 	} ) => {
 		await page.goto( base );
 		const nav = page.locator( '.nav nav' );
 		await expect(
-			nav.getByRole( 'link', { name: 'Now Playing' } )
-		).toHaveAttribute( 'href', '#now-playing' );
+			nav.getByRole( 'link', { name: 'Try it' } )
+		).toHaveAttribute( 'href', '#yours' );
 		await expect(
-			nav.getByRole( 'link', { name: 'Hand it to someone' } )
-		).toHaveAttribute( 'href', '#hand' );
+			nav.getByRole( 'link', { name: 'Tech specs' } )
+		).toHaveAttribute( 'href', '#under' );
+		await expect(
+			nav.getByRole( 'link', { name: 'Download' } )
+		).toHaveAttribute( 'href', /releases\/latest$/ );
+		for ( const href of await nav
+			.locator( 'a[href^="#"]' )
+			.evaluateAll( ( links ) => links.map( ( a ) => a.hash ) ) ) {
+			await expect( page.locator( href ) ).toHaveCount( 1 );
+		}
 		await expect( page.locator( '#hand .lede' ) ).toContainText(
-			"The Share button sends the set's link"
-		);
-		await expect( page.locator( '#under .lede' ) ).toContainText(
-			"WordPress's hooks script and any extension scripts"
+			'set file'
 		);
 	} );
 } );
