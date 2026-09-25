@@ -330,60 +330,27 @@
 		seekFill = $( 'seek-fill' ),
 		cur = $( 'cur' ),
 		dur = $( 'dur' );
-	const lyricsSheet = $( 'lyrics' ),
-		lyricsList = $( 'lyrics-lines' ),
-		openLyrics = $( 'open-lyrics' );
+	const deckOpen = $( 'deck-open' );
 	if ( ! audio || ! deck ) {
 		return;
 	}
-	// The lyrics sheet is a <dialog>, so the open attribute is its state.
-	const sheetOpen = () => lyricsSheet.hasAttribute( 'open' );
 
 	// ---- Compact / expanded: two states for the deck itself, remembered like everything else the player
 	// remembers (ls, above). Compact is the default — a 72px bar with just the title and play/pause; expanded
 	// is close to what the deck has always been. Read before load() below, since the class has to be on the
 	// element before the first track ever shows the deck.
-	function syncOpenLyricsA11y() {
-		// The title button doubles as the compact bar's tap target; while compact it expands the deck instead
-		// of the lyrics sheet, so its label and aria-controls have to say that rather than whatever the sheet
-		// state would otherwise ask for.
+	// The title button is the compact bar's tap target, which opens Now Playing. In Now Playing it finds
+	// the playing track in its set.
+	function syncDeckOpenA11y() {
 		if ( deck.classList.contains( 'is-compact' ) ) {
-			openLyrics.setAttribute( 'aria-expanded', 'false' );
-			openLyrics.setAttribute( 'aria-controls', 'deck' );
-			openLyrics.setAttribute(
-				'aria-label',
-				openLyrics.dataset.labelExpand
-			);
+			deckOpen.setAttribute( 'aria-expanded', 'false' );
+			deckOpen.setAttribute( 'aria-controls', 'deck' );
+			deckOpen.setAttribute( 'aria-label', deckOpen.dataset.labelExpand );
 			return;
 		}
-		openLyrics.setAttribute( 'aria-controls', 'lyrics' );
-		openLyrics.setAttribute(
-			'aria-expanded',
-			sheetOpen() ? 'true' : 'false'
-		);
-		openLyrics.setAttribute(
-			'aria-label',
-			sheetOpen()
-				? T.hide_lyrics
-				: sheetKind === 'lyrics'
-				? T.show_lyrics
-				: T.show_track
-		);
-		paintSheetPill();
-	}
-	// The pill exists only where the track has lyrics.
-	function paintSheetPill() {
-		const pill = $( 'sheet-pill' );
-		if ( ! pill ) {
-			return;
-		}
-		pill.hidden = ! sheetKind;
-		if ( ! sheetKind ) {
-			return;
-		}
-		const open = sheetOpen();
-		pill.textContent = T.lyrics;
-		pill.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+		deckOpen.removeAttribute( 'aria-expanded' );
+		deckOpen.removeAttribute( 'aria-controls' );
+		deckOpen.setAttribute( 'aria-label', T.show_track );
 	}
 	// Two states and no memory of them. Expanded is Now Playing over the whole screen, and a screen
 	// that opens over the track list because of something you tapped yesterday is a screen you have
@@ -394,7 +361,7 @@
 		deck.classList.toggle( 'is-compact', mode !== 'expanded' );
 		deck.classList.toggle( 'is-expanded', mode === 'expanded' );
 		document.body.classList.toggle( 'now-playing', mode === 'expanded' );
-		syncOpenLyricsA11y();
+		syncDeckOpenA11y();
 	}
 	// Opening Now Playing pushes a history entry at the same URL, so the browser's or system back
 	// (Android back, Safari's edge swipe) closes it. See the popstate handler.
@@ -440,24 +407,17 @@
 			history.back();
 		}
 	}
-	let sheetKind = ''; // set by renderSheet(); declared here so syncOpenLyricsA11y() above can read it early
 	// After a reload, Now Playing starts closed, so clear the flag on the current entry.
 	if ( nowPlayingEntry() ) {
 		history.replaceState( { ...history.state, nowPlaying: false }, '' );
 	}
 	setDeckView( 'compact' );
 
-	let looper = null, // the gapless loop, when one is running (see the A-B loop section)
-		looperCtx = null,
-		looperBuf = null; // { url, buffer }
 	let played = false; // true once this session has played anything; before that the set button reads "Play all"
 	let queue = null,
 		i = -1,
 		seeking = false,
 		rows = [],
-		cues = [],
-		cueEls = [],
-		cueIdx = -1,
 		lastSec = -1;
 	const view = () => document.body.dataset.slug || '';
 	const onQueuePage = () => !! queue && view() === queue.slug;
@@ -470,9 +430,7 @@
 			return;
 		}
 		try {
-			// One context for the level meter and the gapless loop: nodes can't connect across contexts.
-			looperCtx = looperCtx || new AudioContext();
-			const ctx = looperCtx;
+			const ctx = new AudioContext();
 			const src = ctx.createMediaElementSource( audio );
 			analyser = ctx.createAnalyser();
 			analyser.fftSize = 64;
@@ -878,15 +836,12 @@
 	const follow = () => {
 		const d = audio.duration || queue?.tracks[ i ]?.duration;
 		if ( ! seeking && d ) {
-			setProgress( Math.min( playhead() / d, 1 ) );
-		}
-		if ( looper && ! audio.paused ) {
-			paint(); // the element's clock is not the ear's while the looper runs
+			setProgress( Math.min( audio.currentTime / d, 1 ) );
 		}
 		progressRaf = audio.paused ? 0 : requestAnimationFrame( follow );
 	};
 	function paint( force = false ) {
-		const now = playhead(),
+		const now = audio.currentTime,
 			d = audio.duration || queue?.tracks[ i ]?.duration,
 			sec = Math.floor( now );
 		if ( ! seeking && d && ! progressRaf ) {
@@ -913,7 +868,6 @@
 				sec % 60 === Number( S.confetti ) % 60
 			);
 		}
-		syncLyrics( now );
 	}
 	function positionState() {
 		if (
@@ -930,7 +884,7 @@
 			navigator.mediaSession.setPositionState( {
 				duration: d,
 				playbackRate: audio.playbackRate || 1,
-				position: Math.min( playhead(), d ),
+				position: Math.min( audio.currentTime, d ),
 			} );
 		} catch {}
 	}
@@ -971,11 +925,9 @@
 		dur.textContent = remaining( t.duration, 0 );
 		lastSec = -1;
 		setProgress( 0 );
-		clearLoop();
 		holdStop();
 		paint( true );
-		renderSheet( t.id );
-		paintMarks( t );
+		deckOpen.dataset.line = t.artist || queue.name || ''; // never blank, so the bar keeps its height
 		drawWave();
 		syncRows();
 		/**
@@ -1067,15 +1019,11 @@
 		audio.load();
 		i = -1;
 		queue = null;
-		clearLoop();
 		eqStop();
 		deck.classList.remove( 'playing' );
 		deck.hidden = true;
 		document.body.classList.remove( 'has-deck' );
 		paintTab();
-		if ( sheetOpen() ) {
-			hideLyrics();
-		}
 		syncRows();
 		paintTip();
 	}
@@ -1103,8 +1051,7 @@
 			e.pointerType === 'mouse' ||
 			! view() ||
 			e.clientX > 24 ||
-			deck.classList.contains( 'is-expanded' ) ||
-			sheetOpen()
+			deck.classList.contains( 'is-expanded' )
 		) {
 			return;
 		}
@@ -1212,8 +1159,7 @@
 	} );
 
 	// ---- Repeat: off, the set (wraps and keeps going), or one track. A running order is not a shuffle, so
-	// that is the only other transport mode; the A-B loop beside it is a different feature (a section of one
-	// track), wired further down where the rest of that gesture lives.
+	// that is the only other transport mode.
 	const REPEAT_KEY = 'callboard:repeat';
 	const repeatBtn = $( 'repeat' );
 	let repeatMode = [ 'off', 'set', 'one' ].includes( ls.get( REPEAT_KEY ) )
@@ -1369,12 +1315,6 @@
 	audio.addEventListener( 'pause', () => {
 		releaseLock?.();
 		releaseLock = null;
-		looperStop();
-	} );
-	audio.addEventListener( 'play', () => {
-		if ( loop ) {
-			looperStart();
-		}
 	} );
 	const playing = () => ( {
 		set: queue?.slug || '',
@@ -1469,9 +1409,6 @@
 		if ( audio.currentTime > 0 ) {
 			deck.classList.remove( 'buffering' );
 		}
-		if ( loop && audio.currentTime >= loop.b ) {
-			audio.currentTime = loop.a;
-		}
 		paint();
 		if ( ( audio.currentTime | 0 ) % 5 === 0 ) {
 			remember();
@@ -1521,7 +1458,7 @@
 		}
 	} );
 
-	// The player bar's height is a token the page padding and the lyrics sheet read. Measured rather than
+	// The player bar's height is a token the page padding reads. Measured rather than
 	// assumed, so Dynamic Type on iPhone, a landscape inset, or a longer row never leaves the last track under
 	// the bar, and a short bar doesn't leave a gap under the last track. Now Playing is the whole screen, so it
 	// isn't measured.
@@ -1542,268 +1479,8 @@
 		} ).observe( deck );
 	}
 
-	// ---- Marks on the seek line: ticks where singing resumes after a rest (from the lyrics)
-	const marks = $( 'seek-marks' );
-	let ticks = [];
-	function paintMarks( t ) {
-		if ( ! marks ) {
-			return;
-		}
-		marks.innerHTML = '';
-		ticks = [];
-		const d = t.duration || 0;
-		if ( ! d ) {
-			return;
-		}
-		const cuesFor = ( queue?.lyrics && queue.lyrics[ t.id ] ) || [];
-		let prevEnd = -10;
-		cuesFor.forEach( ( [ s, e ] ) => {
-			if (
-				s - prevEnd >= 3 &&
-				s > 1.5 &&
-				s < d - 1.5 &&
-				ticks.length < 40
-			) {
-				ticks.push( s );
-			}
-			prevEnd = e;
-		} );
-		ticks.forEach( ( at ) => {
-			const el = document.createElement( 'i' );
-			el.className = 'tick';
-			el.style.left = `${ ( ( at / d ) * 100 ).toFixed( 2 ) }%`;
-			marks.appendChild( el );
-		} );
-	}
-	const settle = ( t, d ) => {
-		const near = ticks.find( ( x ) => Math.abs( x - t ) < d * 0.02 );
-		if ( near !== undefined && near !== t ) {
-			haptic();
-		}
-		return near === undefined ? t : near;
-	};
-
-	// ---- A-B loop: hold two fingers on the seek line; on a keyboard [ and ] set the ends, \ clears
-	let loop = null,
-		loopGesture = false;
-	// ---- Gapless loop. Resetting currentTime leaves a seam at the join; an AudioBufferSourceNode loops
-	// sample-accurately. It runs only while the page is visible and at full speed (Web Audio has no
-	// preservesPitch). The element keeps playing muted underneath, so the media session, lock-screen controls
-	// and background play are exactly what they were; when the tab hides, the speed changes or the loop
-	// clears, the element takes the sound back at the looper's position.
-	const canLoopGapless = () =>
-		'AudioContext' in window && document.visibilityState === 'visible';
-	const playhead = () => {
-		if ( ! looper?.src || ! loop ) {
-			return audio.currentTime; // no looper yet, or its audio is still being fetched and decoded
-		}
-		const len = loop.b - loop.a,
-			t =
-				looper.offset -
-				loop.a +
-				( looper.ctx.currentTime - looper.startedAt );
-		return loop.a + ( ( ( t % len ) + len ) % len );
-	};
-	async function looperStart() {
-		if ( ! loop || looper || ! canLoopGapless() || audio.paused ) {
-			return;
-		}
-		const url = audio.currentSrc || audio.src;
-		const ticket = { pending: true };
-		looper = ticket;
-		try {
-			looperCtx = looperCtx || new AudioContext();
-			if ( looperCtx.state === 'suspended' ) {
-				await looperCtx.resume();
-			}
-			if ( looperBuf?.url !== url ) {
-				const bytes = await ( await fetch( url ) ).arrayBuffer();
-				looperBuf = {
-					url,
-					buffer: await looperCtx.decodeAudioData( bytes ),
-				};
-			}
-		} catch {
-			if ( looper === ticket ) {
-				looper = null; // no decode here: the element's own loop stands
-			}
-			return;
-		}
-		if ( looper !== ticket ) {
-			return; // the loop changed while this one was decoding, and a newer start is on its way
-		}
-		if (
-			! loop ||
-			audio.paused ||
-			! canLoopGapless() ||
-			looperCtx.state !== 'running' // autoplay policy kept the context shut: never mute the element for a silent looper
-		) {
-			looper = null;
-			return;
-		}
-		const src = looperCtx.createBufferSource();
-		src.buffer = looperBuf.buffer;
-		src.loop = true;
-		src.loopStart = loop.a;
-		src.loopEnd = Math.min( loop.b, looperBuf.buffer.duration );
-		src.connect( analyser || looperCtx.destination );
-		const from = Math.min(
-			Math.max( audio.currentTime, loop.a ),
-			src.loopEnd - 0.05
-		);
-		src.start( 0, from );
-		audio.muted = true;
-		looper = {
-			ctx: looperCtx,
-			src,
-			startedAt: looperCtx.currentTime,
-			offset: from,
-		};
-	}
-	function looperStop() {
-		if ( ! looper ) {
-			return;
-		}
-		const pos = looper.src ? playhead() : null;
-		try {
-			looper.src?.stop();
-		} catch {}
-		looper = null;
-		audio.muted = false;
-		if ( pos !== null && loop ) {
-			audio.currentTime = pos; // the element picks up where the ear left off
-		}
-	}
-	document.addEventListener( 'visibilitychange', () => {
-		if ( document.visibilityState === 'visible' ) {
-			looperStart();
-		} else {
-			looperStop();
-		}
-	} );
-	const loopBand = $( 'loop-band' ),
-		loopChip = $( 'loop' );
 	const trackDur = () => audio.duration || queue?.tracks[ i ]?.duration || 0;
-	function setLoop( a, b ) {
-		const d = trackDur();
-		a = Math.max( 0, a );
-		b = Math.min( d || b, b );
-		if ( ! d || b - a < 1 ) {
-			return;
-		}
-		loop = { a, b };
-		haptic();
-		loopBand.style.transform = `translateX(${ ( ( a / d ) * 100 ).toFixed(
-			2
-		) }%) scaleX(${ ( ( b - a ) / d ).toFixed( 4 ) })`;
-		loopBand.classList.add( 'on' );
-		if ( loopChip ) {
-			loopChip.dataset.state = 'on';
-			loopChip.setAttribute( 'aria-label', loopChip.dataset.labelOn );
-		}
-		if ( audio.currentTime < a || audio.currentTime > b ) {
-			audio.currentTime = a;
-		}
-		looperStop();
-		audio.play().catch( () => {} );
-		looperStart();
-		keepAwake(); // a loop means the phone is on the stand
-		/**
-		 * An A-B loop was set ({ a, b } in seconds) or cleared (null).
-		 */
-		doAction( 'callboard.loop', { a, b } );
-	}
-	let loopFrom = null;
-	function clearLoop() {
-		if ( loop ) {
-			haptic();
-			doAction( 'callboard.loop', null );
-		}
-		looperStop();
-		loop = null;
-		loopFrom = null;
-		if ( ! stayAwake() ) {
-			letSleep();
-		}
-		if ( loopBand ) {
-			loopBand.classList.remove( 'on' );
-			if ( loopChip ) {
-				loopChip.dataset.state = '';
-				loopChip.setAttribute(
-					'aria-label',
-					loopChip.dataset.labelOff
-				);
-			}
-		}
-	}
-	// One control, three taps: mark the start, mark the end, clear. Two fingers on the line or [ ] do the same.
-	loopChip?.addEventListener( 'click', () => {
-		if ( loop ) {
-			return clearLoop();
-		}
-		if ( loopFrom === null ) {
-			haptic();
-			loopFrom = audio.currentTime;
-			if ( loopChip ) {
-				loopChip.dataset.state = 'armed';
-				loopChip.setAttribute(
-					'aria-label',
-					loopChip.dataset.labelArmed
-				);
-			}
-			return;
-		}
-		const a = Math.min( loopFrom, audio.currentTime ),
-			b = Math.max( loopFrom, audio.currentTime );
-		loopFrom = null;
-		if ( b - a < 1 ) {
-			return clearLoop(); // the same spot twice: nothing to loop
-		}
-		setLoop( a, b );
-	} );
-	const seekWrap = document.querySelector( '.seek-wrap' ),
-		pointers = new Map();
-	let loopHold = 0;
-	seekWrap?.addEventListener(
-		'pointerdown',
-		( e ) => {
-			pointers.set( e.pointerId, e.clientX );
-			if ( pointers.size === 2 ) {
-				clearTimeout( loopHold );
-				loopHold = setTimeout( () => {
-					const rect = seek.getBoundingClientRect(),
-						half = seekThumb() / 2, // measure against the line, not the wider input
-						d = trackDur();
-					const r = ( x ) =>
-						Math.min(
-							1,
-							Math.max(
-								0,
-								( x - rect.left - half ) /
-									( rect.width - half * 2 )
-							)
-						);
-					const xs = [ ...pointers.values() ].map( r );
-					loopGesture = true;
-					seeking = false;
-					deck.classList.remove( 'seeking' );
-					setLoop( Math.min( ...xs ) * d, Math.max( ...xs ) * d );
-				}, 300 );
-			}
-		},
-		true
-	);
-	const lift = ( e ) => {
-		pointers.delete( e.pointerId );
-		if ( pointers.size < 2 ) {
-			clearTimeout( loopHold );
-		}
-		if ( ! pointers.size ) {
-			setTimeout( () => {
-				loopGesture = false;
-			}, 50 );
-		}
-	};
+	const seekWrap = document.querySelector( '.seek-wrap' );
 	seekWrap?.addEventListener( 'pointermove', ( e ) => {
 		// the hover preview follows the pointer; a CSS variable, so no repaint of the bars
 		const r = seekWrap.getBoundingClientRect();
@@ -1815,13 +1492,8 @@
 			).toFixed( 2 ) }%`
 		);
 	} );
-	seekWrap?.addEventListener( 'pointerup', lift, true );
-	seekWrap?.addEventListener( 'pointercancel', lift, true );
 
 	seek.addEventListener( 'input', () => {
-		if ( loopGesture || pointers.size > 1 ) {
-			return;
-		}
 		seeking = true;
 		deck.classList.add( 'seeking' );
 		const d = audio.duration || queue?.tracks[ i ]?.duration || 0,
@@ -1836,12 +1508,8 @@
 	} );
 	seek.addEventListener( 'change', () => {
 		const d = audio.duration || queue?.tracks[ i ]?.duration;
-		if ( loopGesture ) {
-			paint( true );
-			return;
-		}
 		if ( d ) {
-			audio.currentTime = settle( ( seek.value / 1000 ) * d, d );
+			audio.currentTime = ( seek.value / 1000 ) * d;
 		}
 		seeking = false;
 		deck.classList.remove( 'seeking' );
@@ -1871,199 +1539,24 @@
 			audio.currentTime += 5;
 		} else if ( e.key === 'ArrowLeft' ) {
 			audio.currentTime -= 5;
-		} else if ( e.key === '[' ) {
-			setLoop( audio.currentTime, loop ? loop.b : trackDur() );
-		} else if ( e.key === ']' ) {
-			setLoop( loop ? loop.a : 0, audio.currentTime );
-		} else if ( e.key === '\\' ) {
-			clearLoop();
-		} else if ( e.key === 'Escape' && sheetOpen() ) {
-			hideLyrics();
 		} else if (
 			e.key === 'Escape' &&
 			deck.classList.contains( 'is-expanded' )
 		) {
-			closeNowPlaying(); // Escape closes lyrics, then Now Playing, then a paused player bar
+			closeNowPlaying(); // Escape closes Now Playing, then a paused player bar
 		} else if ( e.key === 'Escape' && audio.paused && i >= 0 ) {
 			dismissDeck();
 		}
 	} );
 
-	// ---- Lyrics (only where a set has approved lyrics); otherwise the deck title finds the playing track.
-	// The cues also live on the media element as a metadata text track, so the browser fires cuechange for
-	// them, on time even when the tab is throttled, and a seek lands on the right line without a scan.
-	const lyricTrack =
-		'VTTCue' in window && audio.addTextTrack
-			? audio.addTextTrack( 'metadata', 'Lyrics' )
-			: null;
-	if ( lyricTrack ) {
-		lyricTrack.mode = 'hidden';
-		lyricTrack.addEventListener( 'cuechange', () => {
-			const active = lyricTrack.activeCues;
-			if ( active && active.length ) {
-				markCue( Number( active[ active.length - 1 ].id ) );
-			}
-		} );
-	}
-	function loadCues() {
-		if ( ! lyricTrack ) {
-			return;
-		}
-		Array.from( lyricTrack.cues || [] ).forEach( ( c ) =>
-			lyricTrack.removeCue( c )
-		);
-		// each cue runs until the next begins, so exactly one is active and the last line holds to the end
-		cues.forEach( ( [ start, , text ], k ) => {
-			const end =
-				k + 1 < cues.length
-					? cues[ k + 1 ][ 0 ]
-					: trackDur() || start + 3600;
-			if ( end > start ) {
-				const cue = new VTTCue( start, end, text );
-				cue.id = String( k );
-				lyricTrack.addCue( cue );
-			}
-		} );
-	}
-	function renderSheet( id ) {
-		cues = ( queue?.lyrics && queue.lyrics[ id ] ) || [];
-		cueIdx = -1;
-		lyricsList.innerHTML = '';
-		sheetKind = cues.length ? 'lyrics' : '';
-		if ( sheetKind ) {
-			openLyrics.dataset.sheet = T.lyrics_label;
-		} else {
-			delete openLyrics.dataset.sheet;
-		}
-		// Who the track is by, otherwise the set's name, otherwise the sheet's — never blank, so the
-		// deck keeps a constant height. The sheet's name is the last resort now that Now Playing has
-		// a pill that says it: two controls a thumb apart both reading "Lyrics" is one too many.
-		openLyrics.dataset.line =
-			queue?.tracks[ i ]?.artist ||
-			queue?.name ||
-			openLyrics.dataset.sheet ||
-			'';
-		syncOpenLyricsA11y();
-		$( 'sheet-label' ).textContent = T.lyrics_sheet;
-		const item = ( at, text ) => {
-			const li = document.createElement( 'li' );
-			li.appendChild( document.createTextNode( text ) );
-			li.tabIndex = 0;
-			li.addEventListener( 'click', () => {
-				audio.currentTime = at;
-				audio.play().catch( () => {} );
-			} );
-			lyricsList.appendChild( li );
-			return li;
-		};
-		cueEls = cues.map( ( [ s, , text ] ) => item( s, text ) );
-		loadCues();
-	}
-	function syncLyrics( t ) {
-		if ( ! cues.length ) {
-			return;
-		}
-		let n = -1;
-		for ( let k = 0; k < cues.length; k++ ) {
-			if ( t >= cues[ k ][ 0 ] ) {
-				n = k;
-			} else {
-				break;
-			}
-		}
-		markCue( n );
-	}
-	function markCue( n ) {
-		if ( n === cueIdx ) {
-			return;
-		}
-		cueIdx = n;
-		cueEls.forEach( ( el, k ) => {
-			el.classList.toggle( 'now', k === n );
-			el.classList.toggle( 'past', k < n );
-		} );
-		if ( n >= 0 && sheetOpen() ) {
-			cueEls[ n ].scrollIntoView( {
-				block: 'center',
-				behavior: 'smooth',
-			} );
-		}
-	}
-	let wake = null;
-	const keepAwake = async () => {
-		if ( wake && ! wake.released ) {
-			return; // one lock is enough; a second request would leave the first held for good
-		}
-		try {
-			wake = ( await navigator.wakeLock?.request( 'screen' ) ) || null;
-		} catch {}
-	};
-	const letSleep = () => {
-		wake?.release().catch( () => {} );
-		wake = null;
-	};
-	// The lock follows the open lyrics sheet or a set loop: either one means the phone is on the stand.
-	// The system drops the lock whenever the page hides, so coming back has to take it again.
-	const stayAwake = () =>
-		document.body.classList.contains( 'sheet-open' ) || !! loop;
-	document.addEventListener( 'visibilitychange', () => {
-		if ( document.visibilityState === 'visible' && stayAwake() ) {
-			keepAwake();
-		}
-	} );
-	let sheetTimer = 0;
-	function showLyrics() {
-		keepAwake();
-		clearTimeout( sheetTimer );
-		lyricsSheet.classList.remove( 'closing' );
-		if ( ! sheetOpen() ) {
-			if ( lyricsSheet.show ) {
-				lyricsSheet.show(); // non-modal, so the player controls stay usable
-			} else {
-				lyricsSheet.setAttribute( 'open', '' );
-			}
-		}
-		document.body.classList.add( 'sheet-open' );
-		syncOpenLyricsA11y();
-		if ( cueIdx >= 0 ) {
-			cueEls[ cueIdx ].scrollIntoView( { block: 'center' } );
-		}
-		$( 'close-lyrics' ).focus();
-	}
-	const closeSheet = () => {
-		lyricsSheet.classList.remove( 'closing' );
-		if ( lyricsSheet.close ) {
-			lyricsSheet.close();
-		} else {
-			lyricsSheet.removeAttribute( 'open' );
-		}
-	};
-	function hideLyrics() {
-		document.body.classList.remove( 'sheet-open' );
-		if ( ! stayAwake() ) {
-			letSleep(); // a loop keeps the screen on without the sheet
-		}
-		if ( reduce() || ! sheetOpen() ) {
-			closeSheet();
-		} else {
-			lyricsSheet.classList.add( 'closing' ); // slides away, then leaves the tree
-			clearTimeout( sheetTimer );
-			sheetTimer = setTimeout( closeSheet, 320 );
-		}
-		syncOpenLyricsA11y();
-		openLyrics.focus();
-	}
-	openLyrics.addEventListener( 'click', () => {
+	deckOpen.addEventListener( 'click', () => {
 		if ( i < 0 ) {
 			return;
 		}
 		if ( deck.classList.contains( 'is-compact' ) ) {
-			return expandDeck(); // the compact bar's whole job is this tap; the sheet/track logic below is expanded-only
+			return expandDeck(); // the compact bar's whole job is this tap
 		}
 		haptic();
-		if ( sheetKind ) {
-			return sheetOpen() ? hideLyrics() : showLyrics();
-		}
 		if ( ! onQueuePage() ) {
 			return go( `${ G.home }${ queue.slug }/` );
 		}
@@ -2081,14 +1574,6 @@
 			return closeNowPlaying();
 		}
 		go( `${ G.home }${ queue.slug }/` ); // go() closes Now Playing and replaces its history entry
-	} );
-	$( 'sheet-pill' )?.addEventListener( 'click', () => {
-		haptic();
-		if ( ! sheetOpen() ) {
-			showLyrics();
-		} else {
-			hideLyrics();
-		}
 	} );
 	// Drag Now Playing down to close it, starting on the grabber, the top row, or the cover. The thresholds
 	// and easing come from Vaul (the shadcn/ui drawer): release faster than 0.4px/ms or past a quarter of
@@ -2158,7 +1643,6 @@
 			! e.isPrimary ||
 			e.button !== 0 ||
 			! deck.classList.contains( 'is-expanded' ) ||
-			sheetOpen() ||
 			! e.target.closest( DRAG_FROM ) ||
 			e.target.closest( NO_DRAG ) ||
 			scrolledDown( e.target )
@@ -2263,10 +1747,6 @@
 		}
 		haptic();
 		closeNowPlaying();
-	} );
-	$( 'close-lyrics' ).addEventListener( 'click', () => {
-		haptic();
-		hideLyrics();
 	} );
 
 	document
@@ -3071,7 +2551,7 @@
 			curator_url: set.credits?.curator_url || '',
 			tracks: [],
 		};
-		const side = { levels: {}, lyrics: {} };
+		const side = { levels: {} };
 		const entries = [],
 			names = new Set();
 		for ( const t of set.tracks ) {
@@ -3099,10 +2579,6 @@
 			if ( t.levels ) {
 				side.levels[ trackKey ] = t.levels;
 			}
-			const trackCues = set.lyrics?.[ t.id ];
-			if ( trackCues?.length ) {
-				side.lyrics[ trackKey ] = trackCues;
-			}
 		}
 		const json = ( data ) =>
 			new Blob( [ JSON.stringify( data, null, 2 ) ], {
@@ -3113,9 +2589,6 @@
 			if ( Object.keys( data ).length ) {
 				entries.push( { name: `${ name }.json`, blob: json( data ) } );
 			}
-		}
-		if ( Object.keys( side.lyrics ).length ) {
-			entries.push( { name: 'lyrics.approved', blob: new Blob( [] ) } ); // the page only has approved lyrics
 		}
 		return new File(
 			[ await zipWrite( entries ) ],
@@ -3634,9 +3107,6 @@
 			document.body.classList.toggle( 'view-set', !! slug );
 			document.body.classList.add( 'swapped' );
 			window.scrollTo( 0, 0 );
-			if ( sheetOpen() ) {
-				hideLyrics();
-			}
 			bindView();
 		};
 		document.documentElement.dataset.nav = slug ? 'forward' : 'back';
@@ -4191,18 +3661,13 @@
 				index: { enumerable: true, get: () => i },
 				position: {
 					enumerable: true,
-					get: () => ( i >= 0 ? playhead() : 0 ),
+					get: () => ( i >= 0 ? audio.currentTime : 0 ),
 				},
 				duration: {
 					enumerable: true,
 					get: () => ( i >= 0 ? trackDur() : 0 ),
 				},
 				paused: { enumerable: true, get: () => audio.paused },
-				loop: {
-					enumerable: true,
-					get: () =>
-						loop ? Object.freeze( { a: loop.a, b: loop.b } ) : null,
-				},
 				online: { enumerable: true, get: () => navigator.onLine },
 			}
 		)

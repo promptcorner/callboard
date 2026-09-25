@@ -81,12 +81,6 @@ final class Frontend {
 			'saved_hint'     => __( 'Saved offline. Press and hold, or press Delete, to remove the copies.', 'callboard' ),
 			/* translators: 1: tracks saved so far, 2: total tracks. */
 			'saving'         => __( 'Saving %1$s/%2$s · Cancel', 'callboard' ),
-			'lyrics_label'   => __( 'Lyrics', 'callboard' ),
-			'lyrics_sheet'   => __( 'Lyrics · auto-captions, may be rough', 'callboard' ),
-			'show_lyrics'    => __( 'Show lyrics', 'callboard' ),
-			// The pill's own label: a noun, because the control is the way to a thing, not an instruction.
-			'lyrics'         => __( 'Lyrics', 'callboard' ),
-			'hide_lyrics'    => __( 'Hide lyrics', 'callboard' ),
 			'show_track'     => __( 'Show current track', 'callboard' ),
 			'remote'         => __( 'Play on another device', 'callboard' ),
 			'remote_on'      => __( 'Playing on another device, tap to change', 'callboard' ),

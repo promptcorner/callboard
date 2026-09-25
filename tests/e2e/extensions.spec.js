@@ -20,7 +20,7 @@ const useExample = ( page, extra = {} ) =>
 			} )
 		)
 	);
-const expandDeck = ( page ) => page.locator( '#open-lyrics' ).click();
+const expandDeck = ( page ) => page.locator( '#deck-open' ).click();
 // The worker registers at idle and controls the page after a reload.
 const controlled = ( page ) =>
 	page

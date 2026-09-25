@@ -61,7 +61,7 @@ final class Plugin {
 		self::remove_notifications();
 		self::trash_notes();
 		Sets::flush();
-		Importer::import_all(); // sidecar files (levels, lyrics) added by a deploy land here.
+		Importer::import_all(); // sidecar files (levels) added by a deploy land here.
 		Pwa::write_files();
 	}
 

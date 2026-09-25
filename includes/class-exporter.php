@@ -33,8 +33,8 @@ final class Exporter {
 	public const EXT  = 'callboard';
 	public const TYPE = 'application/vnd.callboard+zip';
 
-	/** Files carried beside the audio. */
-	private const SIDECARS = array( 'levels', 'lyrics' );
+	/** Files carried beside the audio. Lyrics went in 3.0.0; a lyrics.json in an older file is skipped. */
+	private const SIDECARS = array( 'levels' );
 
 	/**
 	 * Hook registration.
@@ -124,13 +124,9 @@ final class Exporter {
 			}
 			$key    = self::track_key( $track->ID, $file );
 			$levels = (string) get_post_meta( $track->ID, '_callboard_levels', true );
-			$lyrics = get_post_meta( $track->ID, '_callboard_lyrics', true );
 
 			if ( '' !== $levels ) {
 				$out['levels'][ $key ] = $levels;
-			}
-			if ( is_array( $lyrics ) && $lyrics ) {
-				$out['lyrics'][ $key ] = array_values( $lyrics );
 			}
 		}
 
@@ -172,11 +168,6 @@ final class Exporter {
 			if ( $data ) {
 				$zip->addFromString( $name . '.json', (string) wp_json_encode( $data, JSON_UNESCAPED_UNICODE ) );
 			}
-		}
-
-		// The marker is the whole file: its presence is the setting.
-		if ( get_post_meta( $set->ID, '_callboard_lyrics_approved', true ) ) {
-			$zip->addFromString( 'lyrics.approved', '' );
 		}
 
 		foreach ( array( 'cover', 'share' ) as $role ) {
@@ -436,7 +427,7 @@ final class Exporter {
 		if ( '' === $name || str_contains( $name, '/' ) || str_contains( $name, '\\' ) || str_starts_with( $name, '.' ) ) {
 			return false;
 		}
-		if ( 'manifest.json' === $name || 'lyrics.approved' === $name ) {
+		if ( 'manifest.json' === $name ) {
 			return true;
 		}
 		if ( in_array( pathinfo( $name, PATHINFO_FILENAME ), self::SIDECARS, true ) && 'json' === strtolower( (string) pathinfo( $name, PATHINFO_EXTENSION ) ) ) {

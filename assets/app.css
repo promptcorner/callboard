@@ -129,7 +129,6 @@ body.swapped .masthead>*,body.swapped .sets li,body.swapped .tracks li{animation
 .track.active .digits{visibility:hidden}
 .track.active:not(.playing) .eq i{background:var(--ink-3)}
 .track .title{font-size:1.0625rem;font-weight:500;letter-spacing:-.01em;line-height:1.3;display:flex;align-items:center;gap:8px;flex-wrap:wrap;text-wrap:pretty}
-.track .has-lyrics{font-size:.8125rem;font-weight:400;color:var(--ink-3);margin-left:10px} /* a word, not a badge */
 .track .len{color:var(--ink-3);font-size:.875rem;display:inline-flex;align-items:center;gap:8px}
 .track .hh{font-size:1.05rem;line-height:1;opacity:0;transition:opacity var(--t-fast)}
 .track.active .hh{opacity:1}
@@ -171,7 +170,6 @@ body.swapped .masthead>*,body.swapped .sets li,body.swapped .tracks li{animation
 @media (prefers-reduced-transparency:reduce){.wave-reveal .wave{filter:none}.deck{background-image:none;box-shadow:none}}
 .deck.has-wave .seek-line{top:0;height:100%;margin-top:0;background:transparent;border-radius:0}
 .deck.has-wave .seek-fill,.deck.has-wave .seek-knob{display:none}
-.deck.has-wave .loop-band.on{opacity:.14}
 .seek-line{position:absolute;left:0;right:0;top:50%;height:4px;margin-top:-2px;border-radius:2px;background:var(--line-strong);overflow:hidden;pointer-events:none}
 .seek-fill{position:absolute;inset:0;background:var(--accent);transform-origin:0 50%;transform:scaleX(0);will-change:transform}
 .seek-knob{position:absolute;left:0;top:50%;width:18px;height:18px;margin-top:-9px;border-radius:50%;background:radial-gradient(circle at 50% 28%,var(--play-hi),var(--ink) 65%);box-shadow:0 2px 5px rgba(0,0,0,.35),inset 0 1px 0 var(--play-rim);transform:translateX(0);pointer-events:none;will-change:transform;z-index:1}
@@ -200,13 +198,8 @@ input[type=range]::-moz-range-thumb{width:var(--thumb);height:var(--thumb);borde
    the set, rather than a blurred copy of the artwork — a colour costs no second download, survives
    offline, and composes with the accent instead of fighting it. */
 .deck-down,.deck-top{display:none}
-/* Tidal puts the way into the words at the top right, out of the transport's way. Same here, and it
-   only exists when the track actually has words to show. */
+/* The top row: the cast chip at the right, out of the transport's way, and somewhere to start a drag. */
 .deck.is-expanded .deck-top{display:flex;justify-content:flex-end;gap:var(--s1);align-items:center;width:100%;max-width:640px;margin-inline:auto;padding:0 max(20px,env(safe-area-inset-left,0px));min-height:34px}
-.sheet-pill{appearance:none;border:1px solid var(--line);background:color-mix(in srgb,var(--surface-2) 45%,transparent);color:var(--ink-2);font:inherit;font-size:.8125rem;padding:5px 14px;border-radius:999px;cursor:pointer;transition:color var(--t),border-color var(--t)}
-.sheet-pill:hover,.sheet-pill:focus-visible{color:var(--ink);border-color:var(--line-strong)}
-.sheet-pill:active{color:var(--ink);border-color:var(--line-strong);background:var(--surface-2)} /* pressed state for touch */
-.sheet-pill[aria-expanded="true"]{color:var(--accent-text);border-color:var(--line-strong)}
 /* The bar leads with the art too, small. It sits over the row rather than inside it so the expanded
    grid can keep the same element as its centrepiece — one image, two sizes, no second source to
    keep in step. Taps fall through to the bar, whose whole width is the way in. */
@@ -304,7 +297,7 @@ input[type=range]::-moz-range-thumb{width:var(--thumb);height:var(--thumb);borde
 .deck.is-expanded .deck-cover img{box-shadow:0 24px 60px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.09)}
 .deck.is-expanded .deck-controls{justify-content:space-between;gap:0;padding:0 var(--s2)}
 /* Now Playing: the player bar's bare glyphs, a size up. Play 32px tall in a 64px target, skips 21px in 56px,
-   loop and repeat 24px icons in 48px. */
+   repeat's 24px icon in 48px. */
 .deck.is-expanded .ctl.play{width:64px;height:64px}
 .deck.is-expanded .ctl.play .pp{inset:-4px;width:72px;height:72px;margin:0}
 .deck.is-expanded .ctl.skip{width:56px;height:56px}
@@ -341,22 +334,7 @@ input[type=range]::-moz-range-thumb{width:var(--thumb);height:var(--thumb);borde
 /* Short and narrow at once — a small phone on its side — has room for the controls and nothing else. */
 @media (max-height:620px) and (max-width:699px){.deck.is-expanded .deck-cover{display:none}}
 
-/* The sheet is opened from Now Playing, so it has to sit above it — at the bar's z-index it was
-   behind a full screen and could not even be closed. Above the transport, not over it: the words
-   and the controls are both wanted at once. */
-body.now-playing .lyrics{z-index:21;inset:0 0 auto 0;height:calc(100% - 190px - var(--safe-b));border-radius:0 0 14px 14px}
-
-/* marks on the seek line: ticks above it where singing resumes */
-.seek-marks{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:3}
-.seek-marks .tick{position:absolute;top:auto;bottom:3px;width:2px;height:6px;margin-left:-1px;border-radius:1px;background:var(--ink-3);opacity:.85}
-/* A-B loop: a band on the line, a quiet chip that clears it */
-.loop-band{position:absolute;inset:0;background:var(--ink);opacity:0;transform-origin:0 50%;transform:scaleX(0);transition:opacity var(--t)}
-.loop-band.on{opacity:.4}
-/* the loop chip: same secondary-control size as repeat, quiet until a loop is armed or set */
-.loop-toggle svg{width:22px;height:22px}
-.loop-toggle[data-state="armed"]{color:var(--accent-text);animation:pulse 1s ease-in-out infinite}
-.loop-toggle[data-state="on"]{color:var(--accent-text)}
-/* repeat: off / set / one, cycled by app.js and drawn on one glyph rather than swapped icons — the loop
+/* repeat: off / set / one, cycled by app.js and drawn on one glyph rather than swapped icons — the
    arrows plus a numeral that only shows for "one", so the control never resizes between states */
 .repeat-toggle svg{width:22px;height:22px}
 .repeat-toggle .repeat-one{opacity:0}
@@ -366,18 +344,17 @@ body.now-playing .lyrics{z-index:21;inset:0 0 auto 0;height:calc(100% - 190px - 
 .deck-title small{font-size:.8125rem;color:var(--ink-3);margin-left:8px}
 .deck-text{padding:0;min-width:0;flex:1;display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:var(--s2)}
 .deck-open{appearance:none;background:transparent;border:0;padding:0;text-align:left;min-width:0;max-width:100%;display:flex;flex-direction:column;gap:var(--s1);cursor:pointer;color:inherit;border-radius:8px}
-/* compact: the open-lyrics button is the whole tap-to-expand bar, so it keeps clear of the play button that
+/* compact: the title button is the whole tap-to-expand bar, so it keeps clear of the play button that
    floats over it (see .deck.is-compact #toggle below) rather than running text under a control */
 /* Width, not padding: padding leaves the box full width, so the middle of the tap target — which is
    where a click lands — sits under the transport. The target has to actually end where they begin. */
 .deck.is-compact .deck-open{width:calc(100% - 152px - var(--dl-gutter) - var(--s2))}
 .deck-open:active .deck-title{opacity:.6}
-.deck-open::after{content:attr(data-line);display:block;min-height:1.2em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-3);font-size:.8125rem;line-height:1.2} /* one line, always: the art and the transport are centred on a row height that assumes it */ /* the sheet's name, or the set's: never blank, so the deck's constant height is honest */
-.deck-open[data-sheet][aria-expanded="true"]::after{color:var(--ink)}
+.deck-open::after{content:attr(data-line);display:block;min-height:1.2em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-3);font-size:.8125rem;line-height:1.2} /* one line, always: the art and the transport are centred on a row height that assumes it */
 .deck-time{display:inline-flex;align-items:baseline;gap:8px;min-width:0;max-width:100%;overflow:hidden} /* clipped, never under the controls */
 .deck-time :focus-visible{outline-offset:-2px} /* rings stay inside the clip */
 /* the time row is a container: when the chips would not fit beside the total, the total goes; the track list still shows it.
-   Safari always shows the AirPlay chip (no availability watcher for audio) and an armed or set loop reads wider than "Loop". */
+   Safari always shows the AirPlay chip (no availability watcher for audio). */
 .deck-text{container-type:inline-size}
 @container (max-width:104px){.deck-time .sep,.deck-time #dur{display:none}}
 @container (max-width:200px){.deck-time .sep{margin:0 -3px}} /* the slash pulls in */
@@ -418,14 +395,14 @@ body.now-playing .lyrics{z-index:21;inset:0 0 auto 0;height:calc(100% - 190px - 
    the last duration on a laptop, and not worth clipping the track's name to do it on a handset. */
 @media (max-width:520px){.deck{--dl-gutter:0px}} /* the compact row: two 13px paddings around a two-line title block */
 
-/* transport: secondary (repeat, the A-B loop affordance) left, primary (previous, play, next) right — both
+/* transport: secondary (repeat, extension controls) left, primary (previous, play, next) right — both
    inside the one column, never the viewport (see .deck-inner). Two groups, not five loose controls. */
 .deck-controls{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);position:relative;z-index:2}
 .deck-controls-secondary,.deck-controls-primary{display:flex;align-items:center;gap:var(--s3)}
 .deck-controls-secondary{gap:var(--s2)}
 /* compact: play/pause floats up over the display line (see .deck-open's reserved padding above) — no prev/next,
-   no repeat, no loop; nothing here escapes .deck itself, so top/right below read off .deck's own edges */
-.deck.is-compact .deck-controls-secondary{display:none} /* the loop and repeat can wait; previous and next cannot */
+   no repeat; nothing here escapes .deck itself, so top/right below read off .deck's own edges */
+.deck.is-compact .deck-controls-secondary{display:none} /* repeat can wait; previous and next cannot */
 .deck.is-compact .deck-transport{padding:0}
 .deck.is-compact .deck-display{min-height:var(--bar-row);padding-block:0;align-items:center} /* the row is the bar's height, and the title block sits in the middle of it */
 /* .deck-controls is itself position:relative (for its own z-index); drop that in compact so #toggle's
@@ -448,8 +425,8 @@ body.now-playing .lyrics{z-index:21;inset:0 0 auto 0;height:calc(100% - 190px - 
 @media (max-width:520px){.deck.is-compact #prev{display:none}.deck.is-compact .deck-open{width:calc(100% - 96px - var(--s2))}}
 /* Minimum 44px touch area for small controls, using an invisible ::after. :where() keeps specificity at
    zero so a control's own ::after (including an extension's transport button) wins. */
-:where(.ctl:not(.play),.deck-down,.sheet-pill,.remote-chip,.deck-from button,.dl,.deck-controls-secondary>*){position:relative}
-:where(.ctl:not(.play),.deck-down,.sheet-pill,.remote-chip,.deck-from button,.dl,.deck-controls-secondary>*)::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+:where(.ctl:not(.play),.deck-down,.remote-chip,.deck-from button,.dl,.deck-controls-secondary>*){position:relative}
+:where(.ctl:not(.play),.deck-down,.remote-chip,.deck-from button,.dl,.deck-controls-secondary>*)::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
 .ctl{appearance:none;border:0;background:transparent;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
 .ctl svg{width:26px;height:26px;fill:currentColor}
 .deck-controls .ctl.skip{width:52px;height:52px}
@@ -477,22 +454,6 @@ body.now-playing .lyrics{z-index:21;inset:0 0 auto 0;height:calc(100% - 190px - 
 .ctl.skip svg{transition:transform var(--t) var(--ease-spring)}
 .ctl.skip .skip-tri{transform-origin:center;transition:transform var(--t)}
 .ctl.skip:active .skip-tri{transform:scale(.85)}
-
-/* lyrics sheet */
-.lyrics:not([open]){display:none}
-.lyrics{position:fixed;inset:var(--admin-bar-h) 0 calc(var(--deck-h) + var(--safe-b)) 0;width:auto;height:auto;max-width:none;max-height:none;margin:0;padding:0;border:0;color:inherit;z-index:15;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;border-radius:14px 14px 0 0;will-change:transform;transition:transform var(--t-slow) var(--ease)}
-@starting-style{.lyrics{transform:translateY(100%)}}
-.lyrics.closing{transform:translateY(100%)}
-#main{transition:transform var(--t-slow) var(--ease),opacity var(--t-slow) var(--ease);transform-origin:50% 0}
-body.sheet-open #main{transform:scale(.96) translateY(6px);opacity:.6}
-body.sheet-open #main,body.sheet-closing #main{will-change:transform,opacity} /* the page settles back while the sheet is up */
-.lyrics-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(12px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) 8px max(20px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);max-width:640px;margin:0 auto;width:100%}
-.lyrics-lines{list-style:none;margin:0 auto;padding:24px max(20px,env(safe-area-inset-right,0px)) 40vh max(20px,env(safe-area-inset-left,0px));width:100%;max-width:640px;overflow-y:auto;flex:1;scroll-behavior:smooth}
-.lyrics-lines li{font-size:1.5rem;line-height:1.3;font-weight:600;letter-spacing:-.015em;color:var(--ink-3);padding:8px 0;cursor:pointer;transition:color var(--t);text-wrap:pretty}
-.lyrics-lines li.past{color:var(--ink-2);opacity:.55}
-.lyrics-lines li.now{color:var(--ink)}
-.lyrics-lines li:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
-.lyrics-lines li.now::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin:0 10px 3px -18px;vertical-align:middle}
 
 /* a new version is waiting: one quiet line above the deck */
 .update{position:fixed;left:50%;bottom:calc(var(--deck-h) + var(--safe-b) + 12px);transform:translateX(-50%);z-index:19;appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:999px;height:38px;padding:0 6px 0 14px;font-size:.875rem;display:inline-flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.12);transition:opacity var(--t-slow),transform var(--t-slow) var(--ease)}

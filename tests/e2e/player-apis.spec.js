@@ -1,56 +1,12 @@
 /**
  * Browser APIs the player depends on, where nothing on screen would show that they stopped working:
- * the Screen Wake Lock and ResizeObserver for the waveform. The gapless loop has its own spec,
- * gapless-loop.spec.js. See #119.
+ * ResizeObserver for the waveform. See #119.
  */
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
-const expandDeck = ( page ) => page.locator( '#open-lyrics' ).click();
+const expandDeck = ( page ) => page.locator( '#deck-open' ).click();
 
 test.describe( 'Player browser APIs', () => {
-	test( 'the screen stays awake while a loop is set or the lyrics sheet is open', async ( {
-		page,
-	} ) => {
-		await page.addInitScript( () => {
-			// A fake wake lock that records whether the page is currently holding it.
-			window.wakeLock = { requests: 0, held: false };
-			Object.defineProperty( navigator, 'wakeLock', {
-				configurable: true,
-				value: {
-					request: async () => {
-						window.wakeLock.requests++;
-						window.wakeLock.held = true;
-						return {
-							release: async () => {
-								window.wakeLock.held = false;
-							},
-						};
-					},
-				},
-			} );
-		} );
-		const held = () => page.evaluate( () => window.wakeLock.held );
-
-		await page.goto( '/demo-set/' );
-		await page.locator( '.track' ).nth( 2 ).click(); // has lyrics, so it has a sheet
-		await expandDeck( page );
-		expect( await held() ).toBe( false );
-
-		await page.locator( '#open-lyrics' ).click();
-		await expect( page.locator( '#lyrics' ) ).toBeVisible();
-		await expect.poll( held ).toBe( true );
-		await page.locator( '#close-lyrics' ).click();
-		await expect( page.locator( '#lyrics' ) ).toBeHidden();
-		await expect.poll( held ).toBe( false );
-
-		await page.keyboard.press( '[' ); // set a loop from the current position to the end
-		await expect( page.locator( '#loop-band' ) ).toHaveClass( /on/ );
-		await expect.poll( held ).toBe( true );
-		await page.keyboard.press( '\\' ); // clear the loop
-		await expect( page.locator( '#loop-band' ) ).not.toHaveClass( /on/ );
-		await expect.poll( held ).toBe( false );
-	} );
-
 	test( 'the waveform redraws when its box changes width, even without a window resize', async ( {
 		page,
 	} ) => {

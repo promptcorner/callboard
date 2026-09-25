@@ -151,7 +151,7 @@ const CAPTURES = {
 	'now-playing': async ( browser ) => [
 		await phone( browser, 'dark', async ( page ) => {
 			await playing( page );
-			await page.locator( '#open-lyrics' ).click(); // tapping the player bar opens the full-screen player
+			await page.locator( '#deck-open' ).click(); // tapping the player bar opens the full-screen player
 			await page
 				.locator( '#deck.is-expanded' )
 				.waitFor( { state: 'visible' } );

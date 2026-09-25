@@ -44,8 +44,7 @@ $callboard_badge = Callboard\Settings::get( 'badge' );
 		<li>
 			<button type="button" class="track" data-i="<?php echo (int) $callboard_i; ?>" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: track title. */ __( 'Play %s', 'callboard' ), $callboard_t['title'] ) ); ?>">
 				<span class="num"><span class="digits"><?php echo esc_html( str_pad( (string) $callboard_t['index'], 2, '0', STR_PAD_LEFT ) ); ?></span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span></span>
-				<?php $callboard_has_lyrics = isset( $callboard_set['lyrics']->{$callboard_t['id']} ) || ( is_array( $callboard_set['lyrics'] ) && isset( $callboard_set['lyrics'][ $callboard_t['id'] ] ) ); ?>
-				<span class="title"><?php echo esc_html( $callboard_t['title'] ); ?><?php echo $callboard_has_lyrics ? ' <span class="has-lyrics">' . esc_html__( 'lyrics', 'callboard' ) . '</span>' : ''; ?></span>
+				<span class="title"><?php echo esc_html( $callboard_t['title'] ); ?></span>
 				<?php /** Slot track_meta: extension items in the row's second line, beside the artist. */ ?>
 				<?php $callboard_row_meta = callboard_get_slot( 'track_meta', $callboard_t, $callboard_set ); ?>
 				<?php echo ! empty( $callboard_t['artist'] ) || '' !== $callboard_row_meta ? '<span class="by">' . ( ! empty( $callboard_t['artist'] ) ? '<span class="by-name">' . esc_html( $callboard_t['artist'] ) . '</span>' : '' ) . $callboard_row_meta . '</span>' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- slot items are escaped by the registry. ?><span class="len"><?php echo $callboard_badge ? '<span class="hh" aria-hidden="true">' . esc_html( $callboard_badge ) . '</span>' : ''; ?><?php /** Slot track_badges: extension items before the track's length. */ callboard_slot( 'track_badges', $callboard_t, $callboard_set ); ?><?php echo esc_html( callboard_fmt( $callboard_t['duration'] ) ); ?></span>

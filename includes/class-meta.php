@@ -73,36 +73,31 @@ final class Meta {
 
 		return array(
 			Post_Types::SET => array(
-				'_callboard_credits'         => array(
+				'_callboard_credits'     => array(
 					'type'        => 'array',
 					'description' => 'Where the set came from: playlist URL, curator, curator URL.',
 				),
-				'_callboard_lyrics_approved' => array(
-					'type'        => 'integer',
-					'description' => 'Whether somebody has read the imported captions and vouched for them. Lyrics stay hidden until they have.',
-					'sanitize'    => 'absint',
-				),
-				'_callboard_tint'            => array(
+				'_callboard_tint'        => array(
 					'type'        => 'string',
 					'description' => 'One colour taken from the cover by Art::tint(), as #rrggbb, or "none" when GD could not read it. Cleared when the cover changes.',
 					'sanitize'    => $text,
 				),
-				'_callboard_palette'         => array(
+				'_callboard_palette'     => array(
 					'type'        => 'string',
 					'description' => 'Which theatre palette the drawn cover uses. Empty means the set picks one from its own name.',
 					'sanitize'    => 'sanitize_key',
 				),
-				'_callboard_art_drawn'       => array(
+				'_callboard_art_drawn'   => array(
 					'type'        => 'string',
 					'description' => 'Fingerprint of the name, track count and length the drawn artwork was made from. A mismatch redraws it; its absence means the artwork is somebody else\'s and is left alone.',
 					'sanitize'    => $text,
 				),
-				'_callboard_cover_image'     => array(
+				'_callboard_cover_image' => array(
 					'type'        => 'integer',
 					'description' => 'Attachment ID of the set cover. Also the featured image.',
 					'sanitize'    => 'absint',
 				),
-				'_callboard_share_image'     => array(
+				'_callboard_share_image' => array(
 					'type'        => 'integer',
 					'description' => 'Attachment ID of the link-preview card.',
 					'sanitize'    => 'absint',
@@ -117,10 +112,6 @@ final class Meta {
 					'type'        => 'number',
 					'description' => 'Length in seconds, as the importer measured it.',
 					'sanitize'    => 'floatval',
-				),
-				'_callboard_lyrics'       => array(
-					'type'        => 'array',
-					'description' => 'Caption cues as [start, end, text], from the source\'s own auto-captions.',
 				),
 				'_callboard_levels'       => array(
 					'type'        => 'string',
