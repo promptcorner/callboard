@@ -19,7 +19,6 @@ An open-source music player for WordPress. Publish an owned, app-like listening 
 ## What it does
 
 - **Owned music player.** WordPress manages the library while Callboard replaces the theme on the front end with a focused listening app. Share one URL; listeners do not need an account by default.
-- **Board.** The home page shows the next call: time, place, note, and the numbers being worked. Each number is a tap that starts the track. A call is a post under Sets. Publishing one sends a push notification.
 - **Sets.** A set is a post; its tracks are audio attachments. Add audio through the Media Library, fetch a playlist with WP-CLI, or import a folder.
 - **Player.** A bar at the foot of every page with the artwork, what is playing, and previous, play, next. Tap it and Now Playing fills the screen: the cover, the waveform, elapsed and remaining, and what the copy actually is. Waveform scrubbing, an A/B loop (two fingers on the wave, or the bracket keys), count-in, lyrics and director's notes in time with the track, AirPlay, and lock-screen controls. The tab title carries the track as well, for whoever has the board open behind a rehearsal PDF.
 - **Offline.** Save a set once. It plays from the phone with no connection, or load it from a file when there is no signal to save it with.
@@ -29,9 +28,8 @@ An open-source music player for WordPress. Publish an owned, app-like listening 
 
 1. Install `callboard.zip` from the [latest release](https://github.com/promptcorner/callboard/releases/latest). WordPress 6.5+, PHP 8.1+.
 2. Add a set. With `yt-dlp` and `ffmpeg` installed where WP-CLI runs: `wp callboard fetch '<playlist url>' --name="Spring Show"`. Otherwise put audio files and a `manifest.json` in `wp-content/uploads/callboard/<slug>/` and use Sets → Import. `wp callboard doctor` reports what is available.
-3. Post a call under Sets → Calls. Publish it or schedule it.
-4. Share the home page URL. On iPhone, the cast adds it to the Home Screen. The bell turns on notifications where the host supports Web Push (PHP with OpenSSL and GMP or BCMath).
-5. Adjust Sets → Settings.
+3. Share the home page URL. On iPhone, add it to the Home Screen.
+4. Adjust Sets → Settings.
 
 ## Contents
 
@@ -68,7 +66,6 @@ Design rules: animate only transform and opacity, never use font weight for stat
 
 | Where | What |
 | --- | --- |
-| `callboard_call` post | Title and body. `_callboard_when` (site time zone, empty for a notice with no time), `_callboard_where`, `_callboard_numbers` (attachment ids). Leaves the board six hours after its time |
 | `callboard_set` post | Name, slug, order, credits, source link, share image |
 | Audio attachment | A track. `menu_order` is its position. Quality shown to listeners — bit depth and sample rate for lossless, bitrate and sample rate for lossy — reads WordPress's own attachment metadata, not a callboard field; lossy formats show no bit depth, since MP3 does not have one |
 | `_callboard_duration` | Seconds |
@@ -76,7 +73,6 @@ Design rules: animate only transform and opacity, never use font weight for stat
 | `_callboard_lyrics`, `_callboard_lyrics_approved` | Timed lines from captions, shown after approval |
 | `callboard_note` comments on the track | Director's notes. Text is the comment body, the time into the track is `_callboard_at` comment meta, and author and date come from the comment. Legacy `_callboard_notes` post meta is still read as a fallback; `wp callboard migrate-notes` turns those arrays into comments |
 | `_callboard_bpm` | Tempo, for the count-in |
-| `_callboard_practice` | Anonymous practice counts per hour, written only while **Count practice** is on |
 | `_callboard_video_id`, `_callboard_source_url`, `_callboard_uploader` | Source. The uploader is also sent per track as `artist` — right for one playlist by one uploader, wrong for a set where every track differs |
 | `_callboard_codec`, `_callboard_reencoded` | What a fetch actually got (e.g. `aac`) and whether `ffmpeg` had to re-encode to get it — provenance, not a measurement of the file itself |
 
@@ -110,22 +106,13 @@ The service worker precaches the shell and the home fragment. Saving a set strea
 </details>
 
 <details>
-<summary>Push</summary>
-
-`Push` stores subscriptions through a REST route and sends with [web-push-php](https://github.com/web-push-libs/web-push-php). Payloads use declarative Web Push so Safari shows them without waking the worker. A `pushsubscriptionchange` handler re-subscribes when a browser rotates an endpoint. VAPID keys are generated with OpenSSL and stored in an option.
-
-</details>
-
-<details>
 <summary>Privacy</summary>
 
-`Privacy` adds `noindex` via `wp_robots` and `X-Robots-Tag`, disallows everything in `robots.txt`, sets `Referrer-Policy: no-referrer`, requires authentication for REST except the push routes, hides the users endpoint, disables XML-RPC and feeds, and redirects author archives and search to home.
+`Privacy` adds `noindex` via `wp_robots` and `X-Robots-Tag`, disallows everything in `robots.txt`, sets `Referrer-Policy: no-referrer`, requires authentication for REST, hides the users endpoint, disables XML-RPC and feeds, and redirects author archives and search to home.
 
 `Gate` is the one decision about who may see the front end, and it is off by default: a link in a group chat is the whole setup, and that is the point. Turn on **Require a WordPress sign-in** and the answer becomes `is_user_logged_in()` and nothing else, so whatever sign-in the site already has guards the app too — Apple, Google, a membership plugin, passkeys through Two Factor and its WebAuthn provider. Core still ships no passkeys of its own. Also turn on **Only let in users with access to Callboard** and a signed-in user needs the `view_callboard` capability too. `callboard_can_view` overrides the settings; return `null` and the filter never has to know what they say.
 
-`Roles` adds two roles. **Director** can post calls, edit playlists and their track notes, and send notifications from Notices. **Cast member** can only open the front end. Each post type has its own capabilities (`edit_callboard_calls`, `edit_callboard_playlists`, and so on), and on activation or update every other role gets the ones that match the post capabilities it already has. Administrators, editors, authors and contributors keep what they could do before. Deleting the plugin removes the roles and capabilities.
-
-**Count practice** is off by default. When it is on, the page counts how many times each track is opened, how many loops are set on it and how many seconds it plays, and sends those totals to the site. They are stored on the track, grouped by hour, and shown on each call in the editor. No user id, name, IP address or cookie is stored with them.
+`Roles` adds two roles. **Director** can edit playlists and their track notes. **Cast member** can only open the front end. Each post type has its own capabilities (`edit_callboard_playlists`, `edit_callboard_import_requests`, and so on), and on activation or update every other role gets the ones that match the post capabilities it already has. Administrators, editors, authors and contributors keep what they could do before. Deleting the plugin removes the roles and capabilities.
 
 A gated request answers 403 with `templates/gate.php` rather than redirecting to `wp-login.php`, which would drop the cast out of an installed app and into WordPress branding mid-session. Nothing about the sets escapes it: the script and its data are not enqueued, link previews are suppressed, and the document title falls back to the site name. Audio files keep their own upload addresses either way, so the gate guards the app, not the media.
 
@@ -145,8 +132,8 @@ A gated request answers 403 with `templates/gate.php` rather than redirecting to
 | --- | --- |
 | `callboard.php` | Plugin header, constants, autoload |
 | `uninstall.php` | Removes the roles and capabilities when the plugin is deleted |
-| `includes/` | One class per concern: `Plugin`, `Router`, `Frontend`, `Sets`, `Calls`, `Post_Types`, `Admin`, `Settings`, `Importer`, `Exporter`, `Id3`, `Fetcher`, `Requests`, `Push`, `Pwa`, `Privacy`, `Gate`, `Roles`, `Art`, `Cli`. `helpers.php` has icons and formatting |
-| `templates/` | `index.php` (shell), `fragment.php`, `home.php`, `board.php`, `set.php`, `deck.php` (player), `gate.php`, `footer.php` |
+| `includes/` | One class per concern: `Plugin`, `Router`, `Frontend`, `Sets`, `Post_Types`, `Admin`, `Settings`, `Importer`, `Exporter`, `Id3`, `Fetcher`, `Requests`, `Pwa`, `Privacy`, `Gate`, `Roles`, `Art`, `Cli`. `helpers.php` has icons and formatting |
+| `templates/` | `index.php` (shell), `fragment.php`, `home.php`, `set.php`, `deck.php` (player), `gate.php`, `footer.php` |
 | `assets/` | `app.js`, `app.css` |
 | `pwa/sw.js` | Service worker source |
 | `tests/e2e/` | Playwright suites |
@@ -186,12 +173,9 @@ Features are extensions: an id, a version, and named contribution points shared 
 | `callboard_template_path` | filter | Replace any template with your own file |
 | `callboard_app_data` | filter | Data the script receives on load. Extension `app_data` runs inside it at priority 5 |
 | `callboard_set_data` | filter | One set's data. Extension `track_data` and `set_data` run inside it at priority 5 |
-| `callboard_board` | filter | The calls shown on the board |
-| `callboard_push_message` | filter | Title, body, and URL of a notification. Return an empty array to cancel |
-| `callboard_call_published` | action | A call was published |
 | `callboard_imported` | action | A set folder was imported |
 | `callboard_import_page` | action | Add your own controls to the bottom of the admin import screen |
-| `callboard_import_dir`, `callboard_ytdlp_path`, `callboard_ffmpeg_path`, `callboard_max_subscribers` | filters | Import folder, tool paths, subscriber limit |
+| `callboard_import_dir`, `callboard_ytdlp_path`, `callboard_ffmpeg_path` | filters | Import folder and tool paths |
 
 </details>
 
@@ -217,13 +201,11 @@ Features are extensions: an id, a version, and named contribution points shared 
 <details>
 <summary>Abilities</summary>
 
-On WordPress 6.9 and later, Callboard registers three abilities with the [Abilities API](https://developer.wordpress.org/apis/abilities-api/), in the `callboard` category. Other plugins and AI tools can run them with `wp_get_ability( $name )->execute( $input )` or through the `wp-abilities/v1` REST routes. Each one checks the same capability as the matching wp-admin screen. On older WordPress versions nothing is registered.
+On WordPress 6.9 and later, Callboard registers one ability with the [Abilities API](https://developer.wordpress.org/apis/abilities-api/), in the `callboard` category. Other plugins and AI tools can run it with `wp_get_ability( $name )->execute( $input )` or through the `wp-abilities/v1` REST routes. It checks the same capability as the matching wp-admin screen. On older WordPress versions nothing is registered.
 
 | Ability | Capability | What it does |
 | --- | --- | --- |
 | `callboard/list-playlists` | `edit_callboard_playlists` | Lists published playlists with each track's id, position and title |
-| `callboard/list-upcoming-calls` | `edit_callboard_calls` | Lists the calls shown on the board: upcoming calls soonest first, then notices without a time |
-| `callboard/post-call` | `publish_callboard_calls` | Publishes a call from a `title` and optional `note`, `when` (`YYYY-MM-DDTHH:MM` in the site's time zone), `where` and `numbers` (track ids). The cast gets a notification if call notifications are on |
 
 </details>
 
@@ -236,7 +218,6 @@ On WordPress 6.9 and later, Callboard registers three abilities with the [Abilit
 | `wp callboard import [--file=<path>]` | Import every folder under `uploads/callboard/`, or one `.callboard` file |
 | `wp callboard export <slug> [--format=<file\|car>] [--out=<path>]` | Write a set out as a `.callboard` file, or as a folder of tagged mp3s for a car |
 | `wp callboard levels <slug>` | Measure loudness for a set that has none |
-| `wp callboard notify <message> [--title=<title>] [--url=<url>]` | Send a push notification |
 | `wp callboard doctor` | Check for `yt-dlp`, `ffmpeg`, and PHP extensions |
 
 ## Web APIs used
@@ -248,7 +229,6 @@ Links go to the specifications.
 
 - [Service Workers](https://w3c.github.io/ServiceWorker/) with navigation preload, [Cache API](https://w3c.github.io/ServiceWorker/#cache-interface), [Fetch](https://fetch.spec.whatwg.org/) with [Range requests](https://www.rfc-editor.org/rfc/rfc9110.html#name-range-requests)
 - [Web App Manifest](https://www.w3.org/TR/appmanifest/), [display-mode](https://www.w3.org/TR/mediaqueries-5/#display-mode), [beforeinstallprompt](https://wicg.github.io/manifest-incubations/#installation-prompts), [Apple web app meta tags](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html)
-- [Push API](https://www.w3.org/TR/push-api/) with declarative payloads and `pushsubscriptionchange`, [Notifications](https://notifications.spec.whatwg.org/), [Badging](https://www.w3.org/TR/badging/)
 - [HTML media element](https://html.spec.whatwg.org/multipage/media.html), [Media Session](https://www.w3.org/TR/mediasession/), [Audio Session](https://w3c.github.io/audio-session/), [Remote Playback](https://www.w3.org/TR/remote-playback/), [TextTrack](https://html.spec.whatwg.org/multipage/media.html#text-track-api) for lyric cues
 - [Web Audio](https://www.w3.org/TR/webaudio/) for the level meter, count-in, and sample-accurate loop
 - [Web Locks](https://www.w3.org/TR/web-locks/) so one tab plays at a time, [Screen Wake Lock](https://www.w3.org/TR/screen-wake-lock/) while a loop is set or the lyrics sheet is open
@@ -272,8 +252,8 @@ Links go to the specifications.
 <summary>WordPress and PHP</summary>
 
 - [Custom post types](https://developer.wordpress.org/plugins/post-types/), [meta boxes](https://developer.wordpress.org/plugins/metadata/custom-meta-boxes/), [Settings API](https://developer.wordpress.org/plugins/settings/settings-api/), [Transients](https://developer.wordpress.org/apis/transients/), [Filesystem API](https://developer.wordpress.org/apis/filesystem/), [nonces](https://developer.wordpress.org/apis/security/nonces/), [admin-post actions](https://developer.wordpress.org/reference/hooks/admin_post_action/)
-- [REST API](https://developer.wordpress.org/rest-api/) for push subscriptions, [WP-CLI](https://make.wordpress.org/cli/handbook/guides/commands-cookbook/), [template_redirect](https://developer.wordpress.org/reference/hooks/template_redirect/), [wp_robots](https://developer.wordpress.org/reference/functions/wp_robots/)
-- [GD](https://www.php.net/manual/en/book.image.php) for artwork, [proc_open](https://www.php.net/manual/en/function.proc_open.php) for the fetch tools, [OpenSSL](https://www.php.net/manual/en/book.openssl.php) with [GMP](https://www.php.net/manual/en/book.gmp.php) or [BCMath](https://www.php.net/manual/en/book.bc.php) for VAPID keys, [web-push-php](https://github.com/web-push-libs/web-push-php)
+- [REST API](https://developer.wordpress.org/rest-api/), [WP-CLI](https://make.wordpress.org/cli/handbook/guides/commands-cookbook/), [template_redirect](https://developer.wordpress.org/reference/hooks/template_redirect/), [wp_robots](https://developer.wordpress.org/reference/functions/wp_robots/)
+- [GD](https://www.php.net/manual/en/book.image.php) for artwork, [proc_open](https://www.php.net/manual/en/function.proc_open.php) for the fetch tools
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp#usage-and-options), [ffmpeg](https://ffmpeg.org/ffmpeg.html), [Playground blueprints](https://wordpress.github.io/wordpress-playground/blueprints/)
 
 </details>
@@ -311,7 +291,7 @@ Browser and WordPress features considered for this plugin, with a verdict, so no
 - [Interactivity API](https://developer.wordpress.org/block-editor/reference-guides/interactivity-api/): only if the admin grows beyond forms.
 - [Script Modules](https://make.wordpress.org/core/2024/03/04/script-modules-in-6-5/): once the service worker precache can handle module URLs.
 - [HTML API](https://developer.wordpress.org/reference/classes/wp_html_tag_processor/): if the theme is ever allowed to add markup.
-- [Abilities API](https://make.wordpress.org/core/tag/abilities-api/): to expose import and notifications to other plugins.
+- [Abilities API](https://make.wordpress.org/core/tag/abilities-api/): to expose import to other plugins.
 - [Presence API](https://github.com/WordPress/presence-api): for a sign-in sheet. Needs the gated front end first.
 
 </details>
@@ -324,7 +304,6 @@ Browser and WordPress features considered for this plugin, with a verdict, so no
 - wavesurfer.js and peaks.js: they decode audio in the browser, which iPhone Safari cannot do for long files. Levels are measured at import instead.
 - [IndexedDB](https://www.w3.org/TR/IndexedDB/) or [OPFS](https://fs.spec.whatwg.org/) for audio: the Cache API already serves files with Range support.
 - [Web Bluetooth](https://webbluetoothcg.github.io/web-bluetooth/) and [Web MIDI](https://www.w3.org/TR/webmidi/) for foot pedals: Chromium only, and Bluetooth pedals already arrive as media keys.
-- Declarative push `app_badge` as an unread count: would need per-subscriber state on the server.
 
 </details>
 

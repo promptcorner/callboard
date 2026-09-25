@@ -241,31 +241,6 @@ final class Cli {
 	}
 
 	/**
-	 * Send a notice to everyone subscribed to notifications.
-	 *
-	 * ## OPTIONS
-	 *
-	 * <message>
-	 * : The notice text.
-	 *
-	 * [--title=<title>]
-	 * : Notification title. Defaults to the site name.
-	 *
-	 * [--url=<url>]
-	 * : Where a tap goes. Defaults to the home page.
-	 *
-	 * @param string[]              $args       Positional args.
-	 * @param array<string, string> $assoc_args Named args.
-	 */
-	public function notify( array $args, array $assoc_args ): void {
-		$result = Push::send( (string) ( $assoc_args['title'] ?? callboard_site_name() ), (string) $args[0], (string) ( $assoc_args['url'] ?? '' ) );
-		if ( is_wp_error( $result ) ) {
-			WP_CLI::error( $result->get_error_message() );
-		}
-		WP_CLI::success( sprintf( 'Sent to %d devices, %d failed, %d expired subscriptions removed.', $result['sent'], $result['failed'], $result['pruned'] ) );
-	}
-
-	/**
 	 * Turn legacy `_callboard_notes` post meta into `callboard_note` comments.
 	 *
 	 * New notes are already saved as comments. This rewrites arrays that were stored before that,

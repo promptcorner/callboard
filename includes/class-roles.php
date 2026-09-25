@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
 final class Roles {
 
 	/**
-	 * Role that manages calls, playlists, track notes and notifications.
+	 * Role that manages playlists and track notes.
 	 *
 	 * @since 2.3.0
 	 */
@@ -41,13 +41,6 @@ final class Roles {
 	public const VIEW = 'view_callboard';
 
 	/**
-	 * Capability to send a notification from the Notices screen.
-	 *
-	 * @since 2.3.0
-	 */
-	public const NOTIFY = 'send_callboard_notifications';
-
-	/**
 	 * Option that stores which version of the roles a site has.
 	 *
 	 * @since 2.3.0
@@ -59,7 +52,7 @@ final class Roles {
 	 *
 	 * @since 2.3.0
 	 */
-	public const VERSION = 1;
+	public const VERSION = 2;
 
 	/**
 	 * The capability type of each Callboard post type, singular and plural, as register_post_type() takes it.
@@ -67,11 +60,17 @@ final class Roles {
 	 * @since 2.3.0
 	 */
 	public const CAPABILITY_TYPES = array(
-		'callboard_call'       => array( 'callboard_call', 'callboard_calls' ),
-		'callboard_set'        => array( 'callboard_playlist', 'callboard_playlists' ),
-		'callboard_subscriber' => array( 'callboard_push_subscription', 'callboard_push_subscriptions' ),
-		'callboard_request'    => array( 'callboard_import_request', 'callboard_import_requests' ),
+		'callboard_set'     => array( 'callboard_playlist', 'callboard_playlists' ),
+		'callboard_request' => array( 'callboard_import_request', 'callboard_import_requests' ),
 	);
+
+	/**
+	 * Capabilities for calls and notifications, which 3.0.0 removed: the notify capability and the
+	 * post type capabilities of calls and push subscriptions. Taken off every role on upgrade.
+	 *
+	 * @since 3.0.0
+	 */
+	private const RETIRED_CAPS = '/^(send_callboard_notifications|[a-z_]+_callboard_(calls|push_subscriptions))$/';
 
 	/**
 	 * The primitive capabilities of the `post` capability type, which Callboard's post types used before 2.3.0.
@@ -118,8 +117,7 @@ final class Roles {
 	public static function role_caps(): array {
 		return array(
 			self::DIRECTOR    => array_merge(
-				array( 'read', 'upload_files', self::VIEW, self::NOTIFY ),
-				array_values( self::post_type_caps( 'callboard_call' ) ),
+				array( 'read', 'upload_files', self::VIEW ),
 				array_values( self::post_type_caps( 'callboard_set' ) )
 			),
 			self::CAST_MEMBER => array( 'read', self::VIEW ),
@@ -134,7 +132,7 @@ final class Roles {
 	 * @return string[]
 	 */
 	public static function all_caps(): array {
-		$caps = array( self::VIEW, self::NOTIFY );
+		$caps = array( self::VIEW );
 		foreach ( array_keys( self::CAPABILITY_TYPES ) as $post_type ) {
 			$caps = array_merge( $caps, array_values( self::post_type_caps( $post_type ) ) );
 		}
@@ -146,7 +144,7 @@ final class Roles {
 	 *
 	 * Every other role gets the post type capabilities whose `post` equivalents it already has, so
 	 * administrators, editors, authors and contributors can still do what they did before. Roles with
-	 * `manage_options` can still send notifications, and roles with `edit_posts` can open the front end.
+	 * `edit_posts` can open the front end.
 	 *
 	 * @since 2.3.0
 	 */
@@ -177,16 +175,29 @@ final class Roles {
 					}
 				}
 			}
-			if ( $object->has_cap( 'manage_options' ) ) {
-				$caps[] = self::NOTIFY;
-			}
 			if ( $object->has_cap( 'edit_posts' ) ) {
 				$caps[] = self::VIEW;
 			}
 			self::grant( $object, $caps );
 		}
 
+		self::remove_retired();
 		update_option( self::OPTION, self::VERSION );
+	}
+
+	/**
+	 * Take the capabilities of removed features off every role.
+	 *
+	 * @since 3.0.0
+	 */
+	private static function remove_retired(): void {
+		foreach ( wp_roles()->role_objects as $object ) {
+			foreach ( array_keys( $object->capabilities ) as $cap ) {
+				if ( preg_match( self::RETIRED_CAPS, $cap ) ) {
+					$object->remove_cap( $cap );
+				}
+			}
+		}
 	}
 
 	/**
@@ -205,6 +216,7 @@ final class Roles {
 				}
 			}
 		}
+		self::remove_retired();
 		delete_option( self::OPTION );
 	}
 

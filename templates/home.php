@@ -16,13 +16,8 @@ $callboard_sets = Callboard\Sets::all();
 			<div class="masthead-text">
 				<h1><?php bloginfo( 'name' ); ?></h1>
 			</div>
-			<?php if ( Callboard\Settings::get( 'push' ) && Callboard\Push::available() ) : ?>
-			<button type="button" class="btn btn-quiet btn-icon bell" id="notify" data-state="" aria-pressed="false" aria-label="<?php esc_attr_e( 'Notify me about new sets', 'callboard' ); ?>"><?php echo callboard_icon( 'bell' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static SVG shipped with the plugin. ?></button>
-			<?php endif; ?>
 		</div>
 	</header>
-
-	<?php callboard_template( 'board' ); ?>
 
 	<?php if ( ! empty( $args['not_found'] ) ) : ?>
 		<p class="note note-404"><?php esc_html_e( "That page isn't here. Everything we have is below.", 'callboard' ); ?></p>

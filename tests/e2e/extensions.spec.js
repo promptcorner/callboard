@@ -133,7 +133,6 @@ test.describe( 'Extensions', () => {
 			expect.arrayContaining( [
 				'callboard/count-in',
 				'callboard/quality',
-				'callboard/badging',
 				'example/demo',
 				'example/late',
 			] )
@@ -764,45 +763,5 @@ test.describe( 'Callboard’s own features are extensions', () => {
 				window.callboard.data( 'callboard/quality' )
 			)
 		).toBeNull();
-	} );
-
-	test( 'badging: the Home Screen badge is the sum of what extensions contribute', async ( {
-		page,
-	} ) => {
-		await page.addInitScript( () => {
-			window.__badge = [];
-			Navigator.prototype.setAppBadge = function setAppBadge( n ) {
-				window.__badge.push( [ 'set', n ] );
-				return Promise.resolve();
-			};
-			Navigator.prototype.clearAppBadge = function clearAppBadge() {
-				window.__badge.push( [ 'clear' ] );
-				return Promise.resolve();
-			};
-		} );
-		const calls = () => page.evaluate( () => window.__badge );
-
-		// Callboard alone: the badging extension contributes zero, which clears what a notification set.
-		await page.goto( '/' );
-		await expect.poll( calls ).toContainEqual( [ 'clear' ] );
-
-		// The example contributes three.
-		await useExample( page );
-		await page.goto( '/' );
-		await expect.poll( calls ).toContainEqual( [ 'set', 3 ] );
-
-		// Switched off, nothing touches the badge at all.
-		await useExample( page, {
-			callboard_example: '0',
-			callboard_example_disable: 'callboard/badging',
-		} );
-		await page.goto( '/' );
-		await page.waitForLoadState( 'load' );
-		await expect
-			.poll( () =>
-				page.evaluate( () => window.callboard.extensions().length )
-			)
-			.toBeGreaterThan( 0 );
-		expect( await calls() ).toEqual( [] );
 	} );
 } );

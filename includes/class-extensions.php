@@ -124,7 +124,7 @@ final class Extensions {
 		foreach ( glob( CALLBOARD_DIR . 'includes/extensions/class-*.php' ) as $file ) {
 			require_once $file;
 		}
-		foreach ( array( Extension\Count_In::class, Extension\Quality::class, Extension\Badging::class, Extension\Practice::class ) as $extension ) {
+		foreach ( array( Extension\Count_In::class, Extension\Quality::class ) as $extension ) {
 			$extension::register();
 		}
 		self::$first_party = false;

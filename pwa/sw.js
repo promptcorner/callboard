@@ -2,7 +2,6 @@
 const VERSION = '__VERSION__';
 const APP = '__APP_VERSION__'; // the plugin version the pages compare against
 const PLUGIN = '__PLUGIN_PATH__';
-const PUSH_API = '__PUSH_API__';
 const HOME = '__HOME__'; // the site's home path, `/` or a network site's `/choir/`
 const MANIFEST = '__MANIFEST__';
 const ASSETS = __ASSETS__; // eslint-disable-line no-undef -- written by PHP: shell files, versioned the way the page requests them
@@ -41,6 +40,13 @@ self.addEventListener( 'activate', ( e ) =>
 				await self.registration.navigationPreload.enable(); // the page request races the worker boot
 			}
 			await self.clients.claim();
+			// Notifications were removed in 3.0. Drop a subscription left from before, since nothing will send to it now.
+			const sub = self.registration.pushManager
+				? await self.registration.pushManager.getSubscription().catch( () => null )
+				: null;
+			if ( sub ) {
+				await sub.unsubscribe().catch( () => {} );
+			}
 			for ( const c of await self.clients.matchAll( {
 				type: 'window',
 			} ) ) {
@@ -49,85 +55,6 @@ self.addEventListener( 'activate', ( e ) =>
 		} )()
 	)
 );
-
-/* Payloads are declarative Web Push (Safari shows them without waking this worker); everywhere else this handler shows the same notification. */
-self.addEventListener( 'push', ( e ) => {
-	let d = {};
-	try {
-		d = e.data ? e.data.json() : {};
-	} catch {
-		d = { body: e.data && e.data.text() };
-	}
-	const n = d.notification || d;
-	e.waitUntil(
-		Promise.all( [
-			self.registration.showNotification( n.title || 'Callboard', {
-				body: n.body || '',
-				icon: n.icon,
-				badge: d.badge || n.icon,
-				tag: n.tag,
-				data: { url: n.navigate || d.url || HOME },
-			} ),
-			'setAppBadge' in self.navigator
-				? self.navigator
-						.setAppBadge( d.app_badge || 1 )
-						.catch( () => {} )
-				: Promise.resolve(),
-		] )
-	);
-} );
-/* Browsers rotate push subscriptions. Re-subscribe with the same server key and tell the site, so notices keep arriving without anyone tapping the button again. */
-self.addEventListener( 'pushsubscriptionchange', ( e ) => {
-	e.waitUntil(
-		( async () => {
-			const old = e.oldSubscription;
-			const key =
-				( old && old.options && old.options.applicationServerKey ) ||
-				null;
-			let sub = e.newSubscription || null;
-			if ( ! sub && key ) {
-				sub = await self.registration.pushManager.subscribe( {
-					userVisibleOnly: true,
-					applicationServerKey: key,
-				} );
-			}
-			if ( ! sub || ! PUSH_API ) {
-				return;
-			}
-			const post = ( path, body ) =>
-				fetch( PUSH_API + path, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify( body ),
-				} ).catch( () => {} );
-			await post( 'subscribe', sub.toJSON() );
-			if ( old && old.endpoint !== sub.endpoint ) {
-				await post( 'unsubscribe', { endpoint: old.endpoint } );
-			}
-		} )()
-	);
-} );
-self.addEventListener( 'notificationclick', ( e ) => {
-	e.notification.close();
-	const url = new URL(
-		( e.notification.data && e.notification.data.url ) || HOME,
-		self.location.origin
-	).href;
-	e.waitUntil(
-		self.clients
-			.matchAll( { type: 'window', includeUncontrolled: true } )
-			.then( ( list ) => {
-				const open = list.find( ( c ) =>
-					c.url.startsWith( self.location.origin )
-				);
-				if ( open ) {
-					open.navigate( url );
-					return open.focus();
-				}
-				return self.clients.openWindow( url );
-			} )
-	);
-} );
 
 /* A saved set has to open with no signal, so the page asks the worker to keep the set's page: the fragment a tap
    swaps in and the whole document a cold start asks for. The answer comes back once both are stored, inside

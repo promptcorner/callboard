@@ -1,9 +1,9 @@
 /**
- * Admin: settings, set editing, import queue, notices.
+ * Admin: settings, set editing, import queue.
  */
 const { test, expect } = require( '@wordpress/e2e-test-utils-playwright' );
 
-// Some tests change shared data (settings, the demo set's first track, the import queue, the board).
+// Some tests change shared data (settings, the demo set's first track, the import queue).
 // Each one registers how to undo its change, and the undo runs in afterEach. Playwright runs afterEach
 // even when a test fails or times out, so a failed test can't leave data behind that breaks later tests.
 let undos = [];
@@ -40,10 +40,6 @@ const deleteRows = async ( rows ) => {
 		await rows.first().locator( 'a.submitdelete' ).click();
 		await expect( rows ).toHaveCount( n - 1 );
 	}
-};
-const deleteCalls = async ( admin, page, title ) => {
-	await admin.visitAdminPage( 'edit.php', 'post_type=callboard_call' );
-	await deleteRows( page.locator( '#the-list tr', { hasText: title } ) );
 };
 const deleteQueued = async ( admin, page, name ) => {
 	await admin.visitAdminPage(
@@ -247,104 +243,5 @@ test.describe( 'Admin', () => {
 		).toBeVisible();
 		await page.locator( 'a.submitdelete' ).first().click();
 		await expect( page.locator( 'table.widefat' ) ).toHaveCount( 0 );
-	} );
-
-	test( 'the notices page shows subscriber count and a send form', async ( {
-		admin,
-		page,
-	} ) => {
-		await admin.visitAdminPage(
-			'edit.php',
-			'post_type=callboard_set&page=callboard-notices'
-		);
-		const count = page.locator( '.wrap p' ).first();
-		await expect( count ).toContainText( /subscribed/ );
-		await expect( page.locator( '#callboard-nbody' ) ).toBeVisible();
-		// Send is enabled exactly when someone is subscribed. A developer's own browser may well be, so
-		// the test reads the count rather than assuming zero.
-		const n = parseInt(
-			( await count.textContent() ).match( /\d+/ )[ 0 ],
-			10
-		);
-		if ( n ) {
-			await expect( page.locator( '#submit' ) ).toBeEnabled();
-		} else {
-			await expect( page.locator( '#submit' ) ).toBeDisabled();
-		}
-	} );
-
-	test( 'a posted call opens the board, and its number starts the track', async ( {
-		admin,
-		page,
-	} ) => {
-		// Also deletes a draft left behind if Publish did not go through.
-		undoAfter( () => deleteCalls( admin, page, 'Act II sitzprobe' ) );
-		await deleteCalls( admin, page, 'Act II sitzprobe' ); // left over from a run that was stopped
-		await admin.visitAdminPage(
-			'post-new.php',
-			'post_type=callboard_call'
-		);
-		await page.fill( '#title', 'Act II sitzprobe' );
-		await page.click( '#content-html' ); // the code tab: the visual editor hides the textarea
-		await page.fill( '#content', 'Orchestra joins us. Be warmed up.' );
-		const when = new Date( Date.now() + 3 * 86400 * 1000 );
-		when.setHours( 19, 0, 0, 0 );
-		const pad = ( n ) => String( n ).padStart( 2, '0' );
-		await page.fill(
-			'#callboard-when',
-			`${ when.getFullYear() }-${ pad( when.getMonth() + 1 ) }-${ pad(
-				when.getDate()
-			) }T19:00`
-		);
-		await page.fill( '#callboard-where', 'Pit' );
-		const demo = page.locator( '.callboard-numbers details', {
-			hasText: 'Compositions',
-		} );
-		await demo.locator( 'summary' ).click();
-		await demo.locator( 'input[type=checkbox]' ).nth( 2 ).check(); // Trombone Detritus
-		// When the title field of a new post loses focus, WordPress starts an autosave 200ms later and
-		// ignores clicks on Publish until that save finishes. Wait for "Draft saved" before clicking;
-		// checking that the button is enabled is not enough, because the save may not have started yet (#131).
-		await expect( page.locator( '.autosave-message' ) ).toHaveText(
-			/Draft saved/
-		);
-		await expect( page.locator( '#publish' ) ).not.toHaveClass(
-			/disabled/
-		);
-		await page.click( '#publish' );
-		// Wait for the edit screen's HTML, not its load event. The load event also waits for outside
-		// requests such as the admin bar avatar, and a slow one made this test time out.
-		await page.waitForURL( /post\.php\?post=\d+&action=edit&message=/, {
-			waitUntil: 'domcontentloaded',
-		} );
-		await expect( page.locator( '#callboard-where' ) ).toHaveValue( 'Pit' );
-
-		await page.goto( '/' );
-		const call = page.locator( '.call', { hasText: 'Act II sitzprobe' } );
-		await expect( call ).toBeVisible();
-		await expect( call.locator( '.call-rel' ) ).toContainText( /in|days/ );
-		await expect( call.locator( '.call-where' ) ).toHaveText( 'Pit' );
-		// #51: the board is a list ruled like the others, not a stack of cards.
-		await expect( call ).toHaveCSS(
-			'background-color',
-			'rgba(0, 0, 0, 0)'
-		);
-		await expect( call ).toHaveCSS( 'border-radius', '0px' );
-		await expect( call.locator( '.call-numbers a' ) ).toHaveText(
-			'Trombone Detritus'
-		);
-		await call.locator( '.call-numbers a' ).click();
-		await expect( page ).toHaveURL( /\/demo-set\/$/ );
-		await expect( page.locator( '#now-title' ) ).toContainText(
-			'Trombone Detritus'
-		);
-
-		await admin.visitAdminPage( 'edit.php', 'post_type=callboard_call' );
-		await expect(
-			page
-				.locator( '#the-list tr', { hasText: 'Act II sitzprobe' } )
-				.first()
-				.locator( '.column-callboard_when' )
-		).toContainText( /\(in / );
 	} );
 } );

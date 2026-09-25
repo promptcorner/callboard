@@ -92,9 +92,8 @@ final class Privacy {
 			return $result;
 		}
 		$route = isset( $GLOBALS['wp']->query_vars['rest_route'] ) ? (string) $GLOBALS['wp']->query_vars['rest_route'] : '';
-		// Push moves onto the extension registry's rest point with the rest of push; until then its
-		// routes are named here. Extension routes still apply the gate in their permission callback.
-		if ( str_starts_with( $route, '/callboard/v1/push/' ) || Extensions::is_extension_route( $route ) ) {
+		// Extension routes still apply the gate in their permission callback.
+		if ( Extensions::is_extension_route( $route ) ) {
 			return $result;
 		}
 		return new WP_Error( 'rest_disabled', __( 'Not available.', 'callboard' ), array( 'status' => 401 ) );

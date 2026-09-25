@@ -23,7 +23,6 @@ final class Admin {
 		add_action( 'add_meta_boxes_' . Post_Types::SET, array( self::class, 'meta_boxes' ) );
 		add_action( 'save_post_' . Post_Types::SET, array( self::class, 'save' ) );
 		add_action( 'admin_menu', array( self::class, 'menu' ) );
-		add_action( 'admin_menu', array( self::class, 'new_call_menu' ), 11 );
 		add_action( 'admin_init', array( self::class, 'register_settings' ) );
 		add_action( 'admin_init', array( self::class, 'maybe_redirect_to_setup' ) );
 		add_action( 'admin_enqueue_scripts', array( self::class, 'assets' ) );
@@ -217,11 +216,10 @@ final class Admin {
 		if ( ! isset( $_POST['callboard_nonce'] ) || ! wp_verify_nonce( sanitize_key( $_POST['callboard_nonce'] ), 'callboard_save' ) || ! current_user_can( 'edit_post', $post_id ) || wp_is_post_autosave( $post_id ) ) {
 			return;
 		}
-		$order           = array_values( array_unique( array_filter( array_map( 'absint', (array) ( $_POST['callboard_order'] ?? array() ) ) ) ) );
-		$removed         = array_values( array_unique( array_filter( array_map( 'absint', (array) ( $_POST['callboard_removed'] ?? array() ) ) ) ) );
-		$titles          = isset( $_POST['callboard_title'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_title'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
-		$bpms            = array_map( 'intval', (array) ( $_POST['callboard_bpm'] ?? array() ) );
-		$notes_to_notify = array();
+		$order   = array_values( array_unique( array_filter( array_map( 'absint', (array) ( $_POST['callboard_order'] ?? array() ) ) ) ) );
+		$removed = array_values( array_unique( array_filter( array_map( 'absint', (array) ( $_POST['callboard_removed'] ?? array() ) ) ) ) );
+		$titles  = isset( $_POST['callboard_title'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_title'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
+		$bpms    = array_map( 'intval', (array) ( $_POST['callboard_bpm'] ?? array() ) );
 		foreach ( $removed as $track_id ) {
 			if ( (int) get_post_field( 'post_parent', $track_id ) !== $post_id || ! current_user_can( 'edit_post', $track_id ) || ! str_starts_with( (string) get_post_mime_type( $track_id ), 'audio/' ) ) {
 				continue;
@@ -253,14 +251,7 @@ final class Admin {
 			wp_update_post( $update );
 			update_post_meta( $track_id, '_callboard_bpm', Importer::clamp_bpm( (int) ( $bpms[ $track_id ] ?? 0 ) ) );
 			$raw = isset( $_POST['callboard_notes'][ $track_id ] ) ? sanitize_textarea_field( wp_unslash( (string) $_POST['callboard_notes'][ $track_id ] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized here.
-			// Notes::set() returns only the notes this save added.
-			foreach ( Notes::set( $track_id, self::parse_notes( $raw, Notes::get( $track_id ) ) ) as $note ) {
-				$notes_to_notify[] = array(
-					'index' => $i,
-					'title' => (string) get_post_field( 'post_title', $track_id ),
-					'note'  => $note,
-				);
-			}
+			Notes::set( $track_id, self::parse_notes( $raw, Notes::get( $track_id ) ) );
 		}
 
 		$credits = isset( $_POST['callboard_credits'] ) ? array_map( 'sanitize_text_field', wp_unslash( (array) $_POST['callboard_credits'] ) ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized per element.
@@ -286,26 +277,6 @@ final class Admin {
 			Importer::import_all();
 		}
 		Sets::flush();
-		// Only a published set has a page for the notification to open.
-		if ( 'publish' !== get_post_status( $post_id ) ) {
-			return;
-		}
-		foreach ( $notes_to_notify as $item ) {
-			$note = $item['note'];
-			$url  = add_query_arg(
-				array(
-					'track' => (int) $item['index'],
-					'at'    => (float) $note['t'],
-				),
-				trailingslashit( home_url( '/' . get_post_field( 'post_name', $post_id ) . '/' ) )
-			);
-			Push::send(
-				/* translators: %s: track title. */
-				sprintf( __( "Director's note: %s", 'callboard' ), $item['title'] ),
-				$note['text'],
-				$url
-			);
-		}
 	}
 
 	/**
@@ -377,26 +348,7 @@ final class Admin {
 		$parent = 'edit.php?post_type=' . Post_Types::SET;
 		add_submenu_page( $parent, __( 'Get started with Callboard', 'callboard' ), __( 'Get Started', 'callboard' ), 'manage_options', 'callboard-setup', array( self::class, 'page_setup' ) );
 		add_submenu_page( $parent, __( 'Import', 'callboard' ), __( 'Import', 'callboard' ), 'manage_options', 'callboard-import', array( self::class, 'page_import' ) );
-		add_submenu_page( $parent, __( 'Notices', 'callboard' ), __( 'Notices', 'callboard' ), Roles::NOTIFY, 'callboard-notices', array( self::class, 'page_notices' ) );
 		add_submenu_page( $parent, __( 'Callboard Settings', 'callboard' ), __( 'Settings', 'callboard' ), 'manage_options', 'callboard-settings', array( self::class, 'page_settings' ) );
-	}
-
-	/**
-	 * A "Post a Call" submenu for users who can post calls but not blog posts, such as directors.
-	 *
-	 * Calls are shown under the Sets menu. WordPress then refuses post-new.php for that post type to anyone
-	 * without `edit_posts`, unless the page is in a menu (core ticket #22895).
-	 *
-	 * @since 2.3.0
-	 */
-	public static function new_call_menu(): void {
-		if ( current_user_can( 'edit_posts' ) ) {
-			return;
-		}
-		$type = get_post_type_object( Calls::TYPE );
-		if ( $type ) {
-			add_submenu_page( 'edit.php?post_type=' . Post_Types::SET, $type->labels->add_new_item, $type->labels->add_new_item, $type->cap->create_posts, 'post-new.php?post_type=' . Calls::TYPE );
-		}
 	}
 
 	/**
@@ -417,21 +369,17 @@ final class Admin {
 		add_settings_section( 'callboard_access', __( 'Access', 'callboard' ), array( self::class, 'section_access' ), 'callboard' );
 		add_settings_section( 'callboard_rehearsal', __( 'Rehearsal tools', 'callboard' ), array( self::class, 'section_rehearsal' ), 'callboard' );
 		$fields = array(
-			'tagline'         => array( __( 'Tagline', 'callboard' ), 'text', __( 'Shown under the title and in link previews.', 'callboard' ), 'callboard_identity' ),
-			'footer_note'     => array( __( 'Home page footer', 'callboard' ), 'text', __( 'A short credit, rights note, or listening instruction.', 'callboard' ), 'callboard_identity' ),
-			'badge'           => array( __( 'Playing track marker', 'callboard' ), 'text', __( 'An emoji beside the current track, or leave empty.', 'callboard' ), 'callboard_identity' ),
-			'accent'          => array( __( 'Accent colour', 'callboard' ), 'color', __( 'A hex colour such as #3b82f6 for the played wave, the filament, and the marks. Empty keeps the Callboard orange.', 'callboard' ), 'callboard_identity' ),
-			'show_hint'       => array( __( 'Show the "Add to Home Screen" hint on iPhone', 'callboard' ), 'checkbox', '', 'callboard_listening' ),
-			'offline'         => array( __( 'Offer "Save offline"', 'callboard' ), 'checkbox', '', 'callboard_listening' ),
-			'push'            => array( __( 'Offer notifications', 'callboard' ), 'checkbox', __( 'A bell on the home page lets listeners opt in. On iPhone this needs the player added to the Home Screen.', 'callboard' ), 'callboard_listening' ),
-			'notify_new_sets' => array( __( 'Notify when a set is published', 'callboard' ), 'checkbox', '', 'callboard_listening' ),
-			'require_signin'  => array( __( 'Require a WordPress sign-in', 'callboard' ), 'checkbox', __( 'Off, anyone with the address can open the player. On, the front end uses whatever sign-in the site already has. Audio files keep their own upload addresses either way.', 'callboard' ), 'callboard_access' ),
-			'require_access'  => array( __( 'Only let in users with access to Callboard', 'callboard' ), 'checkbox', __( 'Needs the sign-in setting above. On, a signed-in user also needs the view_callboard capability. Cast members, directors and anyone who can edit posts have it. Subscribers do not.', 'callboard' ), 'callboard_access' ),
-			'confetti'        => array( __( 'Confetti text', 'callboard' ), 'text', __( 'Triple-tap the big title to release it. A lucky number, a name. Empty turns it off.', 'callboard' ), 'callboard_rehearsal' ),
-			'hearts'          => array( __( 'Mix hearts into the confetti', 'callboard' ), 'checkbox', '', 'callboard_rehearsal' ),
-			'notify_calls'    => array( __( 'Notify when a call is posted', 'callboard' ), 'checkbox', __( 'Calls live under Sets. Publishing one, or a scheduled one going live, sends it to the cast.', 'callboard' ), 'callboard_rehearsal' ),
-			'count_in'        => array( __( 'Count in tracks that have a tempo', 'callboard' ), 'checkbox', __( 'Four clicks at the marked tempo before a track starts from the top, so singers come in on the beat. Off, the tempo still shows on the track.', 'callboard' ), 'callboard_rehearsal' ),
-			'practice'        => array( __( 'Count practice', 'callboard' ), 'checkbox', __( 'Counts how many times each track is opened, how many loops are set on it, and how many minutes it plays. Counts are anonymous: no names, accounts, IP addresses or cookies are stored. They are grouped by hour and shown on each call in the editor.', 'callboard' ), 'callboard_rehearsal' ),
+			'tagline'        => array( __( 'Tagline', 'callboard' ), 'text', __( 'Shown under the title and in link previews.', 'callboard' ), 'callboard_identity' ),
+			'footer_note'    => array( __( 'Home page footer', 'callboard' ), 'text', __( 'A short credit, rights note, or listening instruction.', 'callboard' ), 'callboard_identity' ),
+			'badge'          => array( __( 'Playing track marker', 'callboard' ), 'text', __( 'An emoji beside the current track, or leave empty.', 'callboard' ), 'callboard_identity' ),
+			'accent'         => array( __( 'Accent colour', 'callboard' ), 'color', __( 'A hex colour such as #3b82f6 for the played wave, the filament, and the marks. Empty keeps the Callboard orange.', 'callboard' ), 'callboard_identity' ),
+			'show_hint'      => array( __( 'Show the "Add to Home Screen" hint on iPhone', 'callboard' ), 'checkbox', '', 'callboard_listening' ),
+			'offline'        => array( __( 'Offer "Save offline"', 'callboard' ), 'checkbox', '', 'callboard_listening' ),
+			'require_signin' => array( __( 'Require a WordPress sign-in', 'callboard' ), 'checkbox', __( 'Off, anyone with the address can open the player. On, the front end uses whatever sign-in the site already has. Audio files keep their own upload addresses either way.', 'callboard' ), 'callboard_access' ),
+			'require_access' => array( __( 'Only let in users with access to Callboard', 'callboard' ), 'checkbox', __( 'Needs the sign-in setting above. On, a signed-in user also needs the view_callboard capability. Cast members, directors and anyone who can edit posts have it. Subscribers do not.', 'callboard' ), 'callboard_access' ),
+			'confetti'       => array( __( 'Confetti text', 'callboard' ), 'text', __( 'Triple-tap the big title to release it. A lucky number, a name. Empty turns it off.', 'callboard' ), 'callboard_rehearsal' ),
+			'hearts'         => array( __( 'Mix hearts into the confetti', 'callboard' ), 'checkbox', '', 'callboard_rehearsal' ),
+			'count_in'       => array( __( 'Count in tracks that have a tempo', 'callboard' ), 'checkbox', __( 'Four clicks at the marked tempo before a track starts from the top, so singers come in on the beat. Off, the tempo still shows on the track.', 'callboard' ), 'callboard_rehearsal' ),
 		);
 		foreach ( $fields as $key => list( $label, $type, $help, $section ) ) {
 			add_settings_field(
@@ -621,37 +569,6 @@ final class Admin {
 	}
 
 	/**
-	 * Notices: push a message to everyone who opted in.
-	 */
-	public static function page_notices(): void {
-		$count = Push::count();
-		?>
-		<div class="wrap callboard-admin">
-			<h1><?php esc_html_e( 'Notices', 'callboard' ); ?></h1>
-			<?php if ( ! Push::available() ) : ?>
-				<p><?php esc_html_e( 'Push is not available on this server (needs OpenSSL and GMP or BCMath).', 'callboard' ); ?></p>
-			<?php else : ?>
-				<p>
-					<?php
-					/* translators: %d: subscriber count. */
-					echo esc_html( sprintf( _n( '%d device is subscribed.', '%d devices are subscribed.', $count, 'callboard' ), $count ) );
-					?>
-					<?php esc_html_e( 'A notice goes to all of them and opens the link when tapped.', 'callboard' ); ?>
-				</p>
-				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="max-width:640px">
-					<input type="hidden" name="action" value="callboard_notify">
-					<?php wp_nonce_field( 'callboard_notify' ); ?>
-					<p><label for="callboard-ntitle"><?php esc_html_e( 'Title', 'callboard' ); ?></label><br><input type="text" class="large-text" id="callboard-ntitle" name="callboard_title" placeholder="<?php echo esc_attr( callboard_site_name() ); ?>"></p>
-					<p><label for="callboard-nbody"><?php esc_html_e( 'Message', 'callboard' ); ?></label><br><textarea class="large-text" rows="3" id="callboard-nbody" name="callboard_body" required></textarea></p>
-					<p><label for="callboard-nlink"><?php esc_html_e( 'Link (optional)', 'callboard' ); ?></label><br><input type="url" class="large-text" id="callboard-nlink" name="callboard_link" placeholder="<?php echo esc_attr( home_url( '/' ) ); ?>"></p>
-					<?php submit_button( __( 'Send to the cast', 'callboard' ), 'primary', 'submit', false, $count ? array() : array( 'disabled' => 'disabled' ) ); ?>
-				</form>
-			<?php endif; ?>
-		</div>
-		<?php
-	}
-
-	/**
 	 * Import page: folder import now, plus how to fetch from YouTube.
 	 */
 	public static function page_import(): void {
@@ -760,7 +677,7 @@ wp callboard run   <?php esc_html_e( '# or drain everything queued above', 'call
 	 */
 	public static function assets( string $hook ): void {
 		$screen = get_current_screen();
-		if ( $screen && ( Post_Types::SET === $screen->post_type || Calls::TYPE === $screen->post_type ) ) {
+		if ( $screen && Post_Types::SET === $screen->post_type ) {
 			wp_enqueue_style( 'callboard-admin', CALLBOARD_URL . 'assets/admin.css', array(), CALLBOARD_VERSION );
 		}
 		if ( ! in_array( $hook, array( 'post.php', 'post-new.php' ), true ) || Post_Types::SET !== $screen?->post_type ) {

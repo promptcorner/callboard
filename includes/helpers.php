@@ -99,7 +99,6 @@ function callboard_icon( string $name ): string {
 		'share' => '<path d="M12 3v12m0-12L8 7m4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
 		'prev'  => '<path class="skip-bar" d="M6 5h2v14H6z"/><path class="skip-tri" d="M19 5v14L9 12z"/>',
 		'next'  => '<path class="skip-bar" d="M16 5h2v14h-2z"/><path class="skip-tri" d="M5 5v14l10-7z"/>',
-		'bell'  => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
 		'close' => '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" fill="none"/>',
 		'cast'  => '<path d="M6 17H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 13.5 17.5 21h-11z"/>',
 	);

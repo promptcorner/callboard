@@ -42,7 +42,7 @@ Keep the Callboard name and its direct, practical voice. Product language should
 
 - Product behavior and architecture: `README.md`
 - WordPress listing copy: `readme.txt`
-- Existing administration: `includes/class-admin.php`, `includes/class-calls.php`, and `includes/class-settings.php`
+- Existing administration: `includes/class-admin.php` and `includes/class-settings.php`
 - Cast-facing implementation: `templates/`, `assets/app.css`, and `assets/app.js`
 - Automated admin coverage: `tests/e2e/admin.spec.js`
 - Public-domain rehearsal fixtures and screenshots: `tests/fixtures/` and `site/`

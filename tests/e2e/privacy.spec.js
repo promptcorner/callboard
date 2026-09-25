@@ -48,16 +48,10 @@ test.describe( 'Privacy', () => {
 		}
 	} );
 
-	test( 'push routes are open: key is public, bad subscriptions are rejected', async ( {
+	test( 'the push routes are gone, so no REST route is open to visitors', async ( {
 		request,
 	} ) => {
 		const key = await request.get( '/wp-json/callboard/v1/push/key' );
-		expect( key.ok() ).toBeTruthy();
-		expect( ( await key.json() ).key ).toMatch( /^[A-Za-z0-9_-]{80,}$/ );
-		const bad = await request.post(
-			'/wp-json/callboard/v1/push/subscribe',
-			{ data: { endpoint: 'http://not-https' } }
-		);
-		expect( bad.status() ).toBe( 400 );
+		expect( key.ok() ).toBeFalsy();
 	} );
 } );

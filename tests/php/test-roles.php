@@ -5,7 +5,6 @@
  * @package Callboard
  */
 
-use Callboard\Calls;
 use Callboard\Plugin;
 use Callboard\Post_Types;
 use Callboard\Roles;
@@ -35,23 +34,21 @@ class Test_Callboard_Roles extends WP_UnitTestCase {
 				$this->assertTrue( $editor->has_cap( $cap ), "editor should have {$cap}" );
 			}
 		}
-		$this->assertTrue( $admin->has_cap( Roles::NOTIFY ) );
 		$this->assertTrue( $admin->has_cap( Roles::VIEW ) );
 		$this->assertTrue( $editor->has_cap( Roles::VIEW ) );
-		$this->assertFalse( $editor->has_cap( Roles::NOTIFY ), 'editors could not send notifications before' );
 
 		// Authors and contributors keep what `post` gave them, and nothing more.
-		$this->assertTrue( get_role( 'author' )->has_cap( 'publish_callboard_calls' ) );
-		$this->assertFalse( get_role( 'author' )->has_cap( 'edit_others_callboard_calls' ) );
-		$this->assertTrue( get_role( 'contributor' )->has_cap( 'edit_callboard_calls' ) );
-		$this->assertFalse( get_role( 'contributor' )->has_cap( 'publish_callboard_calls' ) );
+		$this->assertTrue( get_role( 'author' )->has_cap( 'publish_callboard_playlists' ) );
+		$this->assertFalse( get_role( 'author' )->has_cap( 'edit_others_callboard_playlists' ) );
+		$this->assertTrue( get_role( 'contributor' )->has_cap( 'edit_callboard_playlists' ) );
+		$this->assertFalse( get_role( 'contributor' )->has_cap( 'publish_callboard_playlists' ) );
 		$this->assertFalse( get_role( 'subscriber' )->has_cap( Roles::VIEW ) );
 	}
 
 	public function test_activation_adds_the_roles_and_capabilities(): void {
 		Roles::uninstall();
 		$this->assertNull( get_role( Roles::DIRECTOR ) );
-		$this->assertFalse( get_role( 'administrator' )->has_cap( 'edit_callboard_calls' ) );
+		$this->assertFalse( get_role( 'administrator' )->has_cap( 'edit_callboard_playlists' ) );
 
 		Plugin::activate();
 
@@ -90,41 +87,66 @@ class Test_Callboard_Roles extends WP_UnitTestCase {
 		}
 	}
 
-	public function test_a_director_can_edit_a_call_and_a_subscriber_cannot(): void {
+	public function test_a_director_can_edit_a_playlist_but_not_change_settings(): void {
 		$admin      = self::factory()->user->create( array( 'role' => 'administrator' ) );
 		$director   = self::factory()->user->create( array( 'role' => Roles::DIRECTOR ) );
 		$subscriber = self::factory()->user->create( array( 'role' => 'subscriber' ) );
-		$call       = self::factory()->post->create(
+		$playlist   = self::factory()->post->create(
 			array(
-				'post_type'   => Calls::TYPE,
+				'post_type'   => Post_Types::SET,
 				'post_author' => $admin,
 			)
 		);
 
-		$this->assertTrue( user_can( $director, 'edit_post', $call ) );
-		$this->assertTrue( user_can( $director, 'delete_post', $call ) );
-		$this->assertFalse( user_can( $subscriber, 'edit_post', $call ) );
-		$this->assertFalse( user_can( $subscriber, 'delete_post', $call ) );
-	}
-
-	public function test_a_director_can_edit_a_playlist_and_send_notifications_but_not_change_settings(): void {
-		$director = self::factory()->user->create( array( 'role' => Roles::DIRECTOR ) );
-		$playlist = self::factory()->post->create( array( 'post_type' => Post_Types::SET ) );
-
 		$this->assertTrue( user_can( $director, 'edit_post', $playlist ) );
-		$this->assertTrue( user_can( $director, Roles::NOTIFY ) );
+		$this->assertTrue( user_can( $director, 'delete_post', $playlist ) );
+		$this->assertFalse( user_can( $subscriber, 'edit_post', $playlist ) );
 		$this->assertTrue( user_can( $director, Roles::VIEW ) );
 		$this->assertFalse( user_can( $director, 'manage_options' ) );
 		$this->assertFalse( user_can( $director, 'edit_posts' ), 'a director does not get blog posts' );
 	}
 
 	public function test_a_cast_member_can_open_the_front_end_and_nothing_else(): void {
-		$cast = self::factory()->user->create( array( 'role' => Roles::CAST_MEMBER ) );
-		$call = self::factory()->post->create( array( 'post_type' => Calls::TYPE ) );
+		$cast     = self::factory()->user->create( array( 'role' => Roles::CAST_MEMBER ) );
+		$playlist = self::factory()->post->create( array( 'post_type' => Post_Types::SET ) );
 
 		$this->assertTrue( user_can( $cast, Roles::VIEW ) );
-		$this->assertFalse( user_can( $cast, 'edit_post', $call ) );
-		$this->assertFalse( user_can( $cast, Roles::NOTIFY ) );
+		$this->assertFalse( user_can( $cast, 'edit_post', $playlist ) );
+	}
+
+	public function test_updating_takes_the_call_and_notification_capabilities_off_every_role(): void {
+		$admin = get_role( 'administrator' );
+		foreach ( array( 'send_callboard_notifications', 'edit_callboard_calls', 'publish_callboard_calls', 'edit_callboard_push_subscriptions' ) as $cap ) {
+			$admin->add_cap( $cap );
+		}
+		get_role( Roles::DIRECTOR )->add_cap( 'edit_others_callboard_calls' );
+		update_option( Roles::OPTION, 1 );
+
+		Plugin::maybe_upgrade();
+
+		foreach ( array( 'send_callboard_notifications', 'edit_callboard_calls', 'publish_callboard_calls', 'edit_callboard_push_subscriptions' ) as $cap ) {
+			$this->assertFalse( get_role( 'administrator' )->has_cap( $cap ), "{$cap} should be gone" );
+		}
+		$this->assertFalse( get_role( Roles::DIRECTOR )->has_cap( 'edit_others_callboard_calls' ) );
+		$this->assertTrue( get_role( 'administrator' )->has_cap( 'edit_callboard_playlists' ) );
+	}
+
+	public function test_updating_deletes_push_subscriptions_and_keys_but_keeps_calls(): void {
+		$subscription = self::factory()->post->create(
+			array(
+				'post_type'   => 'callboard_subscriber',
+				'post_status' => 'private',
+			)
+		);
+		$call         = self::factory()->post->create( array( 'post_type' => 'callboard_call' ) );
+		update_option( 'callboard_vapid', array( 'publicKey' => 'x' ) );
+		update_option( 'callboard_version', '2.0.0' );
+
+		Plugin::maybe_upgrade();
+
+		$this->assertNull( get_post( $subscription ) );
+		$this->assertFalse( get_option( 'callboard_vapid' ) );
+		$this->assertNotNull( get_post( $call ), 'calls are content, and stay' );
 	}
 
 	public function test_uninstall_removes_the_roles_and_capabilities(): void {

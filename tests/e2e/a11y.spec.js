@@ -64,7 +64,6 @@ test.describe( 'axe, admin', () => {
 		[ 'setup', 'post_type=callboard_set&page=callboard-setup' ],
 		[ 'settings', 'post_type=callboard_set&page=callboard-settings' ],
 		[ 'import', 'post_type=callboard_set&page=callboard-import' ],
-		[ 'notices', 'post_type=callboard_set&page=callboard-notices' ],
 	] ) {
 		test( name, async ( { admin, page } ) => {
 			await admin.visitAdminPage( 'edit.php', query );
