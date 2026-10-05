@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Callboard
  * Description: A focused music player for WordPress with offline listening and optional rehearsal tools.
- * Version: 3.0.0
+ * Version: 3.0.1
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Plugin URI: https://promptcorner.github.io/callboard/
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CALLBOARD_VERSION', '3.0.0' );
+define( 'CALLBOARD_VERSION', '3.0.1' );
 
 /*
  * The extension contract's version, which moves separately from the plugin's. Within one API version
