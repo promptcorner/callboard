@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.0.1](https://github.com/promptcorner/callboard/compare/v3.0.0...v3.0.1) (2026-10-05)
+
+
+### Dependencies
+
+* **deps-dev:** bump @wordpress/env from 11.14.0 to 11.16.0 in the npm-minor-and-patch group ([#225](https://github.com/promptcorner/callboard/issues/225)) ([e22cadc](https://github.com/promptcorner/callboard/commit/e22cadcd00b3c356428cf4a156107f071a4d9999))
+* **deps-dev:** bump brace-expansion from 1.1.18 to 1.1.21 ([#229](https://github.com/promptcorner/callboard/issues/229)) ([23619c2](https://github.com/promptcorner/callboard/commit/23619c2d40c3fd2c1af1f737da8139eab3104cb6))
+* **deps:** bump ip-address from 10.7.0 to 10.7.2 ([#228](https://github.com/promptcorner/callboard/issues/228)) ([97373a1](https://github.com/promptcorner/callboard/commit/97373a16d9f71405fed2abfd036db433271fcfb0))
+* **deps:** bump the actions-minor-and-patch group with 2 updates ([#226](https://github.com/promptcorner/callboard/issues/226)) ([fff383c](https://github.com/promptcorner/callboard/commit/fff383ce9bc00dc725a8ea52908908fa56e5a16b))
+
 ## [3.0.0](https://github.com/promptcorner/callboard/compare/v2.7.0...v3.0.0) (2026-09-25)
 
 
